@@ -38,11 +38,7 @@ onUnmounted(disposeRuntime);
     >
       <div class="w-80 rounded-lg bg-white p-5 shadow-xl">
         <h2 class="text-sm font-semibold">退出 DeepSeek Harness？</h2>
-        <p class="mt-1 text-xs leading-5 text-slate-500">
-          退出将同时停止 DeepSeek Harness
-          服务；最小化到托盘可让服务在后台继续运行。
-        </p>
-        <div class="mt-4 flex justify-end gap-2">
+        <div class="mt-12 flex justify-end gap-2">
           <button class="dialog-btn" @click="closeRequested = false">
             取消
           </button>

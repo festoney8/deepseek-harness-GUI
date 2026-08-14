@@ -169,7 +169,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
         .unwrap_or_else(|error| error.into_inner())
         .clear();
     let _ = app.emit("harness-output-reset", ());
-    match logs::cleanup_old(&base, Duration::from_secs(14 * 86_400)) {
+    match logs::cleanup_old(&base, Duration::from_secs(7 * 86_400)) {
         Ok(removed) => log::debug!("cleaned up {removed} old log sessions"),
         Err(error) => log::warn!("failed to clean up old log sessions: {error}"),
     }
@@ -324,10 +324,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     loop {
                         match harness.try_wait() {
                             Ok(Some(status)) => {
-                                log::error!(
-                                    "harness exited early with code {:?}",
-                                    status.code()
-                                );
+                                log::error!("harness exited early with code {:?}", status.code());
                                 process::kill_active();
                                 emit_state(
                                     &app,
@@ -361,7 +358,10 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                             break 'poll true;
                         }
                         if started.elapsed() > START_TIMEOUT {
-                            log::error!("harness start timed out after {}s", START_TIMEOUT.as_secs());
+                            log::error!(
+                                "harness start timed out after {}s",
+                                START_TIMEOUT.as_secs()
+                            );
                             process::kill_active();
                             emit_state(
                                 &app,
