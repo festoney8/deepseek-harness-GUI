@@ -27,7 +27,7 @@ use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
 use crate::logs::{self, Session};
 
 pub const PORT_START: u16 = 3080;
-pub const PORT_END: u16 = 3180;
+pub const PORT_END: u16 = 5090;
 const START_TIMEOUT: Duration = Duration::from_secs(120);
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
 const LAST_LOG_LIMIT: usize = 2048;
@@ -97,11 +97,19 @@ impl Supervisor {
     }
 
     pub fn session_dir(&self) -> Option<std::path::PathBuf> {
-        self.session_dir.lock().unwrap_or_else(|e| e.into_inner()).clone()
+        self.session_dir
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .clone()
     }
 
     pub fn spawn_worker(&self, app: AppHandle, base: std::path::PathBuf) {
-        let rx = self.rx.lock().unwrap_or_else(|e| e.into_inner()).take().expect("worker already spawned");
+        let rx = self
+            .rx
+            .lock()
+            .unwrap_or_else(|e| e.into_inner())
+            .take()
+            .expect("worker already spawned");
         let snap = self.snap.clone();
         let session_dir = self.session_dir.clone();
         std::thread::Builder::new()
@@ -156,10 +164,26 @@ fn worker_loop(
         let _ = logs::cleanup_old(&base, Duration::from_secs(14 * 86_400));
 
         // 1. 环境检测
-        emit_state(&app, &snap, &tail, Phase::CheckingNode, None, "正在检测 Node.js 环境…", None);
+        emit_state(
+            &app,
+            &snap,
+            &tail,
+            Phase::CheckingNode,
+            None,
+            "正在检测 Node.js 环境…",
+            None,
+        );
         let env = check_env();
         if !env.ok {
-            emit_state(&app, &snap, &tail, Phase::EnvMissing, None, &env.detail, None);
+            emit_state(
+                &app,
+                &snap,
+                &tail,
+                Phase::EnvMissing,
+                None,
+                &env.detail,
+                None,
+            );
             if !wait_intent(&rx) {
                 return;
             }
@@ -167,9 +191,25 @@ fn worker_loop(
         }
 
         // 2. 端口查找
-        emit_state(&app, &snap, &tail, Phase::FindingPort, None, "正在检查端口占用…", None);
+        emit_state(
+            &app,
+            &snap,
+            &tail,
+            Phase::FindingPort,
+            None,
+            "正在检查端口占用…",
+            None,
+        );
         let Some(port) = find_port() else {
-            emit_state(&app, &snap, &tail, Phase::Failed, None, "端口 3080-3180 均被占用，请检查占用程序后重试。", None);
+            emit_state(
+                &app,
+                &snap,
+                &tail,
+                Phase::Failed,
+                None,
+                "端口 3080-5090 均被占用，请检查占用程序后重试。",
+                None,
+            );
             if !wait_intent(&rx) {
                 return;
             }
@@ -178,7 +218,15 @@ fn worker_loop(
 
         // 3. 日志会话（创建失败阻断启动）
         let Some(session) = create_session(&base, &session_dir) else {
-            emit_state(&app, &snap, &tail, Phase::Failed, Some(port), "无法创建日志目录，已停止启动。请检查磁盘空间或权限后重试。", None);
+            emit_state(
+                &app,
+                &snap,
+                &tail,
+                Phase::Failed,
+                Some(port),
+                "无法创建日志目录，已停止启动。请检查磁盘空间或权限后重试。",
+                None,
+            );
             if !wait_intent(&rx) {
                 return;
             }
@@ -192,14 +240,30 @@ fn worker_loop(
                 child
             }
             Err(e) => {
-                emit_state(&app, &snap, &tail, Phase::Failed, Some(port), &format!("启动失败：{e}"), None);
+                emit_state(
+                    &app,
+                    &snap,
+                    &tail,
+                    Phase::Failed,
+                    Some(port),
+                    &format!("启动失败：{e}"),
+                    None,
+                );
                 if !wait_intent(&rx) {
                     return;
                 }
                 continue;
             }
         };
-        emit_state(&app, &snap, &tail, Phase::Starting, Some(port), "正在启动 DeepSeek Harness…", Some(0));
+        emit_state(
+            &app,
+            &snap,
+            &tail,
+            Phase::Starting,
+            Some(port),
+            "正在启动 DeepSeek Harness…",
+            Some(0),
+        );
 
         if let Some(out) = child.stdout.take() {
             spawn_pipe_reader(out, session.clone(), tail.clone(), "[stdout] ");
@@ -214,7 +278,15 @@ fn worker_loop(
             loop {
                 if let Ok(Intent::Cancel) = rx.try_recv() {
                     kill_job();
-                    emit_state(&app, &snap, &tail, Phase::Failed, Some(port), "启动已取消。", None);
+                    emit_state(
+                        &app,
+                        &snap,
+                        &tail,
+                        Phase::Failed,
+                        Some(port),
+                        "启动已取消。",
+                        None,
+                    );
                     break 'poll false;
                 }
                 match child.try_wait() {
@@ -233,7 +305,15 @@ fn worker_loop(
                     }
                     Ok(None) => {}
                     Err(e) => {
-                        emit_state(&app, &snap, &tail, Phase::Failed, Some(port), &format!("无法读取进程状态：{e}"), None);
+                        emit_state(
+                            &app,
+                            &snap,
+                            &tail,
+                            Phase::Failed,
+                            Some(port),
+                            &format!("无法读取进程状态：{e}"),
+                            None,
+                        );
                         break 'poll false;
                     }
                 }
@@ -242,7 +322,15 @@ fn worker_loop(
                 }
                 if started.elapsed() > START_TIMEOUT {
                     kill_job();
-                    emit_state(&app, &snap, &tail, Phase::Failed, Some(port), "启动超时（120 秒），请查看日志。", None);
+                    emit_state(
+                        &app,
+                        &snap,
+                        &tail,
+                        Phase::Failed,
+                        Some(port),
+                        "启动超时（120 秒），请查看日志。",
+                        None,
+                    );
                     break 'poll false;
                 }
                 emit_state(
@@ -265,7 +353,15 @@ fn worker_loop(
         }
 
         // 6. Ready：监控进程，异常退出恢复窗口
-        emit_state(&app, &snap, &tail, Phase::Ready, Some(port), "服务已就绪", None);
+        emit_state(
+            &app,
+            &snap,
+            &tail,
+            Phase::Ready,
+            Some(port),
+            "服务已就绪",
+            None,
+        );
         session.log_gui(&format!("harness ready on http://127.0.0.1:{port}"));
         loop {
             match child.try_wait() {
@@ -278,7 +374,15 @@ fn worker_loop(
                         return;
                     }
                     session.log_gui(&format!("harness exited with code {code:?}"));
-                    emit_state(&app, &snap, &tail, Phase::Failed, Some(port), &format!("DeepSeek Harness 已退出（退出码 {code:?}）。"), None);
+                    emit_state(
+                        &app,
+                        &snap,
+                        &tail,
+                        Phase::Failed,
+                        Some(port),
+                        &format!("DeepSeek Harness 已退出（退出码 {code:?}）。"),
+                        None,
+                    );
                     show_main(&app);
                     break;
                 }
@@ -293,7 +397,10 @@ fn worker_loop(
     }
 }
 
-fn create_session(base: &Path, session_dir: &Arc<Mutex<Option<std::path::PathBuf>>>) -> Option<Arc<Session>> {
+fn create_session(
+    base: &Path,
+    session_dir: &Arc<Mutex<Option<std::path::PathBuf>>>,
+) -> Option<Arc<Session>> {
     let session = Arc::new(Session::create(base, std::process::id()).ok()?);
     *session_dir.lock().unwrap_or_else(|e| e.into_inner()) = Some(session.dir.clone());
     Some(session)
@@ -319,7 +426,9 @@ fn spawn_pipe_reader<R: Read + Send + 'static>(
 
 /// 去掉控制字符（保留换行与制表符），避免日志被当作终端/HTML 内容注入。
 fn sanitize(line: &str) -> String {
-    line.chars().filter(|&c| c == '\n' || c == '\t' || c >= ' ').collect()
+    line.chars()
+        .filter(|&c| c == '\n' || c == '\t' || c >= ' ')
+        .collect()
 }
 
 fn push_tail(tail: &Mutex<String>, line: &str) {
@@ -328,7 +437,11 @@ fn push_tail(tail: &Mutex<String>, line: &str) {
     t.push('\n');
     if t.len() > LAST_LOG_LIMIT {
         let start = t.len() - LAST_LOG_LIMIT;
-        let cut = t.char_indices().find(|(i, _)| *i >= start).map(|(i, _)| i).unwrap_or(t.len());
+        let cut = t
+            .char_indices()
+            .find(|(i, _)| *i >= start)
+            .map(|(i, _)| i)
+            .unwrap_or(t.len());
         *t = t[cut..].to_string();
     }
 }
@@ -341,7 +454,10 @@ struct EnvReport {
 /// npx 是 .cmd 脚本，CreateProcess 无法直接解析，必须经 cmd /C 执行。
 fn run_hidden(prog: &str, args: &[&str]) -> Option<String> {
     let mut cmd = Command::new(prog);
-    cmd.args(args).stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    cmd.args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     #[cfg(windows)]
     cmd.creation_flags(CREATE_NO_WINDOW);
     let out = cmd.output().ok()?;
@@ -359,11 +475,18 @@ fn check_env() -> EnvReport {
         (None, _) => "未检测到 Node.js，请从官网（nodejs.org）安装后点击重试。".into(),
         (_, None) => "未检测到 npx，请确认 npm 安装完整后重试。".into(),
     };
-    EnvReport { ok: node.is_some() && npx.is_some(), detail }
+    EnvReport {
+        ok: node.is_some() && npx.is_some(),
+        detail,
+    }
 }
 
 fn port_free(port: u16) -> bool {
-    TcpStream::connect_timeout(&SocketAddr::from(([127, 0, 0, 1], port)), Duration::from_millis(200)).is_err()
+    TcpStream::connect_timeout(
+        &SocketAddr::from(([127, 0, 0, 1], port)),
+        Duration::from_millis(200),
+    )
+    .is_err()
 }
 
 fn find_port() -> Option<u16> {
@@ -372,11 +495,16 @@ fn find_port() -> Option<u16> {
 
 /// 就绪探测：GET / 读到 HTTP 状态行即认为服务可响应。
 fn http_ok(port: u16) -> bool {
-    let Ok(mut s) = TcpStream::connect_timeout(&SocketAddr::from(([127, 0, 0, 1], port)), Duration::from_millis(500)) else {
+    let Ok(mut s) = TcpStream::connect_timeout(
+        &SocketAddr::from(([127, 0, 0, 1], port)),
+        Duration::from_millis(500),
+    ) else {
         return false;
     };
     let _ = s.set_read_timeout(Some(Duration::from_millis(500)));
-    if s.write_all(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n").is_err() {
+    if s.write_all(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
+        .is_err()
+    {
         return false;
     }
     let mut buf = [0u8; 64];

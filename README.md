@@ -15,7 +15,7 @@ pnpm build:portable    # 免安装单文件 exe，产物在 src-tauri/target/rel
 
 ## 行为说明
 
-- 启动流程：检测 `node`/`npx` → 查找空闲端口（3080 起，依次回退至 3180）→ 隐藏命令行执行 `npx --yes @deepseek-ai/dsh --profile web --host 127.0.0.1 --port <port>` → 轮询就绪（进程存活 + HTTP 可响应，120 秒超时）→ 以 iframe 展示 WebUI。
+- 启动流程：检测 `node`/`npx` → 查找空闲端口（3080 起，依次回退至 5090）→ 隐藏命令行执行 `npx --yes @deepseek-ai/dsh --profile web --host 127.0.0.1 --port <port>` → 轮询就绪（进程存活 + HTTP 可响应，120 秒超时）→ 以 iframe 展示 WebUI。
 - 进程树通过 Windows Job Object（`KILL_ON_JOB_CLOSE`）托管：退出应用时整个 harness 进程树一并终止，端口随即释放；任何异常退出路径由句柄回收兜底。
 - 关闭按钮 / `Alt+F4` 弹出「退出 / 最小化到托盘 / 取消」；托盘左键恢复窗口，右键菜单含「显示 / 退出」；托盘退出立即生效，不再确认。
 - 单实例：重复启动只恢复并聚焦已有窗口。
