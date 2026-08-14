@@ -94,4 +94,3 @@ export const startServer = () => invoke("start_server");
 export const cancelStart = () => invoke("cancel_start");
 export const exitApp = () => invoke("exit_app");
 export const hideToTray = () => invoke("hide_to_tray");
-export const openLogDir = () => invoke("open_log_dir");

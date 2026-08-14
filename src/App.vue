@@ -12,6 +12,11 @@ import {
   state,
 } from "./composables/useRuntime";
 
+function hideInTray() {
+  hideToTray();
+  closeRequested.value = false;
+}
+
 onMounted(initRuntime);
 onUnmounted(disposeRuntime);
 </script>
@@ -41,15 +46,7 @@ onUnmounted(disposeRuntime);
           <button class="dialog-btn" @click="closeRequested = false">
             取消
           </button>
-          <button
-            class="dialog-btn"
-            @click="
-              hideToTray();
-              closeRequested = false;
-            "
-          >
-            最小化到托盘
-          </button>
+          <button class="dialog-btn" @click="hideInTray">最小化到托盘</button>
           <button class="dialog-btn danger" @click="exitApp">退出</button>
         </div>
       </div>

@@ -6,11 +6,13 @@ const win = getCurrentWindow();
 const maximized = ref(false);
 let unlisten: (() => void) | undefined;
 
-onMounted(async () => {
+async function syncMaximized() {
   maximized.value = await win.isMaximized();
-  unlisten = await win.onResized(async () => {
-    maximized.value = await win.isMaximized();
-  });
+}
+
+onMounted(async () => {
+  await syncMaximized();
+  unlisten = await win.onResized(syncMaximized);
 });
 
 onUnmounted(() => unlisten?.());

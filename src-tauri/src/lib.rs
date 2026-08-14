@@ -1,4 +1,5 @@
 mod logs;
+mod process;
 mod runtime;
 
 use tauri::{
@@ -56,20 +57,16 @@ fn hide_to_tray(app: tauri::AppHandle) {
     }
 }
 
-#[tauri::command]
-fn open_log_dir(sup: tauri::State<'_, Supervisor>) -> Result<(), String> {
-    match sup.session_dir() {
-        Some(dir) => tauri_plugin_opener::open_path(dir, None::<&str>).map_err(|e| e.to_string()),
-        None => Err("日志目录尚未创建".into()),
-    }
-}
-
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     let show = MenuItem::with_id(app, "show", "显示", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
     let menu = Menu::with_items(app, &[&show, &quit])?;
     TrayIconBuilder::with_id("main-tray")
-        .icon(app.default_window_icon().expect("configured app icon").clone())
+        .icon(
+            app.default_window_icon()
+                .expect("configured app icon")
+                .clone(),
+        )
         .tooltip("DeepSeek Harness")
         .menu(&menu)
         .show_menu_on_left_click(false)
@@ -80,7 +77,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
                 ..
             } = event
             {
-                show_main(&tray.app_handle());
+                show_main(tray.app_handle());
             }
         })
         .on_menu_event(|app, event| match event.id.as_ref() {
@@ -96,7 +93,7 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            show_main(&app);
+            show_main(app);
         }))
         .plugin(tauri_plugin_opener::init())
         .manage(Supervisor::new())
@@ -125,8 +122,7 @@ pub fn run() {
             start_server,
             cancel_start,
             exit_app,
-            hide_to_tray,
-            open_log_dir
+            hide_to_tray
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

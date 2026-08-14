@@ -11,37 +11,31 @@ import {
   startServer,
 } from "../composables/useRuntime";
 
-const props = defineProps<{ state: RuntimeSnapshot }>();
+const { state } = defineProps<{ state: RuntimeSnapshot }>();
 const logRef = ref<HTMLElement | null>(null);
 
-const installing = computed(() => props.state.phase === "installing");
-const starting = computed(() => props.state.phase === "starting");
-const failed = computed(() => props.state.phase === "failed");
+const installing = computed(() => state.phase === "installing");
+const starting = computed(() => state.phase === "starting");
+const failed = computed(() => state.phase === "failed");
 const busy = computed(() => installing.value || starting.value);
 const needInstall = computed(
-  () => !props.state.versionError && props.state.local !== props.state.remote,
+  () => !state.versionError && state.local !== state.remote,
 );
-/** 环境都正常（node/npm 就绪、dsh 已安装且版本一致）时才允许启动 */
-const canStart = computed(
-  () =>
-    !busy.value &&
-    props.state.node != null &&
-    props.state.npm != null &&
-    props.state.local != null &&
-    props.state.local === props.state.remote,
-);
-const startHint = computed(() => {
-  if (busy.value) return "";
-  if (props.state.node == null || props.state.npm == null)
-    return "请先安装 Node.js 环境";
-  if (props.state.local == null) return "请先安装 DeepSeek Harness";
-  if (props.state.local !== props.state.remote)
-    return "请先更新 DeepSeek Harness";
+const startBlockReason = computed(() => {
+  if (state.node == null || state.npm == null) return "请先安装 Node.js 环境";
+  if (state.local == null) return "请先安装 DeepSeek Harness";
+  if (state.local !== state.remote) return "请先更新 DeepSeek Harness";
   return "";
 });
+const startDisabled = computed(
+  () =>
+    installing.value || (!starting.value && Boolean(startBlockReason.value)),
+);
 const elapsed = computed(() => {
-  const s = props.state.elapsed;
-  return s == null ? "" : `${Math.floor(s / 60)} 分 ${s % 60} 秒`;
+  const seconds = state.elapsed;
+  return seconds == null
+    ? ""
+    : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
 });
 
 function onStartClick() {
@@ -152,13 +146,13 @@ watch(output, async () => {
 
     <!-- 巨大启动按钮 -->
     <div class="flex shrink-0 flex-col items-center gap-2">
-      <button class="start-btn" :disabled="!canStart" @click="onStartClick">
+      <button class="start-btn" :disabled="startDisabled" @click="onStartClick">
         {{ starting ? "正在启动…（点击取消）" : "启动 DeepSeek Harness" }}
       </button>
       <p v-if="starting" class="text-xs text-slate-500">已等待 {{ elapsed }}</p>
       <p v-if="failed" class="text-xs text-red-500">{{ state.detail }}</p>
-      <p v-else-if="startHint" class="text-xs text-slate-400">
-        {{ startHint }}
+      <p v-else-if="startBlockReason" class="text-xs text-slate-400">
+        {{ startBlockReason }}
       </p>
     </div>
 

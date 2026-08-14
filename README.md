@@ -27,7 +27,7 @@ pnpm build:portable    # 免安装单文件 exe，产物在 src-tauri/target/rel
 每次运行一个会话目录：
 
 ```
-%LOCALAPPDATA%\com.festoney8.deepseek-harness-gui\logs\YYYY-MM-DD_HH-mm-ss-<pid>\
+%LOCALAPPDATA%\deepseek-harness-gui\logs\YYYY-MM-DD_HH-mm-ss-<pid>\
   harness.log   # dsh 进程原始输出（不脱敏）
   gui.log       # 壳自身日志（含时间戳）
 ```

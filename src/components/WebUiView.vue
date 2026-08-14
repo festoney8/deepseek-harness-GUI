@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { computed } from "vue";
-
-const props = defineProps<{ port: number }>();
-const src = computed(() => `http://127.0.0.1:${props.port}/`);
+const { port } = defineProps<{ port: number }>();
 </script>
 
 <template>
   <iframe
-    :src="src"
+    :src="`http://127.0.0.1:${port}/`"
     allow="
       camera *;
       clipboard-read *;
