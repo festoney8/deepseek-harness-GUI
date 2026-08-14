@@ -23,7 +23,8 @@
         "shadow": true,
         "resizable": true,
         "maximizable": true,
-        "zoomHotkeysEnabled": true
+        "zoomHotkeysEnabled": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {
