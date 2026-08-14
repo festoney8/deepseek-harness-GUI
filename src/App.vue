@@ -44,7 +44,6 @@ async function greet() {
 .logo.vue:hover {
   filter: drop-shadow(0 0 2em #249b73);
 }
-
 </style>
 <style>
 :root {
@@ -156,5 +155,4 @@ button {
     background-color: #0f0f0f69;
   }
 }
-
 </style>
