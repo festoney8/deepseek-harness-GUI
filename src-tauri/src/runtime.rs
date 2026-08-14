@@ -211,9 +211,16 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     &shared,
                     &session,
                     CommandSpec {
-                        display: "npm i -g @deepseek-ai/dsh",
+                        display: "npm install --verbose -g @deepseek-ai/dsh",
                         program: "cmd",
-                        args: &["/C", "npm", "i", "-g", "@deepseek-ai/dsh"],
+                        args: &[
+                            "/C",
+                            "npm",
+                            "install",
+                            "--verbose",
+                            "-g",
+                            "@deepseek-ai/dsh",
+                        ],
                     },
                 ) {
                     Ok((status, _)) => status.success(),

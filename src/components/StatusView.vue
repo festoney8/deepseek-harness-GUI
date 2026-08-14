@@ -252,7 +252,7 @@ watch(output, async () => {
                 {{ row.label }}
               </dt>
               <dd
-                class="max-w-48 truncate font-mono text-sm font-black"
+                class="max-w-48 truncate text-base font-bold"
                 :class="row.valueClass"
                 :title="row.value"
               >
@@ -304,7 +304,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl bg-blue-100 px-4 font-bold text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60"
               :disabled="installDisabled"
               @click="installDsh"
             >
@@ -312,7 +312,7 @@ watch(output, async () => {
             </button>
             <button
               type="button"
-              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl bg-blue-100 px-4 font-bold text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60"
               :disabled="updateDisabled"
               @click="installDsh"
             >
@@ -321,7 +321,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-span-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-400 disabled:shadow-none disabled:hover:translate-y-0"
+              class="col-span-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60"
               :disabled="startDisabled"
               :aria-busy="starting"
               @click="startServer"
