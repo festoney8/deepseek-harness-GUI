@@ -9,7 +9,8 @@
 ```bash
 pnpm install
 pnpm tauri dev      # 开发模式（前端热更新 + 调试构建）
-pnpm tauri build    # 发布构建，产物在 src-tauri/target/release/bundle/
+pnpm build:installer   # NSIS 安装包，产物在 src-tauri/target/release/bundle/nsis/
+pnpm build:portable    # 免安装单文件 exe，产物在 src-tauri/target/release/bundle/portable/
 ```
 
 ## 行为说明

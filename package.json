@@ -8,6 +8,8 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "build:installer": "tauri build --bundles nsis",
+    "build:portable": "tauri build --no-bundle && node scripts/package-portable.mjs",
     "prepare": "husky"
   },
   "dependencies": {
