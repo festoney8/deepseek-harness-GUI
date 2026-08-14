@@ -25,15 +25,23 @@ const installing = computed(() => state.phase === "installing");
 const starting = computed(() => state.phase === "starting");
 const busy = computed(() => installing.value || starting.value);
 const environmentReady = computed(() => Boolean(state.node && state.npm));
+/** 远端与本地版本均已成功检测，安装/更新按钮才允许操作 */
+const versionsReady = computed(
+  () => state.versionChecked && !state.versionError,
+);
 const installDisabled = computed(
-  () => busy.value || !environmentReady.value || state.local !== null,
+  () =>
+    busy.value ||
+    !environmentReady.value ||
+    !versionsReady.value ||
+    state.local !== null,
 );
 const updateDisabled = computed(
   () =>
     busy.value ||
     !environmentReady.value ||
+    !versionsReady.value ||
     state.local === null ||
-    state.remote === null ||
     state.local === state.remote,
 );
 const startBlockReason = computed(() => {
@@ -140,7 +148,7 @@ watch(output, async () => {
               class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
               @click="openExternal(LINKS.marketplace)"
             >
-              插件市场
+              dshfind 插件市场
               <svg
                 class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                 viewBox="0 0 24 24"
