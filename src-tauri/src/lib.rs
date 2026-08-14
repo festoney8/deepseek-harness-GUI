@@ -15,8 +15,28 @@ fn get_state(sup: tauri::State<'_, Supervisor>) -> Snapshot {
 }
 
 #[tauri::command]
-fn retry_start(sup: tauri::State<'_, Supervisor>) {
-    sup.retry();
+fn get_output(sup: tauri::State<'_, Supervisor>) -> String {
+    sup.output()
+}
+
+#[tauri::command]
+fn check_env(sup: tauri::State<'_, Supervisor>) {
+    sup.check_env();
+}
+
+#[tauri::command]
+fn check_version(sup: tauri::State<'_, Supervisor>) {
+    sup.check_version();
+}
+
+#[tauri::command]
+fn install_dsh(sup: tauri::State<'_, Supervisor>) {
+    sup.install();
+}
+
+#[tauri::command]
+fn start_server(sup: tauri::State<'_, Supervisor>) {
+    sup.start();
 }
 
 #[tauri::command]
@@ -98,7 +118,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_state,
-            retry_start,
+            get_output,
+            check_env,
+            check_version,
+            install_dsh,
+            start_server,
             cancel_start,
             exit_app,
             hide_to_tray,
