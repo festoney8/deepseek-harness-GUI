@@ -70,6 +70,10 @@ jobs:
           name: ${{ env.APP_NAME }} ${{ github.ref_name }}
           generate_release_notes: true
           fail_on_unmatched_files: true
+          body: |
+            ## 安装包说明
+            - 安装版：${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-setup.exe
+            - 便携版：${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-portable.exe
           files: |
             src-tauri/target/release/bundle/nsis/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-setup.exe
             src-tauri/target/release/bundle/portable/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-portable.exe
