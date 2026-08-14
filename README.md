@@ -1,22 +1,27 @@
 # DeepSeek Harness GUI
 
+**超 级 轻 量** 安装版/便携版 deepseek-harness 桌面端 APP，安装包只要 3 MB，便携版只要 9 MB！
+
+---
+
 ![](public/1.png)
 
 ## 安装
 
-- 环境准备：目前只支持 Windows 系统，需安装 [Node.js](https://nodejs.org/zh-cn/download)
+- 环境准备：目前只支持 Windows 系统，需安装 [**Node.js >= 24.0**](https://nodejs.org/zh-cn/download)
 - 前往 [**Release**](https://github.com/festoney8/deepseek-harness-GUI/releases/) 下载安装包，setup 是安装版，portable 是便携版
 
 ## 介绍
 
 - 本项目是基于 Tauri 构建的 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 轻量启动器，保留原始 DSH 功能，提供桌面版 APP 体验
 - 已适配文件下载、图片拖拽、剪贴板等操作，支持将应用最小化到通知栏
-- 本项目使用 worker 模式管理 DSH，支持在应用中安装/更新 DSH
+- 本项目使用 worker 模式管理 DSH，支持应用中安装/更新 DSH，只要官方不修改启动命令，本项目就能持续使用
 
 ## 日志
 
-- 日志目录 `C:\Users\<用户名>\AppData\Local\deepseek-harness-gui\logs`，可用于检查运行问题。
-- 启动运行时会用当前时间戳创建文件夹，过期日志会自动清理。
+- **查看终端输出** 按钮会显示成功运行 DSH 之前的终端输出，可点开查看报错
+- 日志文件目录在 `C:\Users\<用户名>\AppData\Local\deepseek-harness-gui\logs`，可用于检查运行问题
+- APP 启动运行时会用当前时间戳创建日志文件夹，过期日志会自动清理
 
 ## 自行构建
 
