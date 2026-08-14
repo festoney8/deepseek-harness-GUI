@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import logoUrl from "../assets/logo.png";
 import type { RuntimeSnapshot } from "../composables/useRuntime";
 import {
-  cancelStart,
   checkEnv,
   checkVersion,
   installDsh,
@@ -11,15 +11,30 @@ import {
   startServer,
 } from "../composables/useRuntime";
 
+const LINKS = {
+  marketplace: "https://dshfind.com/zh",
+  github: "https://github.com/festoney8/deepseek-harness-GUI",
+  nodejs: "https://nodejs.org/zh-cn/download",
+} as const;
+
 const { state } = defineProps<{ state: RuntimeSnapshot }>();
+const outputDialogRef = ref<HTMLDialogElement | null>(null);
 const logRef = ref<HTMLElement | null>(null);
 
 const installing = computed(() => state.phase === "installing");
 const starting = computed(() => state.phase === "starting");
-const failed = computed(() => state.phase === "failed");
 const busy = computed(() => installing.value || starting.value);
-const needInstall = computed(
-  () => !state.versionError && state.local !== state.remote,
+const environmentReady = computed(() => Boolean(state.node && state.npm));
+const installDisabled = computed(
+  () => busy.value || !environmentReady.value || state.local !== null,
+);
+const updateDisabled = computed(
+  () =>
+    busy.value ||
+    !environmentReady.value ||
+    state.local === null ||
+    state.remote === null ||
+    state.local === state.remote,
 );
 const startBlockReason = computed(() => {
   if (state.node == null || state.npm == null) return "请先安装 Node.js 环境";
@@ -28,197 +43,405 @@ const startBlockReason = computed(() => {
   return "";
 });
 const startDisabled = computed(
-  () =>
-    installing.value || (!starting.value && Boolean(startBlockReason.value)),
+  () => busy.value || Boolean(startBlockReason.value),
 );
-const elapsed = computed(() => {
-  const seconds = state.elapsed;
-  return seconds == null
-    ? ""
-    : `${Math.floor(seconds / 60)} 分 ${seconds % 60} 秒`;
-});
+const statusRows = computed(() => [
+  {
+    label: "node 版本",
+    value: state.node ?? "未检测到",
+    valueClass: state.node ? "text-slate-900" : "text-rose-600",
+    dotClass: state.node ? "bg-emerald-500" : "bg-rose-500",
+  },
+  {
+    label: "npm 版本",
+    value: state.npm ?? "未检测到",
+    valueClass: state.npm ? "text-slate-900" : "text-rose-600",
+    dotClass: state.npm ? "bg-emerald-500" : "bg-rose-500",
+  },
+  {
+    label: "远端 DSH 版本",
+    value: state.remote ?? (state.versionError ? "获取失败" : "检查中…"),
+    valueClass: state.remote
+      ? "text-slate-900"
+      : state.versionError
+        ? "text-rose-600"
+        : "text-amber-600",
+    dotClass: state.remote
+      ? "bg-emerald-500"
+      : state.versionError
+        ? "bg-rose-500"
+        : "bg-amber-400",
+  },
+  {
+    label: "本地 DSH 版本",
+    value: state.local ?? "未安装",
+    valueClass: state.local ? "text-slate-900" : "text-amber-600",
+    dotClass: state.local ? "bg-emerald-500" : "bg-amber-400",
+  },
+]);
 
-function onStartClick() {
-  if (starting.value) {
-    cancelStart();
-  } else {
-    startServer();
-  }
+function openExternal(url: string) {
+  void openUrl(url);
 }
 
-// 动作执行中随输出自动滚动到底部；失败后停止滚动，方便用户回看完整输出
+function recheckEnvironment() {
+  void Promise.allSettled([checkEnv(), checkVersion()]);
+}
+
+function scrollOutputToBottom() {
+  const element = logRef.value;
+  if (element) element.scrollTop = element.scrollHeight;
+}
+
+async function showOutputDialog() {
+  outputDialogRef.value?.showModal();
+  await nextTick();
+  scrollOutputToBottom();
+}
+
+function closeOutputDialog() {
+  outputDialogRef.value?.close();
+}
+
 watch(output, async () => {
-  if (!failed.value) {
-    await nextTick();
-    const el = logRef.value;
-    if (el) el.scrollTop = el.scrollHeight;
-  }
+  if (!outputDialogRef.value?.open) return;
+  await nextTick();
+  scrollOutputToBottom();
 });
 </script>
 
 <template>
-  <div class="flex h-full flex-col justify-center gap-5 px-8 py-6">
-    <!-- 两格状态面板 -->
-    <div class="grid shrink-0 grid-cols-2 gap-4">
-      <!-- 格子一：Node.js 环境 -->
-      <section class="panel">
-        <h2 class="text-base font-semibold text-slate-700">Node.js 环境</h2>
-        <dl class="mt-3 space-y-2 text-base">
-          <div class="flex justify-between gap-2">
-            <dt class="text-slate-500">node</dt>
-            <dd
-              class="font-mono font-semibold"
-              :class="state.node ? '' : 'text-red-500'"
+  <div
+    class="h-full overflow-y-auto bg-[radial-gradient(circle_at_top,#eff6ff_0,#ffffff_42%,#f8fafc_100%)] px-8 py-8 text-slate-900"
+  >
+    <div
+      class="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-10"
+    >
+      <header class="flex items-center justify-center gap-8">
+        <div class="relative shrink-0">
+          <div
+            class="absolute inset-4 rounded-full bg-blue-400/20 blur-2xl"
+            aria-hidden="true"
+          ></div>
+          <img
+            :src="logoUrl"
+            alt="DeepSeek Harness GUI logo"
+            class="relative h-36 w-36 object-contain drop-shadow-xl"
+          />
+        </div>
+
+        <div class="min-w-0">
+          <h1 class="text-4xl font-black text-[#315d9c] lg:text-5xl">
+            DeepSeek Harness GUI
+          </h1>
+          <nav class="mt-5 ml-1 flex items-center gap-4" aria-label="项目链接">
+            <button
+              type="button"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
+              @click="openExternal(LINKS.marketplace)"
             >
-              {{ state.node ?? "未检测到" }}
-            </dd>
-          </div>
-          <div class="flex justify-between gap-2">
-            <dt class="text-slate-500">npm</dt>
-            <dd
-              class="font-mono font-semibold"
-              :class="state.npm ? '' : 'text-red-500'"
+              插件市场
+              <svg
+                class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M14 5h5v5M19 5l-8 8"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+            <span class="h-5 w-px bg-blue-200" aria-hidden="true"></span>
+            <button
+              type="button"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
+              @click="openExternal(LINKS.github)"
             >
-              {{ state.npm ?? "未检测到" }}
-            </dd>
+              项目 GitHub
+              <svg
+                class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M14 5h5v5M19 5l-8 8"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
+          </nav>
+        </div>
+      </header>
+
+      <section
+        class="grid overflow-hidden rounded-3xl border border-blue-200 bg-white/95 shadow-[0_24px_70px_-35px_rgba(37,99,235,0.5)] md:grid-cols-[1.05fr_0.95fr]"
+      >
+        <div class="p-8 lg:p-10">
+          <div class="flex items-center justify-between gap-4">
+            <div>
+              <p
+                class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500"
+              >
+                Environment
+              </p>
+              <h2 class="mt-1 text-xl font-black text-slate-800">环境检查</h2>
+            </div>
+            <button
+              type="button"
+              class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="busy"
+              @click="recheckEnvironment"
+            >
+              <svg
+                class="h-4 w-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M20 6v5h-5M4 18v-5h5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M18.5 9A7 7 0 0 0 6.2 6.2L4 8m16 8-2.2 1.8A7 7 0 0 1 5.5 15"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+              重新检查
+            </button>
           </div>
-        </dl>
-        <div class="mt-4 flex flex-wrap gap-2">
-          <button
-            v-if="!state.node"
-            class="btn-primary"
-            @click="openUrl('https://nodejs.org/en/download')"
-          >
-            打开下载页面
-          </button>
-          <button class="btn-secondary" :disabled="busy" @click="checkEnv">
-            重新检查
-          </button>
+
+          <dl class="mt-7 space-y-1">
+            <div
+              v-for="row in statusRows"
+              :key="row.label"
+              class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6 rounded-xl px-3 py-3 transition hover:bg-slate-50"
+            >
+              <dt class="flex items-center gap-3 font-semibold text-slate-600">
+                <span
+                  class="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
+                  :class="row.dotClass"
+                  aria-hidden="true"
+                ></span>
+                {{ row.label }}
+              </dt>
+              <dd
+                class="max-w-48 truncate font-mono text-sm font-black"
+                :class="row.valueClass"
+                :title="row.value"
+              >
+                {{ row.value }}
+              </dd>
+            </div>
+          </dl>
+        </div>
+
+        <div
+          class="relative border-t border-dashed border-blue-300 bg-blue-50/35 p-8 md:border-l md:border-t-0 lg:p-10"
+        >
+          <span
+            class="absolute -left-1 top-8 hidden h-2 w-2 rounded-full bg-blue-400 md:block"
+            aria-hidden="true"
+          ></span>
+          <span
+            class="absolute -left-1 bottom-8 hidden h-2 w-2 rounded-full bg-blue-400 md:block"
+            aria-hidden="true"
+          ></span>
+
+          <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500">
+            Actions
+          </p>
+          <h2 class="mt-1 text-xl font-black text-slate-800">快捷操作</h2>
+
+          <div class="mt-7 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
+              @click="openExternal(LINKS.nodejs)"
+            >
+              <svg
+                class="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 3a9 9 0 1 0 9 9M3.6 9h10.8M3.6 15h12.8M12 3c-2 2.4-3 5.4-3 9s1 6.6 3 9c1.3-1.6 2.2-3.5 2.7-5.7M16 3.5V8h4.5"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              Node.js 官网
+            </button>
+
+            <button
+              type="button"
+              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl bg-blue-100 px-4 font-bold text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+              :disabled="installDisabled"
+              @click="installDsh"
+            >
+              {{ installing && !state.local ? "安装中…" : "安装 DSH" }}
+            </button>
+            <button
+              type="button"
+              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl bg-blue-100 px-4 font-bold text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
+              :disabled="updateDisabled"
+              @click="installDsh"
+            >
+              {{ installing && state.local ? "更新中…" : "更新 DSH" }}
+            </button>
+
+            <button
+              type="button"
+              class="col-span-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-blue-200 disabled:text-blue-400 disabled:shadow-none disabled:hover:translate-y-0"
+              :disabled="startDisabled"
+              :aria-busy="starting"
+              @click="startServer"
+            >
+              <svg
+                v-if="!starting"
+                class="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  d="M8 5.6v12.8a1 1 0 0 0 1.55.83l8.65-6.4a1 1 0 0 0 0-1.66l-8.65-6.4A1 1 0 0 0 8 5.6Z"
+                />
+              </svg>
+              <svg
+                v-else
+                class="h-5 w-5 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  class="opacity-30"
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  stroke-width="3"
+                />
+                <path
+                  d="M21 12a9 9 0 0 0-9-9"
+                  stroke="currentColor"
+                  stroke-width="3"
+                  stroke-linecap="round"
+                />
+              </svg>
+              {{ starting ? "正在运行…" : "运行 DSH" }}
+            </button>
+
+            <button
+              type="button"
+              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-900 bg-white px-4 font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              @click="showOutputDialog"
+            >
+              <svg
+                class="h-5 w-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="m5 7 4 4-4 4M11 16h8"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              查看终端输出
+            </button>
+          </div>
         </div>
       </section>
+    </div>
 
-      <!-- 格子二：DeepSeek Harness 版本 -->
-      <section class="panel">
-        <h2 class="text-base font-semibold text-slate-700">DeepSeek Harness</h2>
-        <dl class="mt-3 space-y-2 text-base">
-          <div class="flex justify-between gap-2">
-            <dt class="text-slate-500">远端版本</dt>
-            <dd
-              class="font-mono font-semibold"
-              :class="state.remote ? '' : 'text-red-500'"
-            >
-              {{ state.remote ?? (state.versionError ? "获取失败" : "…") }}
-            </dd>
+    <dialog
+      ref="outputDialogRef"
+      aria-labelledby="terminal-dialog-title"
+      class="m-auto max-h-[calc(100vh-4rem)] w-[calc(100%-3rem)] max-w-4xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 p-0 text-left text-slate-100 shadow-2xl backdrop:bg-slate-950/60 backdrop:backdrop-blur-sm"
+    >
+      <section class="flex max-h-[calc(100vh-4rem)] min-h-96 flex-col">
+        <header
+          class="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-5 py-4"
+        >
+          <div class="flex items-center gap-3">
+            <span class="flex gap-1.5" aria-hidden="true">
+              <span class="h-3 w-3 rounded-full bg-rose-500"></span>
+              <span class="h-3 w-3 rounded-full bg-amber-400"></span>
+              <span class="h-3 w-3 rounded-full bg-emerald-500"></span>
+            </span>
+            <h2 id="terminal-dialog-title" class="font-mono text-sm font-bold">
+              DeepSeek Harness · 终端输出
+            </h2>
           </div>
-          <div class="flex justify-between gap-2">
-            <dt class="text-slate-500">本地版本</dt>
-            <dd
-              class="font-mono font-semibold"
-              :class="state.local ? '' : 'text-slate-400'"
+          <button
+            type="button"
+            class="cursor-pointer rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            title="关闭"
+            aria-label="关闭终端输出"
+            @click="closeOutputDialog"
+          >
+            <svg
+              class="h-5 w-5"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
             >
-              {{ state.local ?? "未安装" }}
-            </dd>
-          </div>
-        </dl>
-        <div class="mt-4 flex flex-wrap gap-2">
-          <button
-            v-if="state.versionError"
-            class="btn-secondary"
-            :disabled="busy"
-            @click="checkVersion"
-          >
-            重新检查
+              <path
+                d="m6 6 12 12M18 6 6 18"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+              />
+            </svg>
           </button>
-          <button
-            v-else-if="needInstall"
-            class="btn-primary"
-            :disabled="busy"
-            @click="installDsh"
-          >
-            {{ installing ? "安装中…" : state.local ? "更新" : "安装" }}
-          </button>
-          <span v-else class="self-center text-xs text-emerald-600"
-            >已是最新版本</span
-          >
-        </div>
+        </header>
+
+        <pre
+          ref="logRef"
+          class="min-h-0 flex-1 select-text overflow-auto whitespace-pre-wrap wrap-break-word bg-slate-950 p-6 font-mono text leading-6 text-slate-300"
+          >{{ output || "暂无终端输出。" }}</pre>
+
+        <footer
+          class="flex shrink-0 items-center justify-between border-t border-slate-800 bg-slate-900 px-5 py-3 text-xs text-slate-500"
+        >
+          <span>输出会随命令执行自动更新</span>
+          <span>按 Esc 关闭</span>
+        </footer>
       </section>
-    </div>
-
-    <!-- 巨大启动按钮 -->
-    <div class="flex shrink-0 flex-col items-center gap-2">
-      <button class="start-btn" :disabled="startDisabled" @click="onStartClick">
-        {{ starting ? "正在启动…（点击取消）" : "启动 DeepSeek Harness" }}
-      </button>
-      <p v-if="starting" class="text-xs text-slate-500">已等待 {{ elapsed }}</p>
-      <p v-if="failed" class="text-xs text-red-500">{{ state.detail }}</p>
-      <p v-else-if="startBlockReason" class="text-xs text-slate-400">
-        {{ startBlockReason }}
-      </p>
-    </div>
-
-    <!-- 底部命令行输出 -->
-    <div class="flex min-h-0 flex-1 flex-col">
-      <div class="mb-1 text-xs font-semibold text-slate-500">命令行输出</div>
-      <pre
-        ref="logRef"
-        class="log-panel min-h-0 select-text overflow-auto whitespace-pre-wrap rounded-md bg-slate-100 p-3 font-mono text-xs leading-5 text-slate-700"
-        >{{ output }}</pre>
-    </div>
+    </dialog>
   </div>
 </template>
-
-<style scoped>
-.log-panel {
-  height: min(30vh, 350px);
-}
-.panel {
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
-  background-color: #fff;
-  padding: 1rem;
-}
-.start-btn {
-  min-width: 340px;
-  border-radius: 0.75rem;
-  background-color: #3b82f6;
-  padding: 1rem 3rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #fff;
-}
-.start-btn:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-.start-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-primary {
-  border-radius: 0.375rem;
-  background-color: #3b82f6;
-  padding: 0.375rem 1rem;
-  font-size: 0.875rem;
-  color: #fff;
-}
-.btn-primary:hover:not(:disabled) {
-  background-color: #2563eb;
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn-secondary {
-  border-radius: 0.375rem;
-  border: 1px solid #cbd5e1;
-  padding: 0.375rem 1rem;
-  font-size: 0.875rem;
-  color: #475569;
-}
-.btn-secondary:hover:not(:disabled) {
-  background-color: #f1f5f9;
-}
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-</style>

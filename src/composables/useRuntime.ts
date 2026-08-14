@@ -91,6 +91,5 @@ export const checkEnv = () => invoke("check_env");
 export const checkVersion = () => invoke("check_version");
 export const installDsh = () => invoke("install_dsh");
 export const startServer = () => invoke("start_server");
-export const cancelStart = () => invoke("cancel_start");
 export const exitApp = () => invoke("exit_app");
 export const hideToTray = () => invoke("hide_to_tray");

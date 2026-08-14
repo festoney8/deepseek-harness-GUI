@@ -41,11 +41,6 @@ fn start_server(sup: tauri::State<'_, Supervisor>) {
 }
 
 #[tauri::command]
-fn cancel_start(sup: tauri::State<'_, Supervisor>) {
-    sup.cancel();
-}
-
-#[tauri::command]
 fn exit_app(app: tauri::AppHandle) {
     shutdown(&app);
 }
@@ -120,7 +115,6 @@ pub fn run() {
             check_version,
             install_dsh,
             start_server,
-            cancel_start,
             exit_app,
             hide_to_tray
         ])

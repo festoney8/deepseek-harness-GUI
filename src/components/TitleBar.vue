@@ -20,18 +20,20 @@ onUnmounted(() => unlisten?.());
 
 <template>
   <header
-    class="flex h-9 shrink-0 items-stretch border-b border-slate-200 bg-slate-50"
+    class="flex h-8 shrink-0 items-stretch border-b border-slate-200 bg-slate-50"
     data-tauri-drag-region
   >
     <div class="flex flex-1 items-center gap-2 px-3" data-tauri-drag-region>
-      <span class="text-xs font-medium text-slate-600">DeepSeek Harness</span>
+      <span class="text-xs font-medium text-slate-600"
+        >DeepSeek Harness GUI</span
+      >
     </div>
     <button
       class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200"
       title="最小化"
       @click="win.minimize()"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
         <path d="M0 5h10" stroke="currentColor" stroke-width="1" />
       </svg>
     </button>
@@ -42,9 +44,9 @@ onUnmounted(() => unlisten?.());
     >
       <svg
         v-if="!maximized"
-        width="10"
-        height="10"
-        viewBox="0 0 10 10"
+        width="12"
+        height="12"
+        viewBox="0 0 12 12"
         aria-hidden="true"
       >
         <rect
@@ -56,7 +58,7 @@ onUnmounted(() => unlisten?.());
           stroke="currentColor"
         />
       </svg>
-      <svg v-else width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <svg v-else width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
         <path
           d="M0.5 3.5h6v6h-6zM3.5 0.5h6v6"
           fill="none"
@@ -70,7 +72,7 @@ onUnmounted(() => unlisten?.());
       title="关闭"
       @click="win.close()"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
         <path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1" />
       </svg>
     </button>

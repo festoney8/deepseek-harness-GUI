@@ -58,7 +58,6 @@ enum Intent {
     CheckVersion,
     Install,
     Start,
-    Cancel,
 }
 
 struct SharedRuntime {
@@ -123,10 +122,6 @@ impl Supervisor {
 
     pub fn start(&self) {
         self.send(Intent::Start);
-    }
-
-    pub fn cancel(&self) {
-        self.send(Intent::Cancel);
     }
 
     pub fn spawn_worker(&self, app: AppHandle, base: PathBuf) {
@@ -294,22 +289,10 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     );
                 }
 
-                // 就绪轮询（进程存活 + HTTP 可响应，120 秒超时，可取消）
+                // 就绪轮询（进程存活 + HTTP 可响应，120 秒超时）
                 let started = Instant::now();
                 let ready = 'poll: {
                     loop {
-                        if let Ok(Intent::Cancel) = rx.try_recv() {
-                            process::kill_active();
-                            emit_state(
-                                &app,
-                                &shared,
-                                Phase::Failed,
-                                Some(port),
-                                "启动已取消。",
-                                None,
-                            );
-                            break 'poll false;
-                        }
                         match harness.try_wait() {
                             Ok(Some(status)) => {
                                 process::kill_active();
@@ -399,10 +382,6 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     }
                     std::thread::sleep(POLL_INTERVAL);
                 }
-            }
-            Ok(Intent::Cancel) => {
-                process::kill_active();
-                emit_state(&app, &shared, Phase::Failed, None, "已取消。", None);
             }
         }
     }
