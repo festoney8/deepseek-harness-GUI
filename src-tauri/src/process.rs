@@ -47,10 +47,12 @@ impl Harness {
 
         let mut child = command.spawn()?;
         if let Err(error) = job.assign(&child) {
+            log::error!("failed to assign harness to job object: {error}");
             let _ = child.kill();
             return Err(error);
         }
         replace_job(job);
+        log::debug!("harness spawned (pid {})", child.id());
         Ok(Self { child })
     }
 
@@ -69,6 +71,7 @@ impl Harness {
 
 pub fn kill_active() {
     if let Some(job) = take_job() {
+        log::debug!("killing active harness job");
         job.kill();
     }
 }

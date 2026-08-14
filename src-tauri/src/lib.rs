@@ -90,13 +90,16 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
                         *destination = path;
                         true
                     }
-                    None => false, // 用户取消 → 取消下载
+                    None => {
+                        log::debug!("download cancelled by user: {url}");
+                        false // 用户取消 → 取消下载
+                    }
                 }
             }
             DownloadEvent::Finished {
                 url, path, success,
             } => {
-                println!("download finished: url={url}, path={path:?}, success={success}");
+                log::info!("download finished: url={url}, path={path:?}, success={success}");
                 true
             }
             _ => true,
@@ -139,8 +142,11 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    logs::init_logging();
+    log::info!("starting deepseek-harness-gui");
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            log::info!("second instance detected, showing main window");
             show_main(app);
         }))
         .plugin(tauri_plugin_opener::init())
@@ -154,10 +160,12 @@ pub fn run() {
             sup.spawn_worker(app.handle().clone(), base);
             build_main_window(app)?;
             build_tray(app)?;
+            log::info!("main window and tray ready");
             Ok(())
         })
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
+                log::debug!("close requested for window {}", window.label());
                 api.prevent_close();
                 let _ = window.emit("close-requested", ());
             }

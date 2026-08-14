@@ -169,9 +169,13 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
         .unwrap_or_else(|error| error.into_inner())
         .clear();
     let _ = app.emit("harness-output-reset", ());
-    let _ = logs::cleanup_old(&base, Duration::from_secs(14 * 86_400));
+    match logs::cleanup_old(&base, Duration::from_secs(14 * 86_400)) {
+        Ok(removed) => log::debug!("cleaned up {removed} old log sessions"),
+        Err(error) => log::warn!("failed to clean up old log sessions: {error}"),
+    }
 
     let Some(session) = create_session(&base) else {
+        log::error!("cannot create log session at {}", base.display());
         emit_state(
             &app,
             &shared,
@@ -182,7 +186,9 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
         );
         return;
     };
+    logs::attach_session(session.clone());
 
+    log::info!("supervisor worker started");
     // 启动即自动检查环境与版本，填充格子
     check_env(&app, &shared, &session);
     check_version(&app, &shared, &session);
@@ -190,16 +196,22 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
 
     loop {
         match rx.recv() {
-            Err(_) => return,
+            Err(_) => {
+                log::info!("supervisor channel closed, worker exiting");
+                return;
+            }
             Ok(Intent::CheckEnv) => {
+                log::debug!("intent: check env");
                 check_env(&app, &shared, &session);
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
             Ok(Intent::CheckVersion) => {
+                log::debug!("intent: check version");
                 check_version(&app, &shared, &session);
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
             Ok(Intent::Install) => {
+                log::info!("installing dsh globally via npm");
                 emit_state(
                     &app,
                     &shared,
@@ -226,12 +238,17 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     },
                 ) {
                     Ok((status, _)) => status.success(),
-                    Err(_) => false,
+                    Err(error) => {
+                        log::error!("dsh install command failed: {error}");
+                        false
+                    }
                 };
                 if ok {
+                    log::info!("dsh installed successfully");
                     check_version(&app, &shared, &session);
                     emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
                 } else {
+                    log::error!("dsh install failed");
                     emit_state(
                         &app,
                         &shared,
@@ -244,6 +261,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
             }
             Ok(Intent::Start) => {
                 let Some(port) = find_port() else {
+                    log::error!("no free port in {PORT_START}-{PORT_END}");
                     emit_state(
                         &app,
                         &shared,
@@ -254,9 +272,11 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     );
                     continue;
                 };
+                log::info!("starting harness on port {port}");
                 let mut harness = match Harness::spawn(port, &base) {
                     Ok(harness) => harness,
                     Err(e) => {
+                        log::error!("failed to spawn harness: {e}");
                         emit_state(
                             &app,
                             &shared,
@@ -304,6 +324,10 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     loop {
                         match harness.try_wait() {
                             Ok(Some(status)) => {
+                                log::error!(
+                                    "harness exited early with code {:?}",
+                                    status.code()
+                                );
                                 process::kill_active();
                                 emit_state(
                                     &app,
@@ -320,6 +344,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                             }
                             Ok(None) => {}
                             Err(e) => {
+                                log::error!("failed to read harness status: {e}");
                                 emit_state(
                                     &app,
                                     &shared,
@@ -332,9 +357,11 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                             }
                         }
                         if http_ok(port) {
+                            log::info!("harness responds on http://127.0.0.1:{port}");
                             break 'poll true;
                         }
                         if started.elapsed() > START_TIMEOUT {
+                            log::error!("harness start timed out after {}s", START_TIMEOUT.as_secs());
                             process::kill_active();
                             emit_state(
                                 &app,
@@ -363,18 +390,18 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
 
                 // Ready：监控进程，异常退出恢复窗口
                 emit_state(&app, &shared, Phase::Ready, Some(port), "服务已就绪", None);
-                session.log_gui(&format!("harness ready on http://127.0.0.1:{port}"));
+                log::info!("harness ready on http://127.0.0.1:{port}");
                 loop {
                     match harness.try_wait() {
                         Ok(Some(status)) => {
                             let code = status.code();
                             process::kill_active();
                             if code == Some(0) {
-                                session.log_gui("harness exited with code 0, quitting");
+                                log::info!("harness exited with code 0, quitting");
                                 shutdown(&app);
                                 return;
                             }
-                            session.log_gui(&format!("harness exited with code {code:?}"));
+                            log::warn!("harness exited with code {code:?}");
                             emit_state(
                                 &app,
                                 &shared,
@@ -423,6 +450,7 @@ fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
             args: &["/C", "npm", "-v"],
         },
     );
+    log::info!("env check: node={node:?} npm={npm:?}");
     let mut snapshot = shared
         .snapshot
         .lock()
@@ -455,6 +483,7 @@ fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
     .unwrap_or_default();
     let local = parse_local_version(&local_output);
     let version_error = remote.is_none();
+    log::info!("dsh version check: remote={remote:?} local={local:?}");
     let mut snapshot = shared
         .snapshot
         .lock()
@@ -478,7 +507,13 @@ fn stream_capture(
 }
 
 fn create_session(base: &Path) -> Option<Arc<Session>> {
-    Some(Arc::new(Session::create(base, std::process::id()).ok()?))
+    match Session::create(base) {
+        Ok(session) => Some(Arc::new(session)),
+        Err(error) => {
+            log::error!("failed to create log session: {error}");
+            None
+        }
+    }
 }
 
 fn run_cmd_streamed(
@@ -489,6 +524,7 @@ fn run_cmd_streamed(
 ) -> std::io::Result<(ExitStatus, String)> {
     let echo = format!("$ {}", command.display);
     session.log_harness(&format!("[cmd] {}", command.display));
+    log::debug!("executing: {}", command.display);
     publish_line(app, shared, &echo);
 
     let mut child = hidden_command(command.program, command.args).spawn()?;
@@ -632,6 +668,7 @@ fn http_ok(port: u16) -> bool {
 /// 唯一关闭入口：先终止 harness 进程树，再退出应用。
 /// KILL_ON_JOB_CLOSE 兜底：任何遗漏路径下句柄随进程关闭，OS 回收整个进程树。
 pub fn shutdown(app: &AppHandle) {
+    log::info!("application shutdown requested");
     process::kill_active();
     app.exit(0);
 }
