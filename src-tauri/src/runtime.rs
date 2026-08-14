@@ -46,7 +46,7 @@ pub struct Snapshot {
     /// 格子一：node / npm 版本（None = 未检测到）
     pub node: Option<String>,
     pub npm: Option<String>,
-    /// 格子二：远端 / 本地 dsh 版本（local None = 未安装；remote None = 获取失败）
+    /// 格子二：远端 / 本地 dsh 版本（local None = 未安装或安装不完整；remote None = 获取失败）
     pub remote: Option<String>,
     pub local: Option<String>,
     pub version_error: bool,
@@ -470,18 +470,19 @@ fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
             args: &["/C", "npm", "view", "@deepseek-ai/dsh", "version"],
         },
     );
-    let local_output = stream_capture(
+    // 本地检测改用 `dsh -V`：安装不完整时该命令报错而非输出版本号，
+    // 因此 local 能同时反映"已安装"与"安装完整"两个状态。
+    let local = stream_capture(
         app,
         shared,
         session,
         CommandSpec {
-            display: "npm list -g @deepseek-ai/dsh version",
+            display: "dsh -V",
             program: "cmd",
-            args: &["/C", "npm", "list", "-g", "@deepseek-ai/dsh", "version"],
+            args: &["/C", "dsh", "-V"],
         },
     )
-    .unwrap_or_default();
-    let local = parse_local_version(&local_output);
+    .and_then(|out| parse_local_version(&out));
     let version_error = remote.is_none();
     log::info!("dsh version check: remote={remote:?} local={local:?}");
     let mut snapshot = shared
@@ -569,13 +570,10 @@ fn hidden_command(program: &str, args: &[&str]) -> Command {
     command
 }
 
-/// 从 `npm list -g` 输出解析本地版本：`(empty)` → None；`@deepseek-ai/dsh@x.y.z` → Some。
+/// 从 `dsh -V` 输出解析版本号：`v0.1.0-rc.6` / `0.1.0-rc.6` 均归一为 `0.1.0-rc.6`。
 fn parse_local_version(out: &str) -> Option<String> {
-    if out.contains("(empty)") {
-        return None;
-    }
-    out.split_whitespace()
-        .find_map(|tok| tok.strip_prefix("@deepseek-ai/dsh@").map(str::to_string))
+    let version = out.trim().strip_prefix('v').unwrap_or(out.trim());
+    (!version.is_empty()).then(|| version.to_string())
 }
 
 fn spawn_pipe_reader<R: Read + Send + 'static>(
