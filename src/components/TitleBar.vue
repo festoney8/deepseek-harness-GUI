@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import logoMiniUrl from "../assets/logo_mini.png";
 
 const win = getCurrentWindow();
 const maximized = ref(false);
@@ -24,6 +25,12 @@ onUnmounted(() => unlisten?.());
     data-tauri-drag-region
   >
     <div class="flex flex-1 items-center gap-2 px-3" data-tauri-drag-region>
+      <img
+        :src="logoMiniUrl"
+        alt="logo"
+        class="h-5 w-5 shrink-0 rounded"
+        draggable="false"
+      />
       <span class="text-xs font-medium text-slate-600"
         >DeepSeek Harness GUI</span
       >
