@@ -50,6 +50,8 @@ pub struct Snapshot {
     pub remote: Option<String>,
     pub local: Option<String>,
     pub version_error: bool,
+    /// 版本检查是否已完成（false = 尚未检查，前端显示“检查中”）
+    pub version_checked: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -460,6 +462,7 @@ fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
     snapshot.remote = remote;
     snapshot.local = local;
     snapshot.version_error = version_error;
+    snapshot.version_checked = true;
 }
 
 fn stream_capture(

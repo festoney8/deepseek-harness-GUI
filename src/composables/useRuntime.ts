@@ -16,6 +16,8 @@ export interface RuntimeSnapshot {
   remote: string | null;
   local: string | null;
   versionError: boolean;
+  /** 版本检查是否已完成（false = 尚未检查，显示“检查中”） */
+  versionChecked: boolean;
 }
 
 export const state = ref<RuntimeSnapshot>({
@@ -28,6 +30,7 @@ export const state = ref<RuntimeSnapshot>({
   remote: null,
   local: null,
   versionError: false,
+  versionChecked: false,
 });
 
 /** harness 完整命令行输出（stdout+stderr 合并） */

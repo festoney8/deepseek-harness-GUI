@@ -74,7 +74,7 @@ const statusRows = computed(() => [
   },
   {
     label: "本地 DSH 版本",
-    value: state.local ?? "未安装",
+    value: state.local ?? (state.versionChecked ? "未安装" : "检查中…"),
     valueClass: state.local ? "text-slate-900" : "text-amber-600",
     dotClass: state.local ? "bg-emerald-500" : "bg-amber-400",
   },
@@ -321,7 +321,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-span-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60"
+              class="col-span-2 mt-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60"
               :disabled="startDisabled"
               :aria-busy="starting"
               @click="startServer"
@@ -359,12 +359,12 @@ watch(output, async () => {
                   stroke-linecap="round"
                 />
               </svg>
-              {{ starting ? "正在运行…" : "运行 DSH" }}
+              {{ starting ? "正在运行…" : "运行 DeepSeek Harness" }}
             </button>
 
             <button
               type="button"
-              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-900 bg-white px-4 font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
               @click="showOutputDialog"
             >
               <svg

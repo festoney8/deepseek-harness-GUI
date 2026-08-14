@@ -59,7 +59,7 @@ jobs:
         with:
           name: ${{ env.APP_NAME }}-${{ env.RELEASE_VERSION }}-windows-x64
           path: |
-            src-tauri/target/release/bundle/nsis/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-setup.exe
+            src-tauri/target/release/bundle/nsis/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-installer.exe
             src-tauri/target/release/bundle/portable/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-portable.exe
           if-no-files-found: error
 
