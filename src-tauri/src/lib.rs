@@ -5,7 +5,8 @@ mod runtime;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager, WindowEvent,
+    webview::DownloadEvent,
+    Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
 use runtime::{show_main, shutdown, Snapshot, Supervisor};
@@ -50,6 +51,58 @@ fn hide_to_tray(app: tauri::AppHandle) {
     if let Some(w) = app.get_webview_window("main") {
         let _ = w.hide();
     }
+}
+
+/// 从下载 URL 推断默认文件名（路径最后一段 percent-decode），失败时回退为 "download"
+fn default_file_name(url: &tauri::Url) -> String {
+    url.path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .filter(|name| !name.is_empty())
+        .map(|name| {
+            percent_encoding::percent_decode_str(name)
+                .decode_utf8_lossy()
+                .into_owned()
+        })
+        .unwrap_or_else(|| "download".into())
+}
+
+/// 主窗口由 Rust 创建以挂载 on_download（config 定义的窗口无法挂载）
+fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
+    WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .title("DeepSeek Harness")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(1200.0, 800.0)
+        .center()
+        .decorations(false)
+        .shadow(true)
+        .resizable(true)
+        .maximizable(true)
+        .zoom_hotkeys_enabled(true)
+        .disable_drag_drop_handler()
+        .on_download(|webview, event| match event {
+            DownloadEvent::Requested { url, destination } => {
+                match rfd::FileDialog::new()
+                    .set_parent(&webview.window())
+                    .set_file_name(default_file_name(&url))
+                    .save_file()
+                {
+                    Some(path) => {
+                        *destination = path;
+                        true
+                    }
+                    None => false, // 用户取消 → 取消下载
+                }
+            }
+            DownloadEvent::Finished {
+                url, path, success,
+            } => {
+                println!("download finished: url={url}, path={path:?}, success={success}");
+                true
+            }
+            _ => true,
+        })
+        .build()?;
+    Ok(())
 }
 
 fn build_tray(app: &tauri::App) -> tauri::Result<()> {
@@ -99,6 +152,7 @@ pub fn run() {
                 .app_local_data_dir()
                 .unwrap_or_else(|_| std::env::temp_dir().join("deepseek-harness-gui"));
             sup.spawn_worker(app.handle().clone(), base);
+            build_main_window(app)?;
             build_tray(app)?;
             Ok(())
         })

@@ -23,4 +23,7 @@ tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 tauri-plugin-single-instance = "2"
 windows-sys = { version = "0.61.2", features = ["Win32_System_JobObjects", "Win32_Foundation", "Win32_System_Threading"] }
+tauri-plugin-dialog = "2"
+rfd = "0.16"
+percent-encoding = "2"
 
