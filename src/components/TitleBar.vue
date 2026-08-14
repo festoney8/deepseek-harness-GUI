@@ -1,0 +1,76 @@
+<script setup lang="ts">
+import { onMounted, onUnmounted, ref } from "vue";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+
+const win = getCurrentWindow();
+const maximized = ref(false);
+let unlisten: (() => void) | undefined;
+
+onMounted(async () => {
+  maximized.value = await win.isMaximized();
+  unlisten = await win.onResized(async () => {
+    maximized.value = await win.isMaximized();
+  });
+});
+
+onUnmounted(() => unlisten?.());
+</script>
+
+<template>
+  <header
+    class="flex h-9 shrink-0 items-stretch border-b border-slate-200 bg-slate-50"
+    data-tauri-drag-region
+  >
+    <div class="flex flex-1 items-center gap-2 px-3" data-tauri-drag-region>
+      <span class="text-xs font-medium text-slate-600">DeepSeek Harness</span>
+    </div>
+    <button
+      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200"
+      title="最小化"
+      @click="win.minimize()"
+    >
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+        <path d="M0 5h10" stroke="currentColor" stroke-width="1" />
+      </svg>
+    </button>
+    <button
+      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200"
+      :title="maximized ? '还原' : '最大化'"
+      @click="win.toggleMaximize()"
+    >
+      <svg
+        v-if="!maximized"
+        width="10"
+        height="10"
+        viewBox="0 0 10 10"
+        aria-hidden="true"
+      >
+        <rect
+          x="0.5"
+          y="0.5"
+          width="9"
+          height="9"
+          fill="none"
+          stroke="currentColor"
+        />
+      </svg>
+      <svg v-else width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+        <path
+          d="M0.5 3.5h6v6h-6zM3.5 0.5h6v6"
+          fill="none"
+          stroke="currentColor"
+          transform="translate(0 0)"
+        />
+      </svg>
+    </button>
+    <button
+      class="flex w-11 items-center justify-center text-slate-500 hover:bg-red-500 hover:text-white"
+      title="关闭"
+      @click="win.close()"
+    >
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+        <path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1" />
+      </svg>
+    </button>
+  </header>
+</template>

@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: #1e293b;
+  background: #ffffff;
+  font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  user-select: none;
+}
