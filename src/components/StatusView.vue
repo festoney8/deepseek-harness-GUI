@@ -47,7 +47,7 @@ const startDisabled = computed(
 );
 const statusRows = computed(() => [
   {
-    label: "node 版本",
+    label: "node 版本（推荐 v24 及以上）",
     value: state.node ?? "未检测到",
     valueClass: state.node ? "text-slate-900" : "text-rose-600",
     dotClass: state.node ? "bg-emerald-500" : "bg-rose-500",
@@ -59,7 +59,7 @@ const statusRows = computed(() => [
     dotClass: state.npm ? "bg-emerald-500" : "bg-rose-500",
   },
   {
-    label: "远端 DSH 版本",
+    label: "最新 DSH 版本",
     value: state.remote ?? (state.versionError ? "获取失败" : "检查中…"),
     valueClass: state.remote
       ? "text-slate-900"

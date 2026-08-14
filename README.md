@@ -8,14 +8,15 @@
 
 ## 安装
 
-- 环境准备：目前只支持 Windows 系统，需安装 [**Node.js >= 24.0**](https://nodejs.org/zh-cn/download)
-- 前往 [**Release**](https://github.com/festoney8/deepseek-harness-GUI/releases/) 下载安装包，setup 是安装版，portable 是便携版
+- 环境准备：目前只支持 Windows 系统，需安装 [**Node.js >= v24**](https://nodejs.org/zh-cn/download)
+- 前往 [**Release**](https://github.com/festoney8/deepseek-harness-GUI/releases/) 下载安装包，文件名包含 **setup.exe** 是安装版，**portable.exe** 是便携版
 
 ## 介绍
 
 - 本项目是基于 Tauri 构建的 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 轻量启动器，保留原始 DSH 功能，提供桌面版 APP 体验
 - 已适配文件下载、图片拖拽、剪贴板等操作，支持将应用最小化到通知栏
-- 本项目使用 worker 模式管理 DSH，支持应用中安装/更新 DSH，只要官方不修改启动命令，本项目就能持续使用
+- 本项目使用 worker 模式管理 DSH，支持应用中安装/更新 DSH
+- 只要官方启动命令不变，本项目就能持续使用
 
 ## 日志
 
@@ -28,7 +29,7 @@
 ### 环境依赖
 
 - windows 环境
-- node.js >= v24.0
+- node.js >= v24
 - pnpm
 - 系统应支持 webview2
 
