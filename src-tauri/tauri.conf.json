@@ -20,8 +20,10 @@
         "minHeight": 800,
         "center": true,
         "decorations": false,
+        "shadow": true,
         "resizable": true,
-        "maximizable": true
+        "maximizable": true,
+        "zoomHotkeysEnabled": true
       }
     ],
     "security": {
