@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from "vue";
+import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import logoUrl from "../assets/logo.png";
 import type { RuntimeSnapshot } from "../composables/useRuntime";
@@ -20,6 +21,31 @@ const LINKS = {
 const { state } = defineProps<{ state: RuntimeSnapshot }>();
 const outputDialogRef = ref<HTMLDialogElement | null>(null);
 const logRef = ref<HTMLElement | null>(null);
+/** 应用版本号，运行时读取（跟随 tauri.conf.json 的 version） */
+const appVersion = ref("");
+void getVersion().then((v) => {
+  appVersion.value = v;
+});
+
+const LATEST_RELEASE_API =
+  "https://api.github.com/repos/festoney8/deepseek-harness-GUI/releases/latest" as const;
+/** GitHub 最新 release 版本号（失败时显示“未知”） */
+const latestVersion = ref("检查中");
+async function fetchLatestVersion() {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(LATEST_RELEASE_API, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = (await res.json()) as { tag_name?: string };
+    latestVersion.value = data.tag_name ?? "未知";
+  } catch {
+    latestVersion.value = "未知";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+void fetchLatestVersion();
 
 const installing = computed(() => state.phase === "installing");
 const starting = computed(() => state.phase === "starting");
@@ -148,7 +174,7 @@ watch(output, async () => {
               class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
               @click="openExternal(LINKS.marketplace)"
             >
-              dshfind 插件市场
+              插件市场
               <svg
                 class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                 viewBox="0 0 24 24"
@@ -198,6 +224,14 @@ watch(output, async () => {
                 />
               </svg>
             </button>
+            <span class="h-5 w-px bg-blue-200" aria-hidden="true"></span>
+            <span class="text-base font-bold text-[#315d9c]"
+              >最新 {{ latestVersion }}</span
+            >
+            <span class="h-5 w-px bg-blue-200" aria-hidden="true"></span>
+            <span class="text-base font-bold text-[#315d9c]"
+              >当前 v{{ appVersion }}</span
+            >
           </nav>
         </div>
       </header>
