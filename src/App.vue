@@ -25,7 +25,7 @@ onUnmounted(disposeTheme);
   <div class="flex h-full flex-col bg-white dark:bg-slate-900">
     <TitleBar />
     <main class="min-h-0 flex-1">
-      <WebUiView v-if="state.phase === 'ready' && state.port" :port="state.port" />
+      <WebUiView v-if="state.phase === 'ready' && state.url" :url="state.url" />
       <StatusView v-else :state="state" />
     </main>
 

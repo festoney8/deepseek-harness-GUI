@@ -7,6 +7,8 @@ export type Phase = "idle" | "installing" | "starting" | "ready" | "failed";
 export interface RuntimeSnapshot {
   phase: Phase;
   port: number | null;
+  /** 完整访问地址（如 http://127.0.0.1:3080/），ready 时由后端拼好 */
+  url: string | null;
   detail: string;
   elapsed: number | null;
   /** 格子一：node / npm 版本（null = 未检测到） */
@@ -25,6 +27,7 @@ export interface RuntimeSnapshot {
 export const state = ref<RuntimeSnapshot>({
   phase: "idle",
   port: null,
+  url: null,
   detail: "",
   elapsed: null,
   node: null,
@@ -59,7 +62,7 @@ function onState(s: RuntimeSnapshot) {
 export const checkEnv = () => invoke("check_env");
 export const checkVersion = () => invoke("check_version");
 export const installDsh = (mirror: boolean) => invoke("install_dsh", { mirror });
-export const startServer = () => invoke("start_server");
+export const startServer = (host: string, port: number) => invoke("start_server", { host, port });
 export const openLogDir = () => invoke("open_log_dir");
 export const exitApp = () => invoke("exit_app");
 export const hideToTray = () => invoke("hide_to_tray");

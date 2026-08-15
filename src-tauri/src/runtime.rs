@@ -1,5 +1,5 @@
-use std::io::{BufRead, BufReader, Read, Write};
-use std::net::{SocketAddr, TcpStream};
+use std::io::{BufRead, BufReader, Read};
+use std::net::{Ipv4Addr, SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -13,20 +13,18 @@ use crate::logs::{self, Session};
 use crate::os::{self, Harness};
 use crate::protocol::{Phase, Snapshot, EVENT_RUNTIME_STATE};
 
-pub const PORT_START: u16 = 3080;
-pub const PORT_END: u16 = 5080;
 const START_TIMEOUT: Duration = Duration::from_secs(120);
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
 /// 安装与版本查询共用的 npm registry 常量
 const REGISTRY_OFFICIAL: &str = "https://registry.npmjs.org";
 const REGISTRY_MIRROR: &str = "https://registry.npmmirror.com";
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 enum Intent {
     CheckEnv,
     CheckVersion,
     Install { mirror: bool },
-    Start,
+    Start { host: String, port: u16 },
 }
 
 struct SharedRuntime {
@@ -97,8 +95,8 @@ impl Supervisor {
         self.send(Intent::Install { mirror });
     }
 
-    pub fn start(&self) {
-        self.send(Intent::Start);
+    pub fn start(&self, host: String, port: u16) {
+        self.send(Intent::Start { host, port });
     }
 
     pub fn spawn_worker(&self, app: AppHandle, base: PathBuf) {
@@ -116,22 +114,38 @@ impl Supervisor {
     }
 }
 
-fn emit_state(
-    app: &AppHandle,
-    shared: &SharedRuntime,
+/// 运行态变更描述：emit_state 的参数载体（phase 决定界面模式，其余字段为伴随信息）
+struct StateUpdate<'a> {
     phase: Phase,
     port: Option<u16>,
-    detail: &str,
+    url: Option<String>,
+    detail: &'a str,
     elapsed: Option<u64>,
-) {
+}
+
+impl<'a> StateUpdate<'a> {
+    /// 快捷构造：仅 phase 与 detail，其余字段置 None
+    fn new(phase: Phase, detail: &'a str) -> Self {
+        Self {
+            phase,
+            port: None,
+            url: None,
+            detail,
+            elapsed: None,
+        }
+    }
+}
+
+fn emit_state(app: &AppHandle, shared: &SharedRuntime, update: StateUpdate<'_>) {
     let mut state = shared
         .snapshot
         .lock()
         .unwrap_or_else(|error| error.into_inner());
-    state.phase = phase;
-    state.port = port;
-    state.detail = detail.to_string();
-    state.elapsed = elapsed;
+    state.phase = update.phase;
+    state.port = update.port;
+    state.url = update.url;
+    state.detail = update.detail.to_string();
+    state.elapsed = update.elapsed;
     let snapshot = state.clone();
     drop(state);
     let _ = app.emit(EVENT_RUNTIME_STATE, snapshot);
@@ -139,7 +153,14 @@ fn emit_state(
 
 /// 失败态快捷入口：统一走 Failed 阶段、无 elapsed。
 fn emit_fail(app: &AppHandle, shared: &SharedRuntime, port: Option<u16>, detail: &str) {
-    emit_state(app, shared, Phase::Failed, port, detail, None);
+    emit_state(
+        app,
+        shared,
+        StateUpdate {
+            port,
+            ..StateUpdate::new(Phase::Failed, detail)
+        },
+    );
 }
 
 /// 线程内更新快照并推送：lock → f(&mut Snapshot) → clone → emit runtime-state。
@@ -197,7 +218,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
     // 启动即自动检查环境与版本，填充格子
     check_env(&app, &shared, &session);
     check_version(&app, &shared, &session);
-    emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
+    emit_state(&app, &shared, StateUpdate::new(Phase::Idle, "就绪"));
 
     loop {
         match rx.recv() {
@@ -208,139 +229,186 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
             Ok(Intent::CheckEnv) => {
                 log::debug!("intent: check env");
                 check_env(&app, &shared, &session);
-                emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
+                emit_state(&app, &shared, StateUpdate::new(Phase::Idle, "就绪"));
             }
             Ok(Intent::CheckVersion) => {
                 log::debug!("intent: check version");
                 check_version(&app, &shared, &session);
-                emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
+                emit_state(&app, &shared, StateUpdate::new(Phase::Idle, "就绪"));
             }
             Ok(Intent::Install { mirror }) => {
                 let registry = if mirror { REGISTRY_MIRROR } else { REGISTRY_OFFICIAL };
                 log::info!("intent: install dsh (registry={registry})");
                 install_dsh(&app, &shared, &session, registry);
             }
-            Ok(Intent::Start) => {
-                let Some(port) = find_port() else {
-                    log::error!("no free port in {PORT_START}-{PORT_END}");
-                    emit_fail(&app, &shared, None, "端口 3080-5080 均被占用，请检查占用程序。");
-                    continue;
-                };
-                log::info!("starting harness on port {port}");
-                let mut harness = match Harness::spawn(port, &base) {
-                    Ok(harness) => harness,
-                    Err(e) => {
-                        log::error!("failed to spawn harness: {e}");
-                        emit_fail(&app, &shared, Some(port), &format!("启动失败：{e}"));
-                        continue;
+            Ok(Intent::Start { host, port }) => match parse_target(&host, port) {
+                StartTarget::Local { port } => {
+                    log::info!("starting harness on port {port}");
+                    let mut harness = match Harness::spawn(port, &base) {
+                        Ok(harness) => harness,
+                        Err(e) => {
+                            log::error!("failed to spawn harness: {e}");
+                            emit_fail(&app, &shared, Some(port), &format!("启动失败：{e}"));
+                            continue;
+                        }
+                    };
+                    emit_state(
+                        &app,
+                        &shared,
+                        StateUpdate {
+                            port: Some(port),
+                            elapsed: Some(0),
+                            ..StateUpdate::new(Phase::Starting, "正在启动 DeepSeek Harness…")
+                        },
+                    );
+
+                    if let Some(out) = harness.stdout() {
+                        spawn_pipe_reader(out, session.clone(), "[stdout] ", None);
                     }
-                };
-                emit_state(
-                    &app,
-                    &shared,
-                    Phase::Starting,
-                    Some(port),
-                    "正在启动 DeepSeek Harness…",
-                    Some(0),
-                );
+                    if let Some(err) = harness.stderr() {
+                        spawn_pipe_reader(err, session.clone(), "[stderr] ", None);
+                    }
 
-                if let Some(out) = harness.stdout() {
-                    spawn_pipe_reader(out, session.clone(), "[stdout] ", None);
-                }
-                if let Some(err) = harness.stderr() {
-                    spawn_pipe_reader(err, session.clone(), "[stderr] ", None);
-                }
-
-                // 就绪轮询（进程存活 + HTTP 可响应，120 秒超时）
-                let started = Instant::now();
-                let ready = 'poll: {
-                    loop {
-                        match harness.try_wait() {
-                            Ok(Some(status)) => {
-                                log::error!("harness exited early with code {:?}", status.code());
+                    // 就绪轮询（进程存活 + HTTP 可响应，120 秒超时）
+                    let started = Instant::now();
+                    let ready = 'poll: {
+                        loop {
+                            match harness.try_wait() {
+                                Ok(Some(status)) => {
+                                    log::error!("harness exited early with code {:?}", status.code());
+                                    os::kill_active();
+                                    emit_fail(
+                                        &app,
+                                        &shared,
+                                        Some(port),
+                                        &format!(
+                                            "进程提前退出（退出码 {:?}），请查看日志。",
+                                            status.code()
+                                        ),
+                                    );
+                                    break 'poll false;
+                                }
+                                Ok(None) => {}
+                                Err(e) => {
+                                    log::error!("failed to read harness status: {e}");
+                                    emit_fail(
+                                        &app,
+                                        &shared,
+                                        Some(port),
+                                        &format!("无法读取进程状态：{e}"),
+                                    );
+                                    break 'poll false;
+                                }
+                            }
+                            if probe_service("127.0.0.1", port, PROBE_LOCAL_TIMEOUT).is_some() {
+                                log::info!("harness responds on http://127.0.0.1:{port}");
+                                break 'poll true;
+                            }
+                            if started.elapsed() > START_TIMEOUT {
+                                log::error!(
+                                    "harness start timed out after {}s",
+                                    START_TIMEOUT.as_secs()
+                                );
                                 os::kill_active();
-                                emit_fail(
-                                    &app,
-                                    &shared,
-                                    Some(port),
-                                    &format!(
-                                        "进程提前退出（退出码 {:?}），请查看日志。",
-                                        status.code()
-                                    ),
-                                );
+                                emit_fail(&app, &shared, Some(port), "启动超时（120 秒），请查看日志。");
                                 break 'poll false;
                             }
-                            Ok(None) => {}
-                            Err(e) => {
-                                log::error!("failed to read harness status: {e}");
-                                emit_fail(
-                                    &app,
-                                    &shared,
-                                    Some(port),
-                                    &format!("无法读取进程状态：{e}"),
-                                );
-                                break 'poll false;
-                            }
-                        }
-                        if http_ok(port) {
-                            log::info!("harness responds on http://127.0.0.1:{port}");
-                            break 'poll true;
-                        }
-                        if started.elapsed() > START_TIMEOUT {
-                            log::error!(
-                                "harness start timed out after {}s",
-                                START_TIMEOUT.as_secs()
-                            );
-                            os::kill_active();
-                            emit_fail(&app, &shared, Some(port), "启动超时（120 秒），请查看日志。");
-                            break 'poll false;
-                        }
-                        emit_state(
-                            &app,
-                            &shared,
-                            Phase::Starting,
-                            Some(port),
-                            "正在启动 DeepSeek Harness…",
-                            Some(started.elapsed().as_secs()),
-                        );
-                        std::thread::sleep(POLL_INTERVAL);
-                    }
-                };
-                if !ready {
-                    continue;
-                }
-
-                // Ready：监控进程，异常退出恢复窗口
-                emit_state(&app, &shared, Phase::Ready, Some(port), "服务已就绪", None);
-                log::info!("harness ready on http://127.0.0.1:{port}");
-                loop {
-                    match harness.try_wait() {
-                        Ok(Some(status)) => {
-                            let code = status.code();
-                            os::kill_active();
-                            if code == Some(0) {
-                                log::info!("harness exited with code 0, quitting");
-                                shutdown(&app);
-                                return;
-                            }
-                            log::warn!("harness exited with code {code:?}");
                             emit_state(
                                 &app,
                                 &shared,
-                                Phase::Failed,
-                                Some(port),
-                                &format!("DeepSeek Harness 已退出（退出码 {code:?}）。"),
-                                None,
+                                StateUpdate {
+                                    port: Some(port),
+                                    elapsed: Some(started.elapsed().as_secs()),
+                                    ..StateUpdate::new(Phase::Starting, "正在启动 DeepSeek Harness…")
+                                },
                             );
-                            show_main(&app);
-                            break;
+                            std::thread::sleep(POLL_INTERVAL);
                         }
-                        Ok(None) => {}
-                        Err(_) => {}
+                    };
+                    if !ready {
+                        continue;
                     }
-                    std::thread::sleep(POLL_INTERVAL);
+
+                    // Ready：监控进程，异常退出恢复窗口
+                    let url = format!("http://127.0.0.1:{port}/");
+                    emit_state(
+                        &app,
+                        &shared,
+                        StateUpdate {
+                            port: Some(port),
+                            url: Some(url),
+                            ..StateUpdate::new(Phase::Ready, "服务已就绪")
+                        },
+                    );
+                    log::info!("harness ready on http://127.0.0.1:{port}");
+                    loop {
+                        match harness.try_wait() {
+                            Ok(Some(status)) => {
+                                let code = status.code();
+                                os::kill_active();
+                                if code == Some(0) {
+                                    log::info!("harness exited with code 0, quitting");
+                                    shutdown(&app);
+                                    return;
+                                }
+                                log::warn!("harness exited with code {code:?}");
+                                emit_state(
+                                    &app,
+                                    &shared,
+                                    StateUpdate {
+                                        port: Some(port),
+                                        ..StateUpdate::new(
+                                            Phase::Failed,
+                                            &format!("DeepSeek Harness 已退出（退出码 {code:?}）。"),
+                                        )
+                                    },
+                                );
+                                show_main(&app);
+                                break;
+                            }
+                            Ok(None) => {}
+                            Err(_) => {}
+                        }
+                        std::thread::sleep(POLL_INTERVAL);
+                    }
                 }
-            }
+                // 远程：不启动进程，探测可达后直接连接（无进程监控、无 kill 目标）
+                StartTarget::Remote { host, port } => {
+                    emit_state(
+                        &app,
+                        &shared,
+                        StateUpdate {
+                            elapsed: Some(0),
+                            ..StateUpdate::new(
+                                Phase::Starting,
+                                &format!("正在连接远程服务 {host}:{port}…"),
+                            )
+                        },
+                    );
+                    match probe_service(&host, port, PROBE_REMOTE_TIMEOUT) {
+                        Some(proto) => {
+                            let url = format!("{proto}://{host}:{port}/");
+                            log::info!("remote service reachable at {url}");
+                            emit_state(
+                                &app,
+                                &shared,
+                                StateUpdate {
+                                    url: Some(url),
+                                    ..StateUpdate::new(Phase::Ready, "已连接远程服务")
+                                },
+                            );
+                        }
+                        None => emit_fail(
+                            &app,
+                            &shared,
+                            None,
+                            &format!(
+                                "无法访问 {host}:{port}，请检查服务是否已部署、网络是否可达。"
+                            ),
+                        ),
+                    }
+                }
+            },
         }
     }
 }
@@ -357,10 +425,7 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
     emit_state(
         app,
         shared,
-        Phase::Installing,
-        None,
-        "正在安装/更新 DeepSeek Harness…",
-        None,
+        StateUpdate::new(Phase::Installing, "正在安装/更新 DeepSeek Harness…"),
     );
     let display = format!("npm install --verbose -g @deepseek-ai/dsh --registry={registry}");
     let args: [&str; 6] = [
@@ -388,7 +453,7 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
     if ok {
         log::info!("dsh installed successfully");
         check_version(app, shared, session);
-        emit_state(app, shared, Phase::Idle, None, "就绪", None);
+        emit_state(app, shared, StateUpdate::new(Phase::Idle, "就绪"));
     } else {
         log::error!("dsh install failed");
         emit_fail(app, shared, None, "安装失败，请查看日志。");
@@ -602,37 +667,66 @@ fn sanitize(line: &str) -> String {
         .collect()
 }
 
-fn port_free(port: u16) -> bool {
-    TcpStream::connect_timeout(
-        &SocketAddr::from(([127, 0, 0, 1], port)),
-        Duration::from_millis(200),
-    )
-    .is_err()
+/// 是否为本地地址（决定是否本地启动、探测时是否追加 https）
+fn is_local_host(host: &str) -> bool {
+    matches!(host.trim().to_lowercase().as_str(), "localhost" | "127.0.0.1" | "::1")
 }
 
-fn find_port() -> Option<u16> {
-    (PORT_START..=PORT_END).find(|&p| port_free(p))
+/// 启动目标：本地地址启动 dsh，其他地址视为远程已部署服务
+enum StartTarget {
+    Local { port: u16 },
+    Remote { host: String, port: u16 },
 }
 
-/// 就绪探测：GET / 读到 HTTP 状态行即认为服务可响应。
-fn http_ok(port: u16) -> bool {
-    let Ok(mut s) = TcpStream::connect_timeout(
-        &SocketAddr::from(([127, 0, 0, 1], port)),
-        Duration::from_millis(500),
-    ) else {
-        return false;
-    };
-    let _ = s.set_read_timeout(Some(Duration::from_millis(500)));
-    if s.write_all(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
-        .is_err()
-    {
-        return false;
+fn parse_target(host: &str, port: u16) -> StartTarget {
+    if is_local_host(host) {
+        StartTarget::Local { port }
+    } else {
+        StartTarget::Remote {
+            host: host.trim().to_lowercase(),
+            port,
+        }
     }
-    let mut buf = [0u8; 64];
-    let Ok(n) = s.read(&mut buf) else {
-        return false;
+}
+
+/// 远程连接探测超时：跨网段可达性判断，https 与 http 各一次
+const PROBE_REMOTE_TIMEOUT: Duration = Duration::from_secs(10);
+/// 本地就绪轮询探测超时：本机 connect refused 立即失败，仅兜底 HTTP 不响应场景
+const PROBE_LOCAL_TIMEOUT: Duration = Duration::from_secs(3);
+/// TCP 连通预检超时：黑洞/不可达地址在此快速失败，避免两轮 HTTP 探测各挂满超时
+const PROBE_TCP_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// 探测 host:port 上是否存在 HTTP(S) 服务。
+/// 防御：port == 0 直接返回 None（u16 唯一漏网值，前端已拦 1~65535）。
+/// 先做 TCP 连通预检（3s），连不通直接返回 None（黑洞/拒绝快速失败）；
+/// TCP 通后再做 HTTP 探测：本地地址只测 HTTP，远程地址先试 HTTPS，失败退回 HTTP。
+/// 收到任何 HTTP 响应（含 4xx/5xx，ureq Error::Status）即视为服务存在。
+/// 返回探测到的协议（"http"/"https"），均失败返回 None。
+fn probe_service(host: &str, port: u16, timeout: Duration) -> Option<&'static str> {
+    if port == 0 {
+        return None;
+    }
+    // 前端已限合法 IPv4/localhost；parse 失败（防绕过）与 TCP 不可达均视为无服务
+    let Ok(ip) = host.trim().parse::<Ipv4Addr>() else {
+        return None;
     };
-    String::from_utf8_lossy(&buf[..n]).starts_with("HTTP/")
+    if TcpStream::connect_timeout(&SocketAddr::from((ip, port)), PROBE_TCP_TIMEOUT).is_err() {
+        return None;
+    }
+    let agent = ureq::AgentBuilder::new().timeout(timeout).build();
+    let protos: &[&str] = if is_local_host(host) {
+        &["http"]
+    } else {
+        &["https", "http"]
+    };
+    for proto in protos {
+        let url = format!("{proto}://{host}:{port}/");
+        match agent.get(&url).call() {
+            Ok(_) | Err(ureq::Error::Status(_, _)) => return Some(proto),
+            Err(ureq::Error::Transport(_)) => {} // 连接失败，试下一协议
+        }
+    }
+    None
 }
 
 /// 唯一关闭入口：先终止 harness 进程树，再退出应用。

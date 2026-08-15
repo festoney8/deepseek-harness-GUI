@@ -23,6 +23,8 @@ pub enum Phase {
 pub struct Snapshot {
     pub phase: Phase,
     pub port: Option<u16>,
+    /// 完整访问地址（如 http://127.0.0.1:3080/），Ready 时由后端拼好，前端直接使用
+    pub url: Option<String>,
     pub detail: String,
     pub elapsed: Option<u64>,
     /// 格子一：node / npm 版本（None = 未检测到）

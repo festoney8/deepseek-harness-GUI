@@ -31,6 +31,9 @@ importers:
       "@tauri-apps/plugin-opener":
         specifier: ^2.5.4
         version: 2.5.4
+      "@vueuse/core":
+        specifier: ^14.4.0
+        version: 14.4.0(vue@3.5.41(typescript@5.6.2))
       js-yaml:
         specifier: ^5.2.3
         version: 5.2.3
@@ -831,6 +834,10 @@ packages:
     resolution:
       { integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA== }
 
+  "@types/web-bluetooth@0.0.21":
+    resolution:
+      { integrity: sha512-oIQLCGWtcFZy2JW77j9k8nHzAOpqMHLQejDA48XXMWH6tjCQHz5RCFz1bzsmROyL6PUm+LLnUiI4BCn221inxA== }
+
   "@typescript-eslint/eslint-plugin@8.67.0":
     resolution:
       { integrity: sha512-Un7Heoyj65NREbKAyIrFxeM143NZpExWmy1Nep4DLeQOeLlTeumPjoNKnBrU5D5moWXbPJgRa5Uwcdu0faVNGQ== }
@@ -973,6 +980,22 @@ packages:
   "@vue/shared@3.5.41":
     resolution:
       { integrity: sha512-IOnwSCma8j+9xJT6b8H0dEYidC80NsYmNMlZxRsukYcSoGaDBohog5hDxzeUXdFeGWFA++vWvxqOmrr96VlqMA== }
+
+  "@vueuse/core@14.4.0":
+    resolution:
+      { integrity: sha512-X4WHz1HlCzCBoYXesUkifzzWBAcZgXG8Fi5iNPQg/epdzOB3gu8Fawj3hvuwYR1nGcXGnvxwYYcUC/71++svtQ== }
+    peerDependencies:
+      vue: ^3.5.0
+
+  "@vueuse/metadata@14.4.0":
+    resolution:
+      { integrity: sha512-swx/255R6JyHZFJhx845iz5CRWDZdCfvkZOpACWc5+c5WHcG24mv8gUT1WIdFQaHt6dq79rvILd9QnCWiyVm9g== }
+
+  "@vueuse/shared@14.4.0":
+    resolution:
+      { integrity: sha512-JRgY90Sz8DDtPMsaDflvPMp9xYk69JZAmbuDvAquUVXKr2gEjqtzGNTTthLfckH0BzBqvnu31gb4a8TGLRe79g== }
+    peerDependencies:
+      vue: ^3.5.0
 
   acorn-jsx@5.3.2:
     resolution:
@@ -2372,6 +2395,8 @@ snapshots:
 
   "@types/json-schema@7.0.15": {}
 
+  "@types/web-bluetooth@0.0.21": {}
+
   "@typescript-eslint/eslint-plugin@8.67.0(@typescript-eslint/parser@8.67.0(eslint@10.8.1(jiti@2.7.0))(typescript@5.6.2))(eslint@10.8.1(jiti@2.7.0))(typescript@5.6.2)":
     dependencies:
       "@eslint-community/regexpp": 4.12.2
@@ -2553,6 +2578,19 @@ snapshots:
       "@vue/shared": 3.5.41
 
   "@vue/shared@3.5.41": {}
+
+  "@vueuse/core@14.4.0(vue@3.5.41(typescript@5.6.2))":
+    dependencies:
+      "@types/web-bluetooth": 0.0.21
+      "@vueuse/metadata": 14.4.0
+      "@vueuse/shared": 14.4.0(vue@3.5.41(typescript@5.6.2))
+      vue: 3.5.41(typescript@5.6.2)
+
+  "@vueuse/metadata@14.4.0": {}
+
+  "@vueuse/shared@14.4.0(vue@3.5.41(typescript@5.6.2))":
+    dependencies:
+      vue: 3.5.41(typescript@5.6.2)
 
   acorn-jsx@5.3.2(acorn@8.18.0):
     dependencies:

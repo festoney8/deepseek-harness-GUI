@@ -5,7 +5,7 @@
 //! - check_env()                        检测 node/npm 版本
 //! - check_version()                    远端（官方源+镜像源）与本地 dsh 版本查询
 //! - install_dsh(mirror: bool)          安装/更新 dsh（false 官方源，true 镜像源）
-//! - start_server()                     启动 harness（自动选空闲端口并轮询就绪）
+//! - start_server(host, port)           启动 harness：本地地址在指定端口启动 dsh，其他地址视为远程服务直接连接
 //! - open_log_dir()                     用默认文件管理器打开本次运行日志目录
 //! - exit_app()                         终止 harness 进程树后退出应用
 //! - hide_to_tray()                     隐藏主窗口（关窗进托盘流程的窗口隐藏动作）
@@ -44,10 +44,11 @@ pub fn install_dsh(sup: tauri::State<'_, Supervisor>, mirror: bool) {
     sup.install(mirror);
 }
 
-/// 启动 harness：自动选择空闲端口并轮询 HTTP 就绪。
+/// 启动 harness：host 为本地地址时在指定端口启动 dsh 并轮询就绪；
+/// 否则视为远程已部署服务，探测可达后直接连接（不启动进程）。
 #[tauri::command]
-pub fn start_server(sup: tauri::State<'_, Supervisor>) {
-    sup.start();
+pub fn start_server(sup: tauri::State<'_, Supervisor>, host: String, port: u16) {
+    sup.start(host, port);
 }
 
 /// 用系统默认文件管理器打开本次运行的日志目录（harness.log + gui.log）。
