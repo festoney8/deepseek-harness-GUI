@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from "vue";
+import { computed, ref, watch } from "vue";
 import { getVersion } from "@tauri-apps/api/app";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import IconLink from "~icons/line-md/link";
 import IconWeb from "~icons/streamline-plump/web";
-import IconTerminal from "~icons/mingcute/terminal-fill";
+import IconLog from "~icons/ix/log";
 import IconDebugStart from "~icons/codicon/debug-start";
 import logoUrl from "../assets/logo.png";
 import type { RuntimeSnapshot } from "../composables/useRuntime";
-import { checkEnv, checkVersion, installDsh, output, startServer } from "../composables/useRuntime";
+import { checkEnv, checkVersion, installDsh, openLogDir, startServer } from "../composables/useRuntime";
 
 const LINKS = {
   marketplace: "https://dshfind.com/zh",
@@ -18,8 +18,6 @@ const LINKS = {
 } as const;
 
 const { state } = defineProps<{ state: RuntimeSnapshot }>();
-const outputDialogRef = ref<HTMLDialogElement | null>(null);
-const logRef = ref<HTMLElement | null>(null);
 /** 应用版本号，运行时读取（跟随 tauri.conf.json 的 version） */
 const appVersion = ref("");
 void getVersion().then((v) => {
@@ -159,27 +157,6 @@ function recheckEnvironment() {
   checking.value = true;
   void Promise.allSettled([checkEnv(), checkVersion()]);
 }
-
-function scrollOutputToBottom() {
-  const element = logRef.value;
-  if (element) element.scrollTop = element.scrollHeight;
-}
-
-async function showOutputDialog() {
-  outputDialogRef.value?.showModal();
-  await nextTick();
-  scrollOutputToBottom();
-}
-
-function closeOutputDialog() {
-  outputDialogRef.value?.close();
-}
-
-watch(output, async () => {
-  if (!outputDialogRef.value?.open) return;
-  await nextTick();
-  scrollOutputToBottom();
-});
 </script>
 
 <template>
@@ -365,57 +342,15 @@ watch(output, async () => {
             <button
               type="button"
               class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
-              @click="showOutputDialog"
+              @click="openLogDir"
             >
-              <IconTerminal class="h-4.5 w-4.5" />
-              查看终端输出
+              <IconLog class="h-4.5 w-4.5" />
+              查看日志
             </button>
           </div>
         </div>
       </section>
     </div>
-
-    <dialog
-      ref="outputDialogRef"
-      aria-labelledby="terminal-dialog-title"
-      class="m-auto max-h-[calc(100vh-4rem)] w-[calc(100%-3rem)] max-w-4xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 p-0 text-left text-slate-100 shadow-2xl backdrop:bg-slate-950/60 backdrop:backdrop-blur-sm"
-    >
-      <section class="flex max-h-[calc(100vh-4rem)] min-h-96 flex-col">
-        <header class="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-5 py-4">
-          <div class="flex items-center gap-3">
-            <span class="flex gap-1.5" aria-hidden="true">
-              <span class="h-3 w-3 rounded-full bg-rose-500"></span>
-              <span class="h-3 w-3 rounded-full bg-amber-400"></span>
-              <span class="h-3 w-3 rounded-full bg-emerald-500"></span>
-            </span>
-            <h2 id="terminal-dialog-title" class="font-mono text-sm font-bold">DeepSeek Harness · 终端输出</h2>
-          </div>
-          <button
-            type="button"
-            class="cursor-pointer rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
-            title="关闭"
-            aria-label="关闭终端输出"
-            @click="closeOutputDialog"
-          >
-            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
-            </svg>
-          </button>
-        </header>
-
-        <pre
-          ref="logRef"
-          class="text min-h-0 flex-1 overflow-auto bg-slate-950 p-6 font-mono leading-6 wrap-break-word whitespace-pre-wrap text-slate-300 select-text"
-          >{{ output || "暂无终端输出。" }}</pre>
-
-        <footer
-          class="flex shrink-0 items-center justify-between border-t border-slate-800 bg-slate-900 px-5 py-3 text-xs text-slate-500"
-        >
-          <span>输出会随命令执行自动更新</span>
-          <span>按 Esc 关闭</span>
-        </footer>
-      </section>
-    </dialog>
   </div>
 </template>
 

@@ -1,6 +1,6 @@
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -8,6 +8,7 @@ use log::{LevelFilter, Metadata, Record};
 
 /// 单次运行的日志会话，位于 `<base>/logs/<unix-timestamp>/`
 pub struct Session {
+    dir: PathBuf,
     harness: Mutex<File>,
     gui: Mutex<File>,
 }
@@ -37,8 +38,14 @@ impl Session {
         let session = Self {
             harness: Mutex::new(open_file(&dir.join("harness.log"))?),
             gui: Mutex::new(open_file(&dir.join("gui.log"))?),
+            dir,
         };
         Ok(session)
+    }
+
+    /// 本次运行日志目录（`\<base\>/logs/\<timestamp\>/`）
+    pub fn dir(&self) -> &Path {
+        &self.dir
     }
 
     /// harness 进程的原始输出，原样落盘，不做脱敏。

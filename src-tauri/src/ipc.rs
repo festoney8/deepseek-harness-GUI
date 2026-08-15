@@ -2,20 +2,20 @@
 //!
 //! Commands（前端 invoke → Rust，均为薄包装转发 Supervisor）：
 //! - get_state() -> Snapshot            全量快照（前端 initRuntime 初始化基准拉取）
-//! - get_output() -> String             完整输出缓冲（初始化恢复历史输出 / ready→failed 补齐）
 //! - check_env()                        检测 node/npm 版本
 //! - check_version()                    远端（官方源+镜像源）与本地 dsh 版本查询
 //! - install_dsh(mirror: bool)          安装/更新 dsh（false 官方源，true 镜像源）
 //! - start_server()                     启动 harness（自动选空闲端口并轮询就绪）
+//! - open_log_dir()                     用默认文件管理器打开本次运行日志目录
 //! - exit_app()                         终止 harness 进程树后退出应用
 //! - hide_to_tray()                     隐藏主窗口（关窗进托盘流程的窗口隐藏动作）
 //!
 //! Events（Rust emit → 前端 listen）：
 //! - runtime-state: Snapshot            状态变更推送
-//! - terminal: String                   命令行输出行
 //! - close-requested: ()                窗口关闭拦截通知
 
 use tauri::{AppHandle, Manager};
+use tauri_plugin_opener::OpenerExt;
 
 use crate::protocol::Snapshot;
 use crate::runtime::{shutdown, Supervisor};
@@ -24,12 +24,6 @@ use crate::runtime::{shutdown, Supervisor};
 #[tauri::command]
 pub fn get_state(sup: tauri::State<'_, Supervisor>) -> Snapshot {
     sup.snapshot()
-}
-
-/// 完整命令行输出缓冲（stdout+stderr 合并，上限 1MB 丢旧保新）。
-#[tauri::command]
-pub fn get_output(sup: tauri::State<'_, Supervisor>) -> String {
-    sup.output()
 }
 
 /// 检测 node/npm 版本，刷新快照的 node/npm 格子。
@@ -54,6 +48,14 @@ pub fn install_dsh(sup: tauri::State<'_, Supervisor>, mirror: bool) {
 #[tauri::command]
 pub fn start_server(sup: tauri::State<'_, Supervisor>) {
     sup.start();
+}
+
+/// 用系统默认文件管理器打开本次运行的日志目录（harness.log + gui.log）。
+#[tauri::command]
+pub fn open_log_dir(app: AppHandle, sup: tauri::State<'_, Supervisor>) {
+    if let Some(dir) = sup.log_dir() {
+        let _ = app.opener().open_path(dir.display().to_string(), None::<&str>);
+    }
 }
 
 /// 终止 harness 进程树后退出应用（唯一关闭入口）。

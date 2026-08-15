@@ -10,14 +10,12 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::logs::{self, Session};
 use crate::os::{self, Harness};
-use crate::protocol::{Phase, Snapshot, EVENT_RUNTIME_STATE, EVENT_TERMINAL};
+use crate::protocol::{Phase, Snapshot, EVENT_RUNTIME_STATE};
 
 pub const PORT_START: u16 = 3080;
 pub const PORT_END: u16 = 5080;
 const START_TIMEOUT: Duration = Duration::from_secs(120);
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
-/// UI 输出缓冲上限，超出丢弃最旧保留最新
-const OUTPUT_LIMIT: usize = 1_048_576;
 /// 安装与版本查询共用的 npm registry 常量
 const REGISTRY_OFFICIAL: &str = "https://registry.npmjs.org";
 const REGISTRY_MIRROR: &str = "https://registry.npmmirror.com";
@@ -32,7 +30,8 @@ enum Intent {
 
 struct SharedRuntime {
     snapshot: Mutex<Snapshot>,
-    output: Mutex<String>,
+    /// 当前日志会话（worker 创建后挂载，供 open_log_dir 取目录）
+    session: Mutex<Option<Arc<Session>>>,
 }
 
 type Shared = Arc<SharedRuntime>;
@@ -52,7 +51,7 @@ impl Supervisor {
             rx: Mutex::new(Some(rx)),
             shared: Arc::new(SharedRuntime {
                 snapshot: Mutex::new(Snapshot::default()),
-                output: Mutex::new(String::new()),
+                session: Mutex::new(None),
             }),
         }
     }
@@ -65,13 +64,14 @@ impl Supervisor {
             .clone()
     }
 
-    /// 完整命令行输出缓冲（stdout+stderr 合并）
-    pub fn output(&self) -> String {
+    /// 当前日志会话目录（`<base>/logs/<timestamp>/`），会话未创建时为 None
+    pub fn log_dir(&self) -> Option<PathBuf> {
         self.shared
-            .output
+            .session
             .lock()
             .unwrap_or_else(|e| e.into_inner())
-            .clone()
+            .as_ref()
+            .map(|session| session.dir().to_path_buf())
     }
 
     fn send(&self, intent: Intent) {
@@ -136,11 +136,6 @@ fn emit_fail(app: &AppHandle, shared: &SharedRuntime, port: Option<u16>, detail:
 }
 
 fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathBuf) {
-    shared
-        .output
-        .lock()
-        .unwrap_or_else(|error| error.into_inner())
-        .clear();
     match logs::cleanup_old(&base, Duration::from_secs(7 * 86_400)) {
         Ok(removed) => log::debug!("cleaned up {removed} old log sessions"),
         Err(error) => log::warn!("failed to clean up old log sessions: {error}"),
@@ -152,11 +147,16 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
         return;
     };
     logs::attach_session(session.clone());
+    // 挂载当前会话，open_log_dir 命令据此定位日志目录
+    *shared
+        .session
+        .lock()
+        .unwrap_or_else(|error| error.into_inner()) = Some(session.clone());
 
     log::info!("supervisor worker started");
     // 启动即自动检查环境与版本，填充格子
-    check_env(&app, &shared, &session);
-    check_version(&app, &shared, &session);
+    check_env(&shared, &session);
+    check_version(&shared, &session);
     emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
 
     loop {
@@ -167,12 +167,12 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
             }
             Ok(Intent::CheckEnv) => {
                 log::debug!("intent: check env");
-                check_env(&app, &shared, &session);
+                check_env(&shared, &session);
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
             Ok(Intent::CheckVersion) => {
                 log::debug!("intent: check version");
-                check_version(&app, &shared, &session);
+                check_version(&shared, &session);
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
             Ok(Intent::Install { mirror }) => {
@@ -205,24 +205,10 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                 );
 
                 if let Some(out) = harness.stdout() {
-                    spawn_pipe_reader(
-                        out,
-                        app.clone(),
-                        session.clone(),
-                        shared.clone(),
-                        "[stdout] ",
-                        None,
-                    );
+                    spawn_pipe_reader(out, session.clone(), "[stdout] ", None);
                 }
                 if let Some(err) = harness.stderr() {
-                    spawn_pipe_reader(
-                        err,
-                        app.clone(),
-                        session.clone(),
-                        shared.clone(),
-                        "[stderr] ",
-                        None,
-                    );
+                    spawn_pipe_reader(err, session.clone(), "[stderr] ", None);
                 }
 
                 // 就绪轮询（进程存活 + HTTP 可响应，120 秒超时）
@@ -238,7 +224,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                                     &shared,
                                     Some(port),
                                     &format!(
-                                        "进程提前退出（退出码 {:?}），请查看终端输出。",
+                                        "进程提前退出（退出码 {:?}），请查看日志。",
                                         status.code()
                                     ),
                                 );
@@ -266,7 +252,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                                 START_TIMEOUT.as_secs()
                             );
                             os::kill_active();
-                            emit_fail(&app, &shared, Some(port), "启动超时（120 秒），请查看终端输出。");
+                            emit_fail(&app, &shared, Some(port), "启动超时（120 秒），请查看日志。");
                             break 'poll false;
                         }
                         emit_state(
@@ -346,8 +332,6 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
         registry,
     ];
     let ok = match run_cmd_streamed(
-        app,
-        shared,
         session,
         CommandSpec {
             display: &display,
@@ -363,18 +347,16 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
     };
     if ok {
         log::info!("dsh installed successfully");
-        check_version(app, shared, session);
+        check_version(shared, session);
         emit_state(app, shared, Phase::Idle, None, "就绪", None);
     } else {
         log::error!("dsh install failed");
-        emit_fail(app, shared, None, "安装失败，请查看终端输出。");
+        emit_fail(app, shared, None, "安装失败，请查看日志。");
     }
 }
 
-fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
+fn check_env(shared: &Shared, session: &Arc<Session>) {
     let node = stream_capture(
-        app,
-        shared,
         session,
         CommandSpec {
             display: "node -v",
@@ -383,8 +365,6 @@ fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
         },
     );
     let npm = stream_capture(
-        app,
-        shared,
         session,
         CommandSpec {
             display: "npm -v",
@@ -419,14 +399,12 @@ fn fetch_remote_version(registry: &str) -> Option<String> {
         .map(String::from)
 }
 
-fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
+fn check_version(shared: &Shared, session: &Arc<Session>) {
     let remote = fetch_remote_version(REGISTRY_OFFICIAL);
     let remote_mirror = fetch_remote_version(REGISTRY_MIRROR);
     // 本地检测改用 `dsh -V`：安装不完整时该命令报错而非输出版本号，
     // 因此 local 能同时反映"已安装"与"安装完整"两个状态。
     let local = stream_capture(
-        app,
-        shared,
         session,
         CommandSpec {
             display: "dsh -V",
@@ -448,13 +426,8 @@ fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
     snapshot.version_checked = true;
 }
 
-fn stream_capture(
-    app: &AppHandle,
-    shared: &Shared,
-    session: &Arc<Session>,
-    command: CommandSpec<'_>,
-) -> Option<String> {
-    match run_cmd_streamed(app, shared, session, command) {
+fn stream_capture(session: &Arc<Session>, command: CommandSpec<'_>) -> Option<String> {
+    match run_cmd_streamed(session, command) {
         Ok((status, output)) if status.success() => Some(output.trim().to_string()),
         _ => None,
     }
@@ -471,37 +444,19 @@ fn create_session(base: &Path) -> Option<Arc<Session>> {
 }
 
 fn run_cmd_streamed(
-    app: &AppHandle,
-    shared: &Shared,
     session: &Arc<Session>,
     command: CommandSpec<'_>,
 ) -> std::io::Result<(ExitStatus, String)> {
-    let echo = format!("$ {}", command.display);
     session.log_harness(&format!("[cmd] {}", command.display));
     log::debug!("executing: {}", command.display);
-    publish_line(app, shared, &echo);
 
     let mut child = os::build_command(command.program, command.args).spawn()?;
     let collected = Arc::new(Mutex::new(String::new()));
     if let Some(stdout) = child.stdout.take() {
-        spawn_pipe_reader(
-            stdout,
-            app.clone(),
-            session.clone(),
-            shared.clone(),
-            "[stdout] ",
-            Some(collected.clone()),
-        );
+        spawn_pipe_reader(stdout, session.clone(), "[stdout] ", Some(collected.clone()));
     }
     if let Some(stderr) = child.stderr.take() {
-        spawn_pipe_reader(
-            stderr,
-            app.clone(),
-            session.clone(),
-            shared.clone(),
-            "[stderr] ",
-            None,
-        );
+        spawn_pipe_reader(stderr, session.clone(), "[stderr] ", None);
     }
     let status = child.wait()?;
     let stdout = collected
@@ -519,9 +474,7 @@ fn parse_local_version(out: &str) -> Option<String> {
 
 fn spawn_pipe_reader<R: Read + Send + 'static>(
     reader: R,
-    app: AppHandle,
     session: Arc<Session>,
-    shared: Shared,
     prefix: &'static str,
     collect: Option<Arc<Mutex<String>>>,
 ) {
@@ -532,7 +485,6 @@ fn spawn_pipe_reader<R: Read + Send + 'static>(
             if clean.is_empty() {
                 continue;
             }
-            publish_line(&app, &shared, &clean);
             if let Some(collected) = &collect {
                 let mut collected = collected.lock().unwrap_or_else(|error| error.into_inner());
                 collected.push_str(&clean);
@@ -542,33 +494,11 @@ fn spawn_pipe_reader<R: Read + Send + 'static>(
     });
 }
 
-fn publish_line(app: &AppHandle, shared: &SharedRuntime, line: &str) {
-    push_output(shared, line);
-    let _ = app.emit(EVENT_TERMINAL, line);
-}
-
 /// 去掉控制字符（保留换行与制表符），避免日志被当作终端/HTML 内容注入。
 fn sanitize(line: &str) -> String {
     line.chars()
         .filter(|&c| c == '\n' || c == '\t' || c >= ' ')
         .collect()
-}
-
-fn push_output(shared: &SharedRuntime, line: &str) {
-    let mut output = shared
-        .output
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
-    output.push_str(line);
-    output.push('\n');
-    if output.len() > OUTPUT_LIMIT {
-        let start = output.len() - OUTPUT_LIMIT;
-        let cut = output
-            .char_indices()
-            .find(|(index, _)| *index >= start)
-            .map_or(output.len(), |(index, _)| index);
-        *output = output[cut..].to_string();
-    }
 }
 
 fn port_free(port: u16) -> bool {

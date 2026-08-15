@@ -40,7 +40,5 @@ pub struct Snapshot {
 
 /// 状态变更推送事件
 pub const EVENT_RUNTIME_STATE: &str = "runtime-state";
-/// 命令行输出行转发事件（安装/启动等命令的 stdout/stderr 行）
-pub const EVENT_TERMINAL: &str = "terminal";
 /// 窗口关闭拦截通知（前端据此弹出托盘/退出确认）
 pub const EVENT_CLOSE_REQUESTED: &str = "close-requested";

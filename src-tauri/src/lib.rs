@@ -11,7 +11,7 @@ use tauri::{
     Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
-use ipc::{check_env, check_version, exit_app, get_output, get_state, hide_to_tray, install_dsh, start_server};
+use ipc::{check_env, check_version, exit_app, get_state, hide_to_tray, install_dsh, open_log_dir, start_server};
 use protocol::EVENT_CLOSE_REQUESTED;
 use runtime::{show_main, shutdown, Supervisor};
 
@@ -137,11 +137,11 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_state,
-            get_output,
             check_env,
             check_version,
             install_dsh,
             start_server,
+            open_log_dir,
             exit_app,
             hide_to_tray
         ])
