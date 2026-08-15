@@ -1,6 +1,6 @@
 # DeepSeek Harness GUI
 
-**超 级 轻 量 的 deepseek harness 桌面端应用，安装包只要 3 MB，便携版只要 9 MB！**
+**超 级 轻 量 的 deepseek harness 桌面端应用，安装包只要 2 MB，便携版只要 11 MB！**
 
 ---
 
@@ -14,10 +14,11 @@
 ## 介绍
 
 - 本项目是基于 Tauri 构建的 [deepseek-harness](https://github.com/deepseek-ai/deepseek-harness) 轻量启动器，保留原始 DSH 功能，提供桌面版 APP 体验
-- 适配文件下载、图片拖拽、剪贴板等操作
-- 支持将应用最小化到通知栏
+- 适配文件下载、图片拖拽、剪贴板等操作，支持最小化到通知栏
 - 支持 Ctrl+滚轮 或 Ctrl +/- 调节页面缩放
-- 本项目使用 worker 模式管理 DSH，支持应用中安装/更新 DSH
+- 同步 DSH 的日间/夜间/系统主题切换
+- 支持在应用中安装或更新 DSH，可选择官方源(npmjs)或镜像源(npmmirror)
+- 本项目使用 worker 模式管理 DSH，不影响 DSH 的任何设定
 - 只要官方启动命令不变，本项目就能持续使用
 
 ## 日志
