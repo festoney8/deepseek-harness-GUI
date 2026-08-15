@@ -8,7 +8,7 @@ import IconTerminal from "~icons/mingcute/terminal-fill";
 import IconDebugStart from "~icons/codicon/debug-start";
 import logoUrl from "../assets/logo.png";
 import type { RuntimeSnapshot } from "../composables/useRuntime";
-import { checkEnv, checkVersion, installDsh, installDshMirror, output, startServer } from "../composables/useRuntime";
+import { checkEnv, checkVersion, installDsh, output, startServer } from "../composables/useRuntime";
 
 const LINKS = {
   marketplace: "https://dshfind.com/zh",
@@ -79,8 +79,7 @@ watch(
 function startInstall(source: "official" | "mirror") {
   if (installUpdateDisabled.value) return;
   installingSource.value = source;
-  if (source === "official") installDsh();
-  else installDshMirror();
+  installDsh(source === "mirror");
 }
 
 const installUpdateText = (source: "official" | "mirror", suffix: string) =>

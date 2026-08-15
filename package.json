@@ -9,6 +9,9 @@
     "tauri": "tauri",
     "build:installer": "tauri build --bundles nsis",
     "build:portable": "tauri build --no-bundle && node scripts/package-portable.mjs",
+    "build:pkg": "tauri build --bundles app && node scripts/package-macos-pkg.mjs",
+    "build:deb": "tauri build --bundles deb",
+    "build:appimage": "tauri build --bundles appimage",
     "prepare": "husky"
   },
   "dependencies": {
@@ -18,7 +21,6 @@
     "@iconify-json/streamline-plump": "^1.2.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/plugin-dialog": "~2.7.2",
     "@tauri-apps/plugin-fs": "~2.5.1",
     "@tauri-apps/plugin-opener": "^2.5.4",
     "js-yaml": "^5.2.3",

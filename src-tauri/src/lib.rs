@@ -1,5 +1,7 @@
+mod ipc;
 mod logs;
-mod process;
+mod os;
+mod protocol;
 mod runtime;
 
 use tauri::{
@@ -9,54 +11,9 @@ use tauri::{
     Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
 
-use runtime::{show_main, shutdown, Snapshot, Supervisor};
-
-#[tauri::command]
-fn get_state(sup: tauri::State<'_, Supervisor>) -> Snapshot {
-    sup.snapshot()
-}
-
-#[tauri::command]
-fn get_output(sup: tauri::State<'_, Supervisor>) -> String {
-    sup.output()
-}
-
-#[tauri::command]
-fn check_env(sup: tauri::State<'_, Supervisor>) {
-    sup.check_env();
-}
-
-#[tauri::command]
-fn check_version(sup: tauri::State<'_, Supervisor>) {
-    sup.check_version();
-}
-
-#[tauri::command]
-fn install_dsh(sup: tauri::State<'_, Supervisor>) {
-    sup.install();
-}
-
-#[tauri::command]
-fn install_dsh_mirror(sup: tauri::State<'_, Supervisor>) {
-    sup.install_mirror();
-}
-
-#[tauri::command]
-fn start_server(sup: tauri::State<'_, Supervisor>) {
-    sup.start();
-}
-
-#[tauri::command]
-fn exit_app(app: tauri::AppHandle) {
-    shutdown(&app);
-}
-
-#[tauri::command]
-fn hide_to_tray(app: tauri::AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.hide();
-    }
-}
+use ipc::{check_env, check_version, exit_app, get_output, get_state, hide_to_tray, install_dsh, start_server};
+use protocol::EVENT_CLOSE_REQUESTED;
+use runtime::{show_main, shutdown, Supervisor};
 
 /// 从下载 URL 推断默认文件名（路径最后一段 percent-decode），失败时回退为 "download"
 fn default_file_name(url: &tauri::Url) -> String {
@@ -145,6 +102,10 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    os::fix_env_path();
+    // Workaround for WebKitGTK DMABUF renderer crashes on NVIDIA/Wayland
+    #[cfg(target_os = "linux")]
+    std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     logs::init_logging();
     log::info!("starting deepseek-harness-gui");
     tauri::Builder::default()
@@ -171,7 +132,7 @@ pub fn run() {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 log::debug!("close requested for window {}", window.label());
                 api.prevent_close();
-                let _ = window.emit("close-requested", ());
+                let _ = window.emit(EVENT_CLOSE_REQUESTED, ());
             }
         })
         .invoke_handler(tauri::generate_handler![
@@ -180,7 +141,6 @@ pub fn run() {
             check_env,
             check_version,
             install_dsh,
-            install_dsh_mirror,
             start_server,
             exit_app,
             hide_to_tray

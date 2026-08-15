@@ -48,8 +48,7 @@ let unlisteners: UnlistenFn[] = [];
 export async function initRuntime() {
   // 先注册监听再拉全量，避免拉取窗口内的行丢失
   unlisteners.push(await listen<RuntimeSnapshot>("runtime-state", (e) => onState(e.payload)));
-  unlisteners.push(await listen<string>("harness-line", (e) => appendOutput(e.payload)));
-  unlisteners.push(await listen("harness-output-reset", () => (output.value = "")));
+  unlisteners.push(await listen<string>("terminal", (e) => appendOutput(e.payload)));
   unlisteners.push(await listen("close-requested", () => (closeRequested.value = true)));
   state.value = await invoke<RuntimeSnapshot>("get_state");
   output.value = await invoke<string>("get_output");
@@ -87,8 +86,7 @@ function truncateTail(s: string, limit: number) {
 
 export const checkEnv = () => invoke("check_env");
 export const checkVersion = () => invoke("check_version");
-export const installDsh = () => invoke("install_dsh");
-export const installDshMirror = () => invoke("install_dsh_mirror");
+export const installDsh = (mirror: boolean) => invoke("install_dsh", { mirror });
 export const startServer = () => invoke("start_server");
 export const exitApp = () => invoke("exit_app");
 export const hideToTray = () => invoke("hide_to_tray");

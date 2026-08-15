@@ -1,21 +1,16 @@
 use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Stdio};
+use std::process::ExitStatus;
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
-use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-#[cfg(windows)]
-use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
-
 use crate::logs::{self, Session};
-use crate::process::{self, Harness};
+use crate::os::{self, Harness};
+use crate::protocol::{Phase, Snapshot, EVENT_RUNTIME_STATE, EVENT_TERMINAL};
 
 pub const PORT_START: u16 = 3080;
 pub const PORT_END: u16 = 5080;
@@ -27,44 +22,11 @@ const OUTPUT_LIMIT: usize = 1_048_576;
 const REGISTRY_OFFICIAL: &str = "https://registry.npmjs.org";
 const REGISTRY_MIRROR: &str = "https://registry.npmmirror.com";
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Phase {
-    #[default]
-    Idle,
-    Installing,
-    Starting,
-    Ready,
-    Failed,
-}
-
-/// 三格面板 + 终端的完整状态
-#[derive(Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Snapshot {
-    pub phase: Phase,
-    pub port: Option<u16>,
-    pub detail: String,
-    pub elapsed: Option<u64>,
-    /// 格子一：node / npm 版本（None = 未检测到）
-    pub node: Option<String>,
-    pub npm: Option<String>,
-    /// 格子二：远端 / 本地 dsh 版本（local None = 未安装或安装不完整；remote None = 获取失败）
-    pub remote: Option<String>,
-    /// 镜像源查询到的远端版本（None = 获取失败，仅用于展示）
-    pub remote_mirror: Option<String>,
-    pub local: Option<String>,
-    pub version_error: bool,
-    /// 版本检查是否已完成（false = 尚未检查，前端显示“检查中”）
-    pub version_checked: bool,
-}
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Intent {
     CheckEnv,
     CheckVersion,
-    Install,
-    InstallMirror,
+    Install { mirror: bool },
     Start,
 }
 
@@ -124,12 +86,8 @@ impl Supervisor {
         self.send(Intent::CheckVersion);
     }
 
-    pub fn install(&self) {
-        self.send(Intent::Install);
-    }
-
-    pub fn install_mirror(&self) {
-        self.send(Intent::InstallMirror);
+    pub fn install(&self, mirror: bool) {
+        self.send(Intent::Install { mirror });
     }
 
     pub fn start(&self) {
@@ -169,7 +127,12 @@ fn emit_state(
     state.elapsed = elapsed;
     let snapshot = state.clone();
     drop(state);
-    let _ = app.emit("runtime-state", snapshot);
+    let _ = app.emit(EVENT_RUNTIME_STATE, snapshot);
+}
+
+/// 失败态快捷入口：统一走 Failed 阶段、无 elapsed。
+fn emit_fail(app: &AppHandle, shared: &SharedRuntime, port: Option<u16>, detail: &str) {
+    emit_state(app, shared, Phase::Failed, port, detail, None);
 }
 
 fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathBuf) {
@@ -178,7 +141,6 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
         .lock()
         .unwrap_or_else(|error| error.into_inner())
         .clear();
-    let _ = app.emit("harness-output-reset", ());
     match logs::cleanup_old(&base, Duration::from_secs(7 * 86_400)) {
         Ok(removed) => log::debug!("cleaned up {removed} old log sessions"),
         Err(error) => log::warn!("failed to clean up old log sessions: {error}"),
@@ -186,14 +148,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
 
     let Some(session) = create_session(&base) else {
         log::error!("cannot create log session at {}", base.display());
-        emit_state(
-            &app,
-            &shared,
-            Phase::Failed,
-            None,
-            "无法创建日志目录，请检查磁盘空间或权限。",
-            None,
-        );
+        emit_fail(&app, &shared, None, "无法创建日志目录，请检查磁盘空间或权限。");
         return;
     };
     logs::attach_session(session.clone());
@@ -220,25 +175,15 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                 check_version(&app, &shared, &session);
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
-            Ok(Intent::Install) => {
-                log::info!("intent: install dsh (official registry)");
-                install_dsh(&app, &shared, &session, REGISTRY_OFFICIAL);
-            }
-            Ok(Intent::InstallMirror) => {
-                log::info!("intent: install dsh (mirror registry)");
-                install_dsh(&app, &shared, &session, REGISTRY_MIRROR);
+            Ok(Intent::Install { mirror }) => {
+                let registry = if mirror { REGISTRY_MIRROR } else { REGISTRY_OFFICIAL };
+                log::info!("intent: install dsh (registry={registry})");
+                install_dsh(&app, &shared, &session, registry);
             }
             Ok(Intent::Start) => {
                 let Some(port) = find_port() else {
                     log::error!("no free port in {PORT_START}-{PORT_END}");
-                    emit_state(
-                        &app,
-                        &shared,
-                        Phase::Failed,
-                        None,
-                        "端口 3080-5080 均被占用，请检查占用程序。",
-                        None,
-                    );
+                    emit_fail(&app, &shared, None, "端口 3080-5080 均被占用，请检查占用程序。");
                     continue;
                 };
                 log::info!("starting harness on port {port}");
@@ -246,14 +191,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     Ok(harness) => harness,
                     Err(e) => {
                         log::error!("failed to spawn harness: {e}");
-                        emit_state(
-                            &app,
-                            &shared,
-                            Phase::Failed,
-                            Some(port),
-                            &format!("启动失败：{e}"),
-                            None,
-                        );
+                        emit_fail(&app, &shared, Some(port), &format!("启动失败：{e}"));
                         continue;
                     }
                 };
@@ -294,30 +232,26 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                         match harness.try_wait() {
                             Ok(Some(status)) => {
                                 log::error!("harness exited early with code {:?}", status.code());
-                                process::kill_active();
-                                emit_state(
+                                os::kill_active();
+                                emit_fail(
                                     &app,
                                     &shared,
-                                    Phase::Failed,
                                     Some(port),
                                     &format!(
                                         "进程提前退出（退出码 {:?}），请查看终端输出。",
                                         status.code()
                                     ),
-                                    None,
                                 );
                                 break 'poll false;
                             }
                             Ok(None) => {}
                             Err(e) => {
                                 log::error!("failed to read harness status: {e}");
-                                emit_state(
+                                emit_fail(
                                     &app,
                                     &shared,
-                                    Phase::Failed,
                                     Some(port),
                                     &format!("无法读取进程状态：{e}"),
-                                    None,
                                 );
                                 break 'poll false;
                             }
@@ -331,15 +265,8 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                                 "harness start timed out after {}s",
                                 START_TIMEOUT.as_secs()
                             );
-                            process::kill_active();
-                            emit_state(
-                                &app,
-                                &shared,
-                                Phase::Failed,
-                                Some(port),
-                                "启动超时（120 秒），请查看终端输出。",
-                                None,
-                            );
+                            os::kill_active();
+                            emit_fail(&app, &shared, Some(port), "启动超时（120 秒），请查看终端输出。");
                             break 'poll false;
                         }
                         emit_state(
@@ -364,7 +291,7 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                     match harness.try_wait() {
                         Ok(Some(status)) => {
                             let code = status.code();
-                            process::kill_active();
+                            os::kill_active();
                             if code == Some(0) {
                                 log::info!("harness exited with code 0, quitting");
                                 shutdown(&app);
@@ -410,9 +337,7 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
         None,
     );
     let display = format!("npm install --verbose -g @deepseek-ai/dsh --registry={registry}");
-    let args: [&str; 8] = [
-        "/C",
-        "npm",
+    let args: [&str; 6] = [
         "install",
         "--verbose",
         "-g",
@@ -426,7 +351,7 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
         session,
         CommandSpec {
             display: &display,
-            program: "cmd",
+            program: "npm",
             args: &args,
         },
     ) {
@@ -442,14 +367,7 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
         emit_state(app, shared, Phase::Idle, None, "就绪", None);
     } else {
         log::error!("dsh install failed");
-        emit_state(
-            app,
-            shared,
-            Phase::Failed,
-            None,
-            "安装失败，请查看终端输出。",
-            None,
-        );
+        emit_fail(app, shared, None, "安装失败，请查看终端输出。");
     }
 }
 
@@ -470,8 +388,8 @@ fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
         session,
         CommandSpec {
             display: "npm -v",
-            program: "cmd",
-            args: &["/C", "npm", "-v"],
+            program: "npm",
+            args: &["-v"],
         },
     );
     log::info!("env check: node={node:?} npm={npm:?}");
@@ -483,29 +401,27 @@ fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
     snapshot.npm = npm;
 }
 
-/// 从指定 registry 查询 dsh 最新版本
-fn fetch_remote_version(
-    app: &AppHandle,
-    shared: &Shared,
-    session: &Arc<Session>,
-    registry: &str,
-) -> Option<String> {
-    let display = format!("npm view @deepseek-ai/dsh version --registry={registry}");
-    stream_capture(
-        app,
-        shared,
-        session,
-        CommandSpec {
-            display: &display,
-            program: "cmd",
-            args: &["/C", "npm", "view", "@deepseek-ai/dsh", "version", "--registry", registry],
-        },
-    )
+/// 版本查询 HTTP 请求超时：官方源与镜像源各一次，网络异常时快速失败
+const VERSION_FETCH_TIMEOUT: Duration = Duration::from_secs(10);
+
+/// 从指定 registry 的 JSON API 查询 dsh 最新版本（`/latest` 响应的 `version` 字段）。
+/// 直连 HTTP 不经过 npm 代理配置（npm config proxy），属预期行为差异。
+fn fetch_remote_version(registry: &str) -> Option<String> {
+    let agent = ureq::AgentBuilder::new()
+        .timeout(VERSION_FETCH_TIMEOUT)
+        .build();
+    let url = format!("{registry}/@deepseek-ai/dsh/latest");
+    let body = agent.get(&url).call().ok()?.into_string().ok()?;
+    serde_json::from_str::<serde_json::Value>(&body)
+        .ok()?
+        .get("version")?
+        .as_str()
+        .map(String::from)
 }
 
 fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
-    let remote = fetch_remote_version(app, shared, session, REGISTRY_OFFICIAL);
-    let remote_mirror = fetch_remote_version(app, shared, session, REGISTRY_MIRROR);
+    let remote = fetch_remote_version(REGISTRY_OFFICIAL);
+    let remote_mirror = fetch_remote_version(REGISTRY_MIRROR);
     // 本地检测改用 `dsh -V`：安装不完整时该命令报错而非输出版本号，
     // 因此 local 能同时反映"已安装"与"安装完整"两个状态。
     let local = stream_capture(
@@ -514,8 +430,8 @@ fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
         session,
         CommandSpec {
             display: "dsh -V",
-            program: "cmd",
-            args: &["/C", "dsh", "-V"],
+            program: "dsh",
+            args: &["-V"],
         },
     )
     .and_then(|out| parse_local_version(&out));
@@ -565,7 +481,7 @@ fn run_cmd_streamed(
     log::debug!("executing: {}", command.display);
     publish_line(app, shared, &echo);
 
-    let mut child = hidden_command(command.program, command.args).spawn()?;
+    let mut child = os::build_command(command.program, command.args).spawn()?;
     let collected = Arc::new(Mutex::new(String::new()));
     if let Some(stdout) = child.stdout.take() {
         spawn_pipe_reader(
@@ -593,18 +509,6 @@ fn run_cmd_streamed(
         .unwrap_or_else(|error| error.into_inner())
         .clone();
     Ok((status, stdout))
-}
-
-fn hidden_command(program: &str, args: &[&str]) -> Command {
-    let mut command = Command::new(program);
-    command
-        .args(args)
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-    #[cfg(windows)]
-    command.creation_flags(CREATE_NO_WINDOW);
-    command
 }
 
 /// 从 `dsh -V` 输出解析版本号：`v0.1.0-rc.6` / `0.1.0-rc.6` 均归一为 `0.1.0-rc.6`。
@@ -640,7 +544,7 @@ fn spawn_pipe_reader<R: Read + Send + 'static>(
 
 fn publish_line(app: &AppHandle, shared: &SharedRuntime, line: &str) {
     push_output(shared, line);
-    let _ = app.emit("harness-line", line);
+    let _ = app.emit(EVENT_TERMINAL, line);
 }
 
 /// 去掉控制字符（保留换行与制表符），避免日志被当作终端/HTML 内容注入。
@@ -704,7 +608,7 @@ fn http_ok(port: u16) -> bool {
 /// KILL_ON_JOB_CLOSE 兜底：任何遗漏路径下句柄随进程关闭，OS 回收整个进程树。
 pub fn shutdown(app: &AppHandle) {
     log::info!("application shutdown requested");
-    process::kill_active();
+    os::kill_active();
     app.exit(0);
 }
 

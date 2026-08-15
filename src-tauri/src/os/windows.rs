@@ -1,49 +1,35 @@
+//! Windows 平台实现：Job Object 进程树管理、cmd /C 命令包装、隐藏控制台窗口。
+
 use std::io;
+use std::os::windows::io::AsRawHandle;
+use std::os::windows::process::CommandExt;
 use std::path::Path;
 use std::process::{Child, ChildStderr, ChildStdout, Command, Stdio};
 use std::sync::{Mutex, OnceLock};
 
-#[cfg(windows)]
-use std::os::windows::io::AsRawHandle;
-#[cfg(windows)]
-use std::os::windows::process::CommandExt;
-#[cfg(windows)]
 use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
-#[cfg(windows)]
 use windows_sys::Win32::System::JobObjects::{
     AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation,
     SetInformationJobObject, TerminateJobObject, JOBOBJECT_EXTENDED_LIMIT_INFORMATION,
     JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
 };
-#[cfg(windows)]
 use windows_sys::Win32::System::Threading::CREATE_NO_WINDOW;
 
+/// dsh harness 子进程句柄，进程树由 Job Object 托管（句柄关闭即整树回收）。
 pub struct Harness {
     child: Child,
 }
 
 impl Harness {
+    /// 以 `dsh --profile web --host 127.0.0.1 --port` 启动 harness，整树归入 Job Object。
     pub fn spawn(port: u16, work_dir: &Path) -> io::Result<Self> {
         let job = HarnessJob::create()?;
         let port = port.to_string();
-        let mut command = Command::new("cmd");
-        command
-            .args([
-                "/C",
-                "dsh",
-                "--profile",
-                "web",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                port.as_str(),
-            ])
-            .current_dir(work_dir)
-            .stdin(Stdio::null())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        #[cfg(windows)]
-        command.creation_flags(CREATE_NO_WINDOW);
+        let mut command = build_command(
+            "dsh",
+            &["--profile", "web", "--host", "127.0.0.1", "--port", port.as_str()],
+        );
+        command.current_dir(work_dir);
 
         let mut child = command.spawn()?;
         if let Err(error) = job.assign(&child) {
@@ -69,11 +55,31 @@ impl Harness {
     }
 }
 
+/// 终止当前 active harness 的整棵进程树（Job Object 强杀）。
 pub fn kill_active() {
     if let Some(job) = take_job() {
         log::debug!("killing active harness job");
         job.kill();
     }
+}
+
+/// 构造命令：包装为 `cmd /C`，隐藏控制台窗口，IO 接管道。
+pub fn build_command(program: &str, args: &[&str]) -> Command {
+    let mut command = Command::new("cmd");
+    command
+        .arg("/C")
+        .arg(program)
+        .args(args)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .creation_flags(CREATE_NO_WINDOW);
+    command
+}
+
+/// 修复 PATH：fix-path-env 同时修复 Windows 上 Command 的 PATH 继承问题。
+pub fn fix_env_path() {
+    let _ = fix_path_env::fix();
 }
 
 static ACTIVE_JOB: OnceLock<Mutex<Option<HarnessJob>>> = OnceLock::new();
@@ -98,14 +104,11 @@ fn replace_job(job: HarnessJob) {
         .unwrap_or_else(|error| error.into_inner()) = Some(job);
 }
 
-#[cfg(windows)]
 struct HarnessJob(HANDLE);
 
-#[cfg(windows)]
-// SAFETY: The handle is moved into the process-wide mutex and accessed by one owner at a time.
+// SAFETY: 句柄随进程级互斥锁单点访问，可在线程间迁移。
 unsafe impl Send for HarnessJob {}
 
-#[cfg(windows)]
 impl HarnessJob {
     fn create() -> io::Result<Self> {
         unsafe {
@@ -145,27 +148,10 @@ impl HarnessJob {
     }
 }
 
-#[cfg(windows)]
 impl Drop for HarnessJob {
     fn drop(&mut self) {
         unsafe {
             CloseHandle(self.0);
         }
     }
-}
-
-#[cfg(not(windows))]
-struct HarnessJob;
-
-#[cfg(not(windows))]
-impl HarnessJob {
-    fn create() -> io::Result<Self> {
-        Ok(Self)
-    }
-
-    fn assign(&self, _child: &Child) -> io::Result<()> {
-        Ok(())
-    }
-
-    fn kill(&self) {}
 }
