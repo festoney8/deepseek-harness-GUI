@@ -45,9 +45,12 @@ async function fetchLatestVersion() {
 }
 void fetchLatestVersion();
 
-/** 本工具 GitHub 最新版与当前版不一致（有新版本可升级），最新版号高亮 */
+/** 本工具 GitHub 最新版与当前版不一致（有新版本可升级），最新版号高亮；非版本号哨兵值（检查中/未知）不高亮 */
 const versionOutdated = computed(() => {
-  return latestVersion.value.replace(/^v/, "") !== appVersion.value.replace(/^v/, "");
+  const latest = latestVersion.value;
+  const current = appVersion.value;
+  if (!/^v?\d/.test(latest) || !/^v?\d/.test(current)) return false;
+  return latest.replace(/^v/, "") !== current.replace(/^v/, "");
 });
 
 const installing = computed(() => state.phase === "installing");
@@ -63,9 +66,26 @@ const installUpdateDisabled = computed(() => {
   }
   return !(state.local === null || state.local !== state.remote);
 });
+/** 当前正在安装的源；只有被点击的按钮显示安装/更新中，另一个保持原文案 */
+const installingSource = ref<"official" | "mirror" | null>(null);
+
+watch(
+  () => state.phase,
+  (phase) => {
+    if (phase !== "installing") installingSource.value = null;
+  },
+);
+
+function startInstall(source: "official" | "mirror") {
+  if (installUpdateDisabled.value) return;
+  installingSource.value = source;
+  if (source === "official") installDsh();
+  else installDshMirror();
+}
+
 /** 安装/更新按钮文案：按需安装或更新（官方源） */
 const installUpdateLabel = computed(() =>
-  installing.value
+  installing.value && installingSource.value === "official"
     ? state.local
       ? "更新中…"
       : "安装中…"
@@ -75,7 +95,7 @@ const installUpdateLabel = computed(() =>
 );
 /** 安装/更新按钮文案：按需安装或更新（镜像源） */
 const installUpdateMirrorLabel = computed(() =>
-  installing.value
+  installing.value && installingSource.value === "mirror"
     ? state.local
       ? "更新中…"
       : "安装中…"
@@ -127,7 +147,12 @@ function openExternal(url: string) {
   void openUrl(url);
 }
 
+/** 重新检查按钮 icon 的旋转动画进行中（转两圈后由 animationend 清除） */
+const checking = ref(false);
+
 function recheckEnvironment() {
+  if (checking.value) return;
+  checking.value = true;
   void Promise.allSettled([checkEnv(), checkVersion()]);
 }
 
@@ -223,7 +248,14 @@ watch(output, async () => {
               :disabled="busy"
               @click="recheckEnvironment"
             >
-              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <svg
+                class="h-4 w-4"
+                :class="{ 'animate-spin-twice': checking }"
+                @animationend="checking = false"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
                 <path
                   d="M20 6v5h-5M4 18v-5h5"
                   stroke="currentColor"
@@ -292,7 +324,7 @@ watch(output, async () => {
               type="button"
               class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               :disabled="installUpdateDisabled"
-              @click="installDsh"
+              @click="startInstall('official')"
             >
               {{ installUpdateLabel }}
             </button>
@@ -300,7 +332,7 @@ watch(output, async () => {
               type="button"
               class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               :disabled="installUpdateDisabled"
-              @click="installDshMirror"
+              @click="startInstall('mirror')"
             >
               {{ installUpdateMirrorLabel }}
             </button>
@@ -376,3 +408,15 @@ watch(output, async () => {
     </dialog>
   </div>
 </template>
+
+<style scoped>
+.animate-spin-twice {
+  animation: spin-twice 1s linear 1;
+}
+
+@keyframes spin-twice {
+  to {
+    transform: rotate(720deg);
+  }
+}
+</style>
