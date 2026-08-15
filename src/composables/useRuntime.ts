@@ -93,6 +93,7 @@ function truncateTail(s: string, limit: number) {
 export const checkEnv = () => invoke("check_env");
 export const checkVersion = () => invoke("check_version");
 export const installDsh = () => invoke("install_dsh");
+export const installDshMirror = () => invoke("install_dsh_mirror");
 export const startServer = () => invoke("start_server");
 export const exitApp = () => invoke("exit_app");
 export const hideToTray = () => invoke("hide_to_tray");

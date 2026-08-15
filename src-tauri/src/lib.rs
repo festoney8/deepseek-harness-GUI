@@ -37,6 +37,11 @@ fn install_dsh(sup: tauri::State<'_, Supervisor>) {
 }
 
 #[tauri::command]
+fn install_dsh_mirror(sup: tauri::State<'_, Supervisor>) {
+    sup.install_mirror();
+}
+
+#[tauri::command]
 fn start_server(sup: tauri::State<'_, Supervisor>) {
     sup.start();
 }
@@ -175,6 +180,7 @@ pub fn run() {
             check_env,
             check_version,
             install_dsh,
+            install_dsh_mirror,
             start_server,
             exit_app,
             hide_to_tray

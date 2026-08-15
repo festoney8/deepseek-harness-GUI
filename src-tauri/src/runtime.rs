@@ -59,6 +59,7 @@ enum Intent {
     CheckEnv,
     CheckVersion,
     Install,
+    InstallMirror,
     Start,
 }
 
@@ -120,6 +121,10 @@ impl Supervisor {
 
     pub fn install(&self) {
         self.send(Intent::Install);
+    }
+
+    pub fn install_mirror(&self) {
+        self.send(Intent::InstallMirror);
     }
 
     pub fn start(&self) {
@@ -211,53 +216,12 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
             Ok(Intent::Install) => {
-                log::info!("installing dsh globally via npm");
-                emit_state(
-                    &app,
-                    &shared,
-                    Phase::Installing,
-                    None,
-                    "正在安装/更新 DeepSeek Harness…",
-                    None,
-                );
-                let ok = match run_cmd_streamed(
-                    &app,
-                    &shared,
-                    &session,
-                    CommandSpec {
-                        display: "npm install --verbose -g @deepseek-ai/dsh",
-                        program: "cmd",
-                        args: &[
-                            "/C",
-                            "npm",
-                            "install",
-                            "--verbose",
-                            "-g",
-                            "@deepseek-ai/dsh",
-                        ],
-                    },
-                ) {
-                    Ok((status, _)) => status.success(),
-                    Err(error) => {
-                        log::error!("dsh install command failed: {error}");
-                        false
-                    }
-                };
-                if ok {
-                    log::info!("dsh installed successfully");
-                    check_version(&app, &shared, &session);
-                    emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
-                } else {
-                    log::error!("dsh install failed");
-                    emit_state(
-                        &app,
-                        &shared,
-                        Phase::Failed,
-                        None,
-                        "安装失败，请查看终端输出。",
-                        None,
-                    );
-                }
+                log::info!("intent: install dsh (official registry)");
+                install_dsh(&app, &shared, &session, "https://registry.npmjs.org");
+            }
+            Ok(Intent::InstallMirror) => {
+                log::info!("intent: install dsh (mirror registry)");
+                install_dsh(&app, &shared, &session, "https://registry.npmmirror.com");
             }
             Ok(Intent::Start) => {
                 let Some(port) = find_port() else {
@@ -427,6 +391,61 @@ struct CommandSpec<'a> {
     display: &'a str,
     program: &'a str,
     args: &'a [&'a str],
+}
+
+/// 以指定 registry 全局安装/更新 dsh，成功则刷新版本信息
+fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registry: &'static str) {
+    log::info!("installing dsh globally via npm (registry={registry})");
+    emit_state(
+        app,
+        shared,
+        Phase::Installing,
+        None,
+        "正在安装/更新 DeepSeek Harness…",
+        None,
+    );
+    let display = format!("npm install --verbose -g @deepseek-ai/dsh --registry={registry}");
+    let args: [&str; 8] = [
+        "/C",
+        "npm",
+        "install",
+        "--verbose",
+        "-g",
+        "@deepseek-ai/dsh",
+        "--registry",
+        registry,
+    ];
+    let ok = match run_cmd_streamed(
+        app,
+        shared,
+        session,
+        CommandSpec {
+            display: &display,
+            program: "cmd",
+            args: &args,
+        },
+    ) {
+        Ok((status, _)) => status.success(),
+        Err(error) => {
+            log::error!("dsh install command failed: {error}");
+            false
+        }
+    };
+    if ok {
+        log::info!("dsh installed successfully");
+        check_version(app, shared, session);
+        emit_state(app, shared, Phase::Idle, None, "就绪", None);
+    } else {
+        log::error!("dsh install failed");
+        emit_state(
+            app,
+            shared,
+            Phase::Failed,
+            None,
+            "安装失败，请查看终端输出。",
+            None,
+        );
+    }
 }
 
 fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {

@@ -5,7 +5,6 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import IconLink from "~icons/line-md/link";
 import IconWeb from "~icons/streamline-plump/web";
 import IconTerminal from "~icons/mingcute/terminal-fill";
-import IconInstall from "~icons/clarity/install-line";
 import IconDebugStart from "~icons/codicon/debug-start";
 import logoUrl from "../assets/logo.png";
 import type { RuntimeSnapshot } from "../composables/useRuntime";
@@ -13,6 +12,7 @@ import {
   checkEnv,
   checkVersion,
   installDsh,
+  installDshMirror,
   output,
   startServer,
 } from "../composables/useRuntime";
@@ -75,15 +75,25 @@ const installUpdateDisabled = computed(() => {
   }
   return !(state.local === null || state.local !== state.remote);
 });
-/** 安装/更新按钮文案：按需安装或更新 */
+/** 安装/更新按钮文案：按需安装或更新（官方源） */
 const installUpdateLabel = computed(() =>
   installing.value
     ? state.local
       ? "更新中…"
       : "安装中…"
     : state.local === null
-      ? "安装 DSH"
-      : "更新 DSH",
+      ? "安装 DSH (官方源)"
+      : "更新 DSH (官方源)",
+);
+/** 安装/更新按钮文案：按需安装或更新（镜像源） */
+const installUpdateMirrorLabel = computed(() =>
+  installing.value
+    ? state.local
+      ? "更新中…"
+      : "安装中…"
+    : state.local === null
+      ? "安装 DSH (镜像源)"
+      : "更新 DSH (镜像源)",
 );
 const startBlockReason = computed(() => {
   if (state.node == null || state.npm == null) return "请先安装 Node.js 环境";
@@ -189,19 +199,19 @@ watch(output, async () => {
 
         <div class="min-w-0">
           <h1
-            class="text-4xl font-black text-[#315d9c] dark:text-blue-200 lg:text-5xl"
+            class="text-4xl font-black text-[#315d9c] lg:text-5xl dark:text-blue-200"
           >
             DeepSeek Harness GUI
           </h1>
           <nav class="mt-5 ml-1 flex items-center gap-4" aria-label="项目链接">
             <button
               type="button"
-              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-200 dark:hover:text-blue-100"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none dark:text-blue-200 dark:hover:text-blue-100"
               @click="openExternal(LINKS.marketplace)"
             >
               插件市场
               <IconLink
-                class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
               />
             </button>
             <span
@@ -210,12 +220,12 @@ watch(output, async () => {
             ></span>
             <button
               type="button"
-              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-200 dark:hover:text-blue-100"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none dark:text-blue-200 dark:hover:text-blue-100"
               @click="openExternal(LINKS.github)"
             >
               项目 GitHub
               <IconLink
-                class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
               />
             </button>
             <span
@@ -224,7 +234,7 @@ watch(output, async () => {
             ></span>
             <button
               type="button"
-              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold transition focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none"
               :class="
                 versionOutdated
                   ? 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300'
@@ -234,7 +244,7 @@ watch(output, async () => {
             >
               最新 {{ latestVersion }}
               <IconLink
-                class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
               />
             </button>
             <span
@@ -249,13 +259,13 @@ watch(output, async () => {
       </header>
 
       <section
-        class="grid overflow-hidden rounded-3xl border border-blue-200 bg-white/95 shadow-[0_24px_70px_-35px_rgba(37,99,235,0.5)] dark:border-blue-900 dark:bg-slate-900/95 dark:shadow-[0_24px_70px_-35px_rgba(2,6,23,0.9)] md:grid-cols-[1.05fr_0.95fr]"
+        class="grid overflow-hidden rounded-3xl border border-blue-200 bg-white/95 shadow-[0_24px_70px_-35px_rgba(37,99,235,0.5)] md:grid-cols-[1.05fr_0.95fr] dark:border-blue-900 dark:bg-slate-900/95 dark:shadow-[0_24px_70px_-35px_rgba(2,6,23,0.9)]"
       >
         <div class="p-8 lg:p-10">
           <div class="flex items-center justify-between gap-4">
             <div>
               <p
-                class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500 dark:text-blue-200"
+                class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase dark:text-blue-200"
               >
                 Environment
               </p>
@@ -323,18 +333,18 @@ watch(output, async () => {
         </div>
 
         <div
-          class="relative border-t border-dashed border-blue-300 bg-blue-50/35 p-8 md:border-l md:border-t-0 lg:p-10 dark:border-blue-800 dark:bg-blue-950/40"
+          class="relative border-t border-dashed border-blue-300 bg-blue-50/35 p-8 md:border-t-0 md:border-l lg:p-10 dark:border-blue-800 dark:bg-blue-950/40"
         >
           <span
-            class="absolute -left-1 top-8 hidden h-2 w-2 rounded-full bg-blue-400 md:block"
+            class="absolute top-8 -left-1 hidden h-2 w-2 rounded-full bg-blue-400 md:block"
             aria-hidden="true"
           ></span>
           <span
-            class="absolute -left-1 bottom-8 hidden h-2 w-2 rounded-full bg-blue-400 md:block"
+            class="absolute bottom-8 -left-1 hidden h-2 w-2 rounded-full bg-blue-400 md:block"
             aria-hidden="true"
           ></span>
 
-          <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500">
+          <p class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase">
             Actions
           </p>
           <h2
@@ -346,7 +356,7 @@ watch(output, async () => {
           <div class="mt-7 grid grid-cols-2 gap-3">
             <button
               type="button"
-              class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
+              class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               @click="openExternal(LINKS.nodejs)"
             >
               <IconWeb class="h-4.5 w-4.5" />
@@ -355,25 +365,24 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
+              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               :disabled="installUpdateDisabled"
               @click="installDsh"
             >
-              <IconInstall class="h-4.5 w-4.5" />
               {{ installUpdateLabel }}
             </button>
             <button
               type="button"
-              disabled
-              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
+              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
+              :disabled="installUpdateDisabled"
+              @click="installDshMirror"
             >
-              <IconInstall class="h-4.5 w-4.5" />
-              备用按钮
+              {{ installUpdateMirrorLabel }}
             </button>
 
             <button
               type="button"
-              class="col-span-2 mt-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60 dark:shadow-blue-950 dark:hover:shadow-blue-950 dark:disabled:bg-slate-700/60 dark:disabled:text-slate-400/70 dark:disabled:hover:bg-slate-700/60"
+              class="col-span-2 row-start-3 mt-2 inline-flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60 dark:shadow-blue-950 dark:hover:shadow-blue-950 dark:disabled:bg-slate-700/60 dark:disabled:text-slate-400/70 dark:disabled:hover:bg-slate-700/60"
               :disabled="startDisabled"
               :aria-busy="starting"
               @click="startServer"
@@ -406,7 +415,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
+              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               @click="showOutputDialog"
             >
               <IconTerminal class="h-4.5 w-4.5" />
@@ -438,7 +447,7 @@ watch(output, async () => {
           </div>
           <button
             type="button"
-            class="cursor-pointer rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            class="cursor-pointer rounded-lg p-2 text-slate-400 transition hover:bg-slate-800 hover:text-white focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
             title="关闭"
             aria-label="关闭终端输出"
             @click="closeOutputDialog"
@@ -461,7 +470,7 @@ watch(output, async () => {
 
         <pre
           ref="logRef"
-          class="min-h-0 flex-1 select-text overflow-auto whitespace-pre-wrap wrap-break-word bg-slate-950 p-6 font-mono text leading-6 text-slate-300"
+          class="text min-h-0 flex-1 overflow-auto bg-slate-950 p-6 font-mono leading-6 wrap-break-word whitespace-pre-wrap text-slate-300 select-text"
           >{{ output || "暂无终端输出。" }}</pre>
 
         <footer
