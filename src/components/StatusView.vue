@@ -15,6 +15,7 @@ import {
 const LINKS = {
   marketplace: "https://dshfind.com/zh",
   github: "https://github.com/festoney8/deepseek-harness-GUI",
+  releases: "https://github.com/festoney8/deepseek-harness-GUI/releases",
   nodejs: "https://nodejs.org/zh-cn/download",
 } as const;
 
@@ -47,6 +48,13 @@ async function fetchLatestVersion() {
 }
 void fetchLatestVersion();
 
+/** 本工具 GitHub 最新版与当前版不一致（有新版本可升级），最新版号高亮 */
+const versionOutdated = computed(() => {
+  return (
+    latestVersion.value.replace(/^v/, "") !== appVersion.value.replace(/^v/, "")
+  );
+});
+
 const installing = computed(() => state.phase === "installing");
 const starting = computed(() => state.phase === "starting");
 const busy = computed(() => installing.value || starting.value);
@@ -55,20 +63,22 @@ const environmentReady = computed(() => Boolean(state.node && state.npm));
 const versionsReady = computed(
   () => state.versionChecked && !state.versionError,
 );
-const installDisabled = computed(
-  () =>
-    busy.value ||
-    !environmentReady.value ||
-    !versionsReady.value ||
-    state.local !== null,
-);
-const updateDisabled = computed(
-  () =>
-    busy.value ||
-    !environmentReady.value ||
-    !versionsReady.value ||
-    state.local === null ||
-    state.local === state.remote,
+/** 合并后的安装/更新按钮：环境就绪且本地与远端版本不同才可用 */
+const installUpdateDisabled = computed(() => {
+  if (busy.value || !environmentReady.value || !versionsReady.value) {
+    return true;
+  }
+  return !(state.local === null || state.local !== state.remote);
+});
+/** 安装/更新按钮文案：按需安装或更新 */
+const installUpdateLabel = computed(() =>
+  installing.value
+    ? state.local
+      ? "更新中…"
+      : "安装中…"
+    : state.local === null
+      ? "安装 DSH"
+      : "更新 DSH",
 );
 const startBlockReason = computed(() => {
   if (state.node == null || state.npm == null) return "请先安装 Node.js 环境";
@@ -100,7 +110,9 @@ const statusRows = computed(() => [
     label: "最新 DSH 版本",
     value: state.remote ?? (state.versionError ? "获取失败" : "检查中…"),
     valueClass: state.remote
-      ? "text-slate-900 dark:text-slate-100"
+      ? state.local !== null && state.remote !== state.local
+        ? "text-amber-600 dark:text-amber-400"
+        : "text-slate-900 dark:text-slate-100"
       : state.versionError
         ? "text-rose-600 dark:text-rose-400"
         : "text-amber-600 dark:text-amber-400",
@@ -172,14 +184,14 @@ watch(output, async () => {
 
         <div class="min-w-0">
           <h1
-            class="text-4xl font-black text-[#315d9c] dark:text-blue-300 lg:text-5xl"
+            class="text-4xl font-black text-[#315d9c] dark:text-blue-200 lg:text-5xl"
           >
             DeepSeek Harness GUI
           </h1>
           <nav class="mt-5 ml-1 flex items-center gap-4" aria-label="项目链接">
             <button
               type="button"
-              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-300 dark:hover:text-blue-200"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-200 dark:hover:text-blue-100"
               @click="openExternal(LINKS.marketplace)"
             >
               插件市场
@@ -210,7 +222,7 @@ watch(output, async () => {
             ></span>
             <button
               type="button"
-              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-300 dark:hover:text-blue-200"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-200 dark:hover:text-blue-100"
               @click="openExternal(LINKS.github)"
             >
               项目 GitHub
@@ -239,14 +251,43 @@ watch(output, async () => {
               class="h-5 w-px bg-blue-200 dark:bg-blue-900"
               aria-hidden="true"
             ></span>
-            <span class="text-base font-bold text-[#315d9c] dark:text-blue-300"
-              >最新 {{ latestVersion }}</span
+            <button
+              type="button"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
+              :class="
+                versionOutdated
+                  ? 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300'
+                  : 'text-[#315d9c] hover:text-blue-500 dark:text-blue-200 dark:hover:text-blue-100'
+              "
+              @click="openExternal(LINKS.releases)"
             >
+              最新 {{ latestVersion }}
+              <svg
+                class="h-4 w-4 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M14 5h5v5M19 5l-8 8"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+              </svg>
+            </button>
             <span
               class="h-5 w-px bg-blue-200 dark:bg-blue-900"
               aria-hidden="true"
             ></span>
-            <span class="text-base font-bold text-[#315d9c] dark:text-blue-300"
+            <span class="text-base font-bold text-[#315d9c] dark:text-blue-200"
               >当前 v{{ appVersion }}</span
             >
           </nav>
@@ -260,7 +301,7 @@ watch(output, async () => {
           <div class="flex items-center justify-between gap-4">
             <div>
               <p
-                class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500 dark:text-blue-300"
+                class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500 dark:text-blue-200"
               >
                 Environment
               </p>
@@ -272,7 +313,7 @@ watch(output, async () => {
             </div>
             <button
               type="button"
-              class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950"
+              class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-200 dark:hover:bg-blue-950"
               :disabled="busy"
               @click="recheckEnvironment"
             >
@@ -351,7 +392,7 @@ watch(output, async () => {
           <div class="mt-7 grid grid-cols-2 gap-3">
             <button
               type="button"
-              class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:border-blue-700"
+              class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               @click="openExternal(LINKS.nodejs)"
             >
               <svg
@@ -373,19 +414,18 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:border-blue-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
-              :disabled="installDisabled"
+              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
+              :disabled="installUpdateDisabled"
               @click="installDsh"
             >
-              {{ installing && !state.local ? "安装中…" : "安装 DSH" }}
+              {{ installUpdateLabel }}
             </button>
             <button
               type="button"
-              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:border-blue-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
-              :disabled="updateDisabled"
-              @click="installDsh"
+              disabled
+              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
             >
-              {{ installing && state.local ? "更新中…" : "更新 DSH" }}
+              备用按钮
             </button>
 
             <button
@@ -433,7 +473,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               @click="showOutputDialog"
             >
               <svg
