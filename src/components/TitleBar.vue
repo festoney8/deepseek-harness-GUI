@@ -21,7 +21,7 @@ onUnmounted(() => unlisten?.());
 
 <template>
   <header
-    class="flex h-8 shrink-0 items-stretch border-b border-slate-200 bg-slate-50"
+    class="flex h-8 shrink-0 items-stretch border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
     data-tauri-drag-region
   >
     <div class="flex flex-1 items-center gap-2 px-3" data-tauri-drag-region>
@@ -31,12 +31,12 @@ onUnmounted(() => unlisten?.());
         class="h-5 w-5 shrink-0 rounded"
         draggable="false"
       />
-      <span class="text-xs font-medium text-slate-600"
+      <span class="text-xs font-medium text-slate-600 dark:text-slate-300"
         >DeepSeek Harness GUI</span
       >
     </div>
     <button
-      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200"
+      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
       title="最小化"
       @click="win.minimize()"
     >
@@ -45,7 +45,7 @@ onUnmounted(() => unlisten?.());
       </svg>
     </button>
     <button
-      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200"
+      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
       :title="maximized ? '还原' : '最大化'"
       @click="win.toggleMaximize()"
     >
@@ -75,7 +75,7 @@ onUnmounted(() => unlisten?.());
       </svg>
     </button>
     <button
-      class="flex w-11 items-center justify-center text-slate-500 hover:bg-red-500 hover:text-white"
+      class="flex w-11 items-center justify-center text-slate-500 hover:bg-red-500 hover:text-white dark:text-slate-400 dark:hover:bg-red-500 dark:hover:text-white"
       title="关闭"
       @click="win.close()"
     >

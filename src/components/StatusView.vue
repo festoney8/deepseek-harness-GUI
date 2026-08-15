@@ -83,23 +83,27 @@ const statusRows = computed(() => [
   {
     label: "node 版本（推荐 v24 及以上）",
     value: state.node ?? "未检测到",
-    valueClass: state.node ? "text-slate-900" : "text-rose-600",
+    valueClass: state.node
+      ? "text-slate-900 dark:text-slate-100"
+      : "text-rose-600 dark:text-rose-400",
     dotClass: state.node ? "bg-emerald-500" : "bg-rose-500",
   },
   {
     label: "npm 版本",
     value: state.npm ?? "未检测到",
-    valueClass: state.npm ? "text-slate-900" : "text-rose-600",
+    valueClass: state.npm
+      ? "text-slate-900 dark:text-slate-100"
+      : "text-rose-600 dark:text-rose-400",
     dotClass: state.npm ? "bg-emerald-500" : "bg-rose-500",
   },
   {
     label: "最新 DSH 版本",
     value: state.remote ?? (state.versionError ? "获取失败" : "检查中…"),
     valueClass: state.remote
-      ? "text-slate-900"
+      ? "text-slate-900 dark:text-slate-100"
       : state.versionError
-        ? "text-rose-600"
-        : "text-amber-600",
+        ? "text-rose-600 dark:text-rose-400"
+        : "text-amber-600 dark:text-amber-400",
     dotClass: state.remote
       ? "bg-emerald-500"
       : state.versionError
@@ -109,7 +113,9 @@ const statusRows = computed(() => [
   {
     label: "本地 DSH 版本",
     value: state.local ?? (state.versionChecked ? "未安装" : "检查中…"),
-    valueClass: state.local ? "text-slate-900" : "text-amber-600",
+    valueClass: state.local
+      ? "text-slate-900 dark:text-slate-100"
+      : "text-amber-600 dark:text-amber-400",
     dotClass: state.local ? "bg-emerald-500" : "bg-amber-400",
   },
 ]);
@@ -146,7 +152,7 @@ watch(output, async () => {
 
 <template>
   <div
-    class="h-full overflow-y-auto bg-[radial-gradient(circle_at_top,#eff6ff_0,#ffffff_42%,#f8fafc_100%)] px-8 py-8 text-slate-900"
+    class="h-full overflow-y-auto bg-[radial-gradient(circle_at_top,#eff6ff_0,#ffffff_42%,#f8fafc_100%)] px-8 py-8 text-slate-900 dark:bg-[radial-gradient(circle_at_top,#0f172a_0,#020617_42%,#0b1220_100%)] dark:text-slate-100"
   >
     <div
       class="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-10"
@@ -165,13 +171,15 @@ watch(output, async () => {
         </div>
 
         <div class="min-w-0">
-          <h1 class="text-4xl font-black text-[#315d9c] lg:text-5xl">
+          <h1
+            class="text-4xl font-black text-[#315d9c] dark:text-blue-300 lg:text-5xl"
+          >
             DeepSeek Harness GUI
           </h1>
           <nav class="mt-5 ml-1 flex items-center gap-4" aria-label="项目链接">
             <button
               type="button"
-              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-300 dark:hover:text-blue-200"
               @click="openExternal(LINKS.marketplace)"
             >
               插件市场
@@ -196,10 +204,13 @@ watch(output, async () => {
                 />
               </svg>
             </button>
-            <span class="h-5 w-px bg-blue-200" aria-hidden="true"></span>
+            <span
+              class="h-5 w-px bg-blue-200 dark:bg-blue-900"
+              aria-hidden="true"
+            ></span>
             <button
               type="button"
-              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4"
+              class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 dark:text-blue-300 dark:hover:text-blue-200"
               @click="openExternal(LINKS.github)"
             >
               项目 GitHub
@@ -224,12 +235,18 @@ watch(output, async () => {
                 />
               </svg>
             </button>
-            <span class="h-5 w-px bg-blue-200" aria-hidden="true"></span>
-            <span class="text-base font-bold text-[#315d9c]"
+            <span
+              class="h-5 w-px bg-blue-200 dark:bg-blue-900"
+              aria-hidden="true"
+            ></span>
+            <span class="text-base font-bold text-[#315d9c] dark:text-blue-300"
               >最新 {{ latestVersion }}</span
             >
-            <span class="h-5 w-px bg-blue-200" aria-hidden="true"></span>
-            <span class="text-base font-bold text-[#315d9c]"
+            <span
+              class="h-5 w-px bg-blue-200 dark:bg-blue-900"
+              aria-hidden="true"
+            ></span>
+            <span class="text-base font-bold text-[#315d9c] dark:text-blue-300"
               >当前 v{{ appVersion }}</span
             >
           </nav>
@@ -237,21 +254,25 @@ watch(output, async () => {
       </header>
 
       <section
-        class="grid overflow-hidden rounded-3xl border border-blue-200 bg-white/95 shadow-[0_24px_70px_-35px_rgba(37,99,235,0.5)] md:grid-cols-[1.05fr_0.95fr]"
+        class="grid overflow-hidden rounded-3xl border border-blue-200 bg-white/95 shadow-[0_24px_70px_-35px_rgba(37,99,235,0.5)] dark:border-blue-900 dark:bg-slate-900/95 dark:shadow-[0_24px_70px_-35px_rgba(2,6,23,0.9)] md:grid-cols-[1.05fr_0.95fr]"
       >
         <div class="p-8 lg:p-10">
           <div class="flex items-center justify-between gap-4">
             <div>
               <p
-                class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500"
+                class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500 dark:text-blue-300"
               >
                 Environment
               </p>
-              <h2 class="mt-1 text-xl font-black text-slate-800">环境检查</h2>
+              <h2
+                class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100"
+              >
+                环境检查
+              </h2>
             </div>
             <button
               type="button"
-              class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40"
+              class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-300 dark:hover:bg-blue-950"
               :disabled="busy"
               @click="recheckEnvironment"
             >
@@ -283,9 +304,11 @@ watch(output, async () => {
             <div
               v-for="row in statusRows"
               :key="row.label"
-              class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6 rounded-xl px-3 py-3 transition hover:bg-slate-50"
+              class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6 rounded-xl px-3 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
-              <dt class="flex items-center gap-3 font-semibold text-slate-600">
+              <dt
+                class="flex items-center gap-3 font-semibold text-slate-600 dark:text-slate-400"
+              >
                 <span
                   class="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
                   :class="row.dotClass"
@@ -305,7 +328,7 @@ watch(output, async () => {
         </div>
 
         <div
-          class="relative border-t border-dashed border-blue-300 bg-blue-50/35 p-8 md:border-l md:border-t-0 lg:p-10"
+          class="relative border-t border-dashed border-blue-300 bg-blue-50/35 p-8 md:border-l md:border-t-0 lg:p-10 dark:border-blue-800 dark:bg-blue-950/40"
         >
           <span
             class="absolute -left-1 top-8 hidden h-2 w-2 rounded-full bg-blue-400 md:block"
@@ -319,12 +342,16 @@ watch(output, async () => {
           <p class="text-xs font-bold uppercase tracking-[0.2em] text-blue-500">
             Actions
           </p>
-          <h2 class="mt-1 text-xl font-black text-slate-800">快捷操作</h2>
+          <h2
+            class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100"
+          >
+            快捷操作
+          </h2>
 
           <div class="mt-7 grid grid-cols-2 gap-3">
             <button
               type="button"
-              class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0"
+              class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:translate-y-0 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:border-blue-700"
               @click="openExternal(LINKS.nodejs)"
             >
               <svg
@@ -346,7 +373,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60"
+              class="col-start-1 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:border-blue-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               :disabled="installDisabled"
               @click="installDsh"
             >
@@ -354,7 +381,7 @@ watch(output, async () => {
             </button>
             <button
               type="button"
-              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60"
+              class="col-start-2 row-start-2 inline-flex min-h-12 cursor-pointer items-center justify-center rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-blue-800 dark:bg-slate-800 dark:text-blue-300 dark:hover:border-blue-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
               :disabled="updateDisabled"
               @click="installDsh"
             >
@@ -363,7 +390,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-span-2 mt-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60"
+              class="col-span-2 mt-2 row-start-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60 dark:shadow-blue-950 dark:hover:shadow-blue-950 dark:disabled:bg-slate-700/60 dark:disabled:text-slate-400/70 dark:disabled:hover:bg-slate-700/60"
               :disabled="startDisabled"
               :aria-busy="starting"
               @click="startServer"
@@ -406,7 +433,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+              class="col-start-2 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 font-bold text-slate-900 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
               @click="showOutputDialog"
             >
               <svg

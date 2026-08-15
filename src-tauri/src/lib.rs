@@ -96,9 +96,7 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
                     }
                 }
             }
-            DownloadEvent::Finished {
-                url, path, success,
-            } => {
+            DownloadEvent::Finished { url, path, success } => {
                 log::info!("download finished: url={url}, path={path:?}, success={success}");
                 true
             }
@@ -145,6 +143,7 @@ pub fn run() {
     logs::init_logging();
     log::info!("starting deepseek-harness-gui");
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             log::info!("second instance detected, showing main window");
             show_main(app);

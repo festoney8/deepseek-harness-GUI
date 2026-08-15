@@ -10,6 +10,19 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
-    "dialog:default"
+    "dialog:default",
+    "fs:default",
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
+    },
+    {
+      "identifier": "fs:allow-watch",
+      "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
+    }
   ]
 }

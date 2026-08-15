@@ -14,6 +14,6 @@ const { port } = defineProps<{ port: number }>();
       microphone *;
       speaker-selection *;
     "
-    class="h-full w-full border-0 bg-white"
+    class="h-full w-full border-0 bg-white dark:bg-slate-900"
   />
 </template>

@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* Tailwind v4 默认 dark 是媒体查询，切换为 class 模式（html.dark） */
+@custom-variant dark (&:where(.dark, .dark *));
+
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+}
+
 html,
 body,
 #app {
@@ -12,4 +22,9 @@ body {
   background: #ffffff;
   font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
   user-select: none;
+}
+
+html.dark body {
+  color: #e2e8f0;
+  background: #0f172a;
 }
