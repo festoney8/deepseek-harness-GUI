@@ -2,6 +2,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::ExitStatus;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -32,6 +33,10 @@ struct SharedRuntime {
     snapshot: Mutex<Snapshot>,
     /// 当前日志会话（worker 创建后挂载，供 open_log_dir 取目录）
     session: Mutex<Option<Arc<Session>>>,
+    /// 环境检查轮次：每次触发自增，任务写回前校验，旧轮次结果丢弃
+    env_gen: AtomicU64,
+    /// 版本检查轮次：同上
+    version_gen: AtomicU64,
 }
 
 type Shared = Arc<SharedRuntime>;
@@ -52,6 +57,8 @@ impl Supervisor {
             shared: Arc::new(SharedRuntime {
                 snapshot: Mutex::new(Snapshot::default()),
                 session: Mutex::new(None),
+                env_gen: AtomicU64::new(0),
+                version_gen: AtomicU64::new(0),
             }),
         }
     }
@@ -135,6 +142,39 @@ fn emit_fail(app: &AppHandle, shared: &SharedRuntime, port: Option<u16>, detail:
     emit_state(app, shared, Phase::Failed, port, detail, None);
 }
 
+/// 线程内更新快照并推送：lock → f(&mut Snapshot) → clone → emit runtime-state。
+fn update_snapshot(app: &AppHandle, shared: &SharedRuntime, f: impl FnOnce(&mut Snapshot)) {
+    let mut state = shared
+        .snapshot
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    f(&mut state);
+    let snapshot = state.clone();
+    drop(state);
+    let _ = app.emit(EVENT_RUNTIME_STATE, snapshot);
+}
+
+/// 发起单个检查任务：spawn_blocking 执行同步检查（blocking 池，不占 worker），
+/// catch_unwind 兜底 panic（按失败处理），写回前校验轮次（旧轮结果丢弃）。
+fn spawn_check(
+    app: AppHandle,
+    shared: Shared,
+    session: Arc<Session>,
+    gen: u64,
+    gen_of: fn(&SharedRuntime) -> &AtomicU64,
+    run: impl FnOnce(&Arc<Session>) -> Option<String> + Send + 'static,
+    apply: impl Fn(&mut Snapshot, Option<String>) + Send + 'static,
+) {
+    tauri::async_runtime::spawn_blocking(move || {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run(&session)))
+            .ok()
+            .flatten();
+        if gen_of(&shared).load(Ordering::SeqCst) == gen {
+            update_snapshot(&app, &shared, |snapshot| apply(snapshot, result));
+        }
+    });
+}
+
 fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathBuf) {
     match logs::cleanup_old(&base, Duration::from_secs(7 * 86_400)) {
         Ok(removed) => log::debug!("cleaned up {removed} old log sessions"),
@@ -155,8 +195,8 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
 
     log::info!("supervisor worker started");
     // 启动即自动检查环境与版本，填充格子
-    check_env(&shared, &session);
-    check_version(&shared, &session);
+    check_env(&app, &shared, &session);
+    check_version(&app, &shared, &session);
     emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
 
     loop {
@@ -167,12 +207,12 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
             }
             Ok(Intent::CheckEnv) => {
                 log::debug!("intent: check env");
-                check_env(&shared, &session);
+                check_env(&app, &shared, &session);
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
             Ok(Intent::CheckVersion) => {
                 log::debug!("intent: check version");
-                check_version(&shared, &session);
+                check_version(&app, &shared, &session);
                 emit_state(&app, &shared, Phase::Idle, None, "就绪", None);
             }
             Ok(Intent::Install { mirror }) => {
@@ -347,7 +387,7 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
     };
     if ok {
         log::info!("dsh installed successfully");
-        check_version(shared, session);
+        check_version(app, shared, session);
         emit_state(app, shared, Phase::Idle, None, "就绪", None);
     } else {
         log::error!("dsh install failed");
@@ -355,30 +395,52 @@ fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registr
     }
 }
 
-fn check_env(shared: &Shared, session: &Arc<Session>) {
-    let node = stream_capture(
-        session,
-        CommandSpec {
-            display: "node -v",
-            program: "node",
-            args: &["-v"],
+fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
+    let gen = shared.env_gen.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+    update_snapshot(app, shared, |snapshot| {
+        snapshot.node = None;
+        snapshot.npm = None;
+    });
+    spawn_check(
+        app.clone(),
+        shared.clone(),
+        session.clone(),
+        gen,
+        |s| &s.env_gen,
+        |session| {
+            let version = stream_capture(
+                session,
+                CommandSpec {
+                    display: "node -v",
+                    program: "node",
+                    args: &["-v"],
+                },
+            );
+            log::info!("env check node: {version:?}");
+            version
         },
+        |snapshot, version| snapshot.node = version,
     );
-    let npm = stream_capture(
-        session,
-        CommandSpec {
-            display: "npm -v",
-            program: "npm",
-            args: &["-v"],
+    spawn_check(
+        app.clone(),
+        shared.clone(),
+        session.clone(),
+        gen,
+        |s| &s.env_gen,
+        |session| {
+            let version = stream_capture(
+                session,
+                CommandSpec {
+                    display: "npm -v",
+                    program: "npm",
+                    args: &["-v"],
+                },
+            );
+            log::info!("env check npm: {version:?}");
+            version
         },
+        |snapshot, version| snapshot.npm = version,
     );
-    log::info!("env check: node={node:?} npm={npm:?}");
-    let mut snapshot = shared
-        .snapshot
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
-    snapshot.node = node;
-    snapshot.npm = npm;
 }
 
 /// 版本查询 HTTP 请求超时：官方源与镜像源各一次，网络异常时快速失败
@@ -399,31 +461,70 @@ fn fetch_remote_version(registry: &str) -> Option<String> {
         .map(String::from)
 }
 
-fn check_version(shared: &Shared, session: &Arc<Session>) {
-    let remote = fetch_remote_version(REGISTRY_OFFICIAL);
-    let remote_mirror = fetch_remote_version(REGISTRY_MIRROR);
+fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
+    let gen = shared.version_gen.fetch_add(1, Ordering::SeqCst).wrapping_add(1);
+    update_snapshot(app, shared, |snapshot| {
+        snapshot.remote = None;
+        snapshot.remote_mirror = None;
+        snapshot.local = None;
+        snapshot.version_error = false;
+        snapshot.version_checked = false;
+    });
+    // 官方源：附带置位 version_error / version_checked（安装按钮与兜底文案只依赖官方源结果）
+    spawn_check(
+        app.clone(),
+        shared.clone(),
+        session.clone(),
+        gen,
+        |s| &s.version_gen,
+        |_session| {
+            let remote = fetch_remote_version(REGISTRY_OFFICIAL);
+            log::info!("dsh version check official: {remote:?}");
+            remote
+        },
+        |snapshot, version| {
+            let failed = version.is_none();
+            snapshot.remote = version;
+            snapshot.version_error = failed;
+            snapshot.version_checked = true;
+        },
+    );
+    spawn_check(
+        app.clone(),
+        shared.clone(),
+        session.clone(),
+        gen,
+        |s| &s.version_gen,
+        |_session| {
+            let remote = fetch_remote_version(REGISTRY_MIRROR);
+            log::info!("dsh version check mirror: {remote:?}");
+            remote
+        },
+        |snapshot, version| snapshot.remote_mirror = version,
+    );
     // 本地检测改用 `dsh -V`：安装不完整时该命令报错而非输出版本号，
     // 因此 local 能同时反映"已安装"与"安装完整"两个状态。
-    let local = stream_capture(
-        session,
-        CommandSpec {
-            display: "dsh -V",
-            program: "dsh",
-            args: &["-V"],
+    spawn_check(
+        app.clone(),
+        shared.clone(),
+        session.clone(),
+        gen,
+        |s| &s.version_gen,
+        |session| {
+            let local = stream_capture(
+                session,
+                CommandSpec {
+                    display: "dsh -V",
+                    program: "dsh",
+                    args: &["-V"],
+                },
+            )
+            .and_then(|out| parse_local_version(&out));
+            log::info!("dsh local version: {local:?}");
+            local
         },
-    )
-    .and_then(|out| parse_local_version(&out));
-    let version_error = remote.is_none();
-    log::info!("dsh version check: remote={remote:?} remoteMirror={remote_mirror:?} local={local:?}");
-    let mut snapshot = shared
-        .snapshot
-        .lock()
-        .unwrap_or_else(|error| error.into_inner());
-    snapshot.remote = remote;
-    snapshot.remote_mirror = remote_mirror;
-    snapshot.local = local;
-    snapshot.version_error = version_error;
-    snapshot.version_checked = true;
+        |snapshot, version| snapshot.local = version,
+    );
 }
 
 fn stream_capture(session: &Arc<Session>, command: CommandSpec<'_>) -> Option<String> {
