@@ -1,14 +1,6 @@
 import { computed, ref, watch } from "vue";
-import {
-  BaseDirectory,
-  exists,
-  readTextFile,
-  watch as watchFile,
-} from "@tauri-apps/plugin-fs";
-import {
-  parseThemePreference,
-  type ThemePreference,
-} from "../utils/parseThemePreference";
+import { BaseDirectory, exists, readTextFile, watch as watchFile } from "@tauri-apps/plugin-fs";
+import { parseThemePreference, type ThemePreference } from "../utils/parseThemePreference";
 
 export type ResolvedTheme = "light" | "dark";
 
@@ -21,11 +13,7 @@ const preference = ref<ThemePreference>("system");
 const systemDark = ref(false);
 
 export const theme = computed<ResolvedTheme>(() =>
-  preference.value === "system"
-    ? systemDark.value
-      ? "dark"
-      : "light"
-    : preference.value,
+  preference.value === "system" ? (systemDark.value ? "dark" : "light") : preference.value,
 );
 
 watch(
@@ -99,9 +87,7 @@ async function tick() {
 
 async function applyFileTheme() {
   try {
-    preference.value = parseThemePreference(
-      await readTextFile(SETTINGS_REL, { baseDir: BaseDirectory.Home }),
-    );
+    preference.value = parseThemePreference(await readTextFile(SETTINGS_REL, { baseDir: BaseDirectory.Home }));
   } catch {
     // 文件写入中途读取失败：保留上次值，等下一次事件
   }

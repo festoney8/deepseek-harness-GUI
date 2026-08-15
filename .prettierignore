@@ -1,3 +1,7 @@
 # Ignore artifacts:
 build
 coverage
+
+# Project files:
+.agents
+src-tauri/target

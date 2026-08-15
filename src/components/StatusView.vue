@@ -8,14 +8,7 @@ import IconTerminal from "~icons/mingcute/terminal-fill";
 import IconDebugStart from "~icons/codicon/debug-start";
 import logoUrl from "../assets/logo.png";
 import type { RuntimeSnapshot } from "../composables/useRuntime";
-import {
-  checkEnv,
-  checkVersion,
-  installDsh,
-  installDshMirror,
-  output,
-  startServer,
-} from "../composables/useRuntime";
+import { checkEnv, checkVersion, installDsh, installDshMirror, output, startServer } from "../composables/useRuntime";
 
 const LINKS = {
   marketplace: "https://dshfind.com/zh",
@@ -33,8 +26,7 @@ void getVersion().then((v) => {
   appVersion.value = v;
 });
 
-const LATEST_RELEASE_API =
-  "https://api.github.com/repos/festoney8/deepseek-harness-GUI/releases/latest" as const;
+const LATEST_RELEASE_API = "https://api.github.com/repos/festoney8/deepseek-harness-GUI/releases/latest" as const;
 /** GitHub 最新 release 版本号（失败时显示“未知”） */
 const latestVersion = ref("检查中");
 async function fetchLatestVersion() {
@@ -55,9 +47,7 @@ void fetchLatestVersion();
 
 /** 本工具 GitHub 最新版与当前版不一致（有新版本可升级），最新版号高亮 */
 const versionOutdated = computed(() => {
-  return (
-    latestVersion.value.replace(/^v/, "") !== appVersion.value.replace(/^v/, "")
-  );
+  return latestVersion.value.replace(/^v/, "") !== appVersion.value.replace(/^v/, "");
 });
 
 const installing = computed(() => state.phase === "installing");
@@ -65,9 +55,7 @@ const starting = computed(() => state.phase === "starting");
 const busy = computed(() => installing.value || starting.value);
 const environmentReady = computed(() => Boolean(state.node && state.npm));
 /** 远端与本地版本均已成功检测，安装/更新按钮才允许操作 */
-const versionsReady = computed(
-  () => state.versionChecked && !state.versionError,
-);
+const versionsReady = computed(() => state.versionChecked && !state.versionError);
 /** 合并后的安装/更新按钮：环境就绪且本地与远端版本不同才可用 */
 const installUpdateDisabled = computed(() => {
   if (busy.value || !environmentReady.value || !versionsReady.value) {
@@ -101,24 +89,18 @@ const startBlockReason = computed(() => {
   if (state.local !== state.remote) return "请先更新 DeepSeek Harness";
   return "";
 });
-const startDisabled = computed(
-  () => busy.value || Boolean(startBlockReason.value),
-);
+const startDisabled = computed(() => busy.value || Boolean(startBlockReason.value));
 const statusRows = computed(() => [
   {
     label: "node 版本（推荐 v24 及以上）",
     value: state.node ?? "未检测到",
-    valueClass: state.node
-      ? "text-slate-900 dark:text-slate-100"
-      : "text-rose-600 dark:text-rose-400",
+    valueClass: state.node ? "text-slate-900 dark:text-slate-100" : "text-rose-600 dark:text-rose-400",
     dotClass: state.node ? "bg-emerald-500" : "bg-rose-500",
   },
   {
     label: "npm 版本",
     value: state.npm ?? "未检测到",
-    valueClass: state.npm
-      ? "text-slate-900 dark:text-slate-100"
-      : "text-rose-600 dark:text-rose-400",
+    valueClass: state.npm ? "text-slate-900 dark:text-slate-100" : "text-rose-600 dark:text-rose-400",
     dotClass: state.npm ? "bg-emerald-500" : "bg-rose-500",
   },
   {
@@ -131,18 +113,12 @@ const statusRows = computed(() => [
       : state.versionError
         ? "text-rose-600 dark:text-rose-400"
         : "text-amber-600 dark:text-amber-400",
-    dotClass: state.remote
-      ? "bg-emerald-500"
-      : state.versionError
-        ? "bg-rose-500"
-        : "bg-amber-400",
+    dotClass: state.remote ? "bg-emerald-500" : state.versionError ? "bg-rose-500" : "bg-amber-400",
   },
   {
     label: "本地 DSH 版本",
     value: state.local ?? (state.versionChecked ? "未安装" : "检查中…"),
-    valueClass: state.local
-      ? "text-slate-900 dark:text-slate-100"
-      : "text-amber-600 dark:text-amber-400",
+    valueClass: state.local ? "text-slate-900 dark:text-slate-100" : "text-amber-600 dark:text-amber-400",
     dotClass: state.local ? "bg-emerald-500" : "bg-amber-400",
   },
 ]);
@@ -181,15 +157,10 @@ watch(output, async () => {
   <div
     class="h-full overflow-y-auto bg-[radial-gradient(circle_at_top,#eff6ff_0,#ffffff_42%,#f8fafc_100%)] px-8 py-8 text-slate-900 dark:bg-[radial-gradient(circle_at_top,#0f172a_0,#020617_42%,#0b1220_100%)] dark:text-slate-100"
   >
-    <div
-      class="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-10"
-    >
+    <div class="mx-auto flex min-h-full w-full max-w-5xl flex-col justify-center gap-10">
       <header class="flex items-center justify-center gap-8">
         <div class="relative shrink-0">
-          <div
-            class="absolute inset-4 rounded-full bg-blue-400/20 blur-2xl"
-            aria-hidden="true"
-          ></div>
+          <div class="absolute inset-4 rounded-full bg-blue-400/20 blur-2xl" aria-hidden="true"></div>
           <img
             :src="logoUrl"
             alt="DeepSeek Harness GUI logo"
@@ -198,11 +169,7 @@ watch(output, async () => {
         </div>
 
         <div class="min-w-0">
-          <h1
-            class="text-4xl font-black text-[#315d9c] lg:text-5xl dark:text-blue-200"
-          >
-            DeepSeek Harness GUI
-          </h1>
+          <h1 class="text-4xl font-black text-[#315d9c] lg:text-5xl dark:text-blue-200">DeepSeek Harness GUI</h1>
           <nav class="mt-5 ml-1 flex items-center gap-4" aria-label="项目链接">
             <button
               type="button"
@@ -210,28 +177,18 @@ watch(output, async () => {
               @click="openExternal(LINKS.marketplace)"
             >
               插件市场
-              <IconLink
-                class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-              />
+              <IconLink class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </button>
-            <span
-              class="h-5 w-px bg-blue-200 dark:bg-blue-900"
-              aria-hidden="true"
-            ></span>
+            <span class="h-5 w-px bg-blue-200 dark:bg-blue-900" aria-hidden="true"></span>
             <button
               type="button"
               class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none dark:text-blue-200 dark:hover:text-blue-100"
               @click="openExternal(LINKS.github)"
             >
               项目 GitHub
-              <IconLink
-                class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-              />
+              <IconLink class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </button>
-            <span
-              class="h-5 w-px bg-blue-200 dark:bg-blue-900"
-              aria-hidden="true"
-            ></span>
+            <span class="h-5 w-px bg-blue-200 dark:bg-blue-900" aria-hidden="true"></span>
             <button
               type="button"
               class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold transition focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none"
@@ -243,17 +200,10 @@ watch(output, async () => {
               @click="openExternal(LINKS.releases)"
             >
               最新 {{ latestVersion }}
-              <IconLink
-                class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-              />
+              <IconLink class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </button>
-            <span
-              class="h-5 w-px bg-blue-200 dark:bg-blue-900"
-              aria-hidden="true"
-            ></span>
-            <span class="text-base font-bold text-[#315d9c] dark:text-blue-200"
-              >当前 v{{ appVersion }}</span
-            >
+            <span class="h-5 w-px bg-blue-200 dark:bg-blue-900" aria-hidden="true"></span>
+            <span class="text-base font-bold text-[#315d9c] dark:text-blue-200">当前 v{{ appVersion }}</span>
           </nav>
         </div>
       </header>
@@ -264,16 +214,8 @@ watch(output, async () => {
         <div class="p-8 lg:p-10">
           <div class="flex items-center justify-between gap-4">
             <div>
-              <p
-                class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase dark:text-blue-200"
-              >
-                Environment
-              </p>
-              <h2
-                class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100"
-              >
-                环境检查
-              </h2>
+              <p class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase dark:text-blue-200">Environment</p>
+              <h2 class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100">环境检查</h2>
             </div>
             <button
               type="button"
@@ -281,12 +223,7 @@ watch(output, async () => {
               :disabled="busy"
               @click="recheckEnvironment"
             >
-              <svg
-                class="h-4 w-4"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path
                   d="M20 6v5h-5M4 18v-5h5"
                   stroke="currentColor"
@@ -311,9 +248,7 @@ watch(output, async () => {
               :key="row.label"
               class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6 rounded-xl px-3 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
             >
-              <dt
-                class="flex items-center gap-3 font-semibold text-slate-600 dark:text-slate-400"
-              >
+              <dt class="flex items-center gap-3 font-semibold text-slate-600 dark:text-slate-400">
                 <span
                   class="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm"
                   :class="row.dotClass"
@@ -321,11 +256,7 @@ watch(output, async () => {
                 ></span>
                 {{ row.label }}
               </dt>
-              <dd
-                class="max-w-48 truncate text-base font-bold"
-                :class="row.valueClass"
-                :title="row.value"
-              >
+              <dd class="max-w-48 truncate text-base font-bold" :class="row.valueClass" :title="row.value">
                 {{ row.value }}
               </dd>
             </div>
@@ -344,14 +275,8 @@ watch(output, async () => {
             aria-hidden="true"
           ></span>
 
-          <p class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase">
-            Actions
-          </p>
-          <h2
-            class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100"
-          >
-            快捷操作
-          </h2>
+          <p class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase">Actions</p>
+          <h2 class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100">快捷操作</h2>
 
           <div class="mt-7 grid grid-cols-2 gap-3">
             <button
@@ -388,27 +313,9 @@ watch(output, async () => {
               @click="startServer"
             >
               <IconDebugStart v-if="!starting" class="h-5 w-5" />
-              <svg
-                v-else
-                class="h-5 w-5 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-                aria-hidden="true"
-              >
-                <circle
-                  class="opacity-30"
-                  cx="12"
-                  cy="12"
-                  r="9"
-                  stroke="currentColor"
-                  stroke-width="3"
-                />
-                <path
-                  d="M21 12a9 9 0 0 0-9-9"
-                  stroke="currentColor"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                />
+              <svg v-else class="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle class="opacity-30" cx="12" cy="12" r="9" stroke="currentColor" stroke-width="3" />
+                <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" stroke-width="3" stroke-linecap="round" />
               </svg>
               {{ starting ? "正在运行…" : "运行 DeepSeek Harness" }}
             </button>
@@ -432,18 +339,14 @@ watch(output, async () => {
       class="m-auto max-h-[calc(100vh-4rem)] w-[calc(100%-3rem)] max-w-4xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-950 p-0 text-left text-slate-100 shadow-2xl backdrop:bg-slate-950/60 backdrop:backdrop-blur-sm"
     >
       <section class="flex max-h-[calc(100vh-4rem)] min-h-96 flex-col">
-        <header
-          class="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-5 py-4"
-        >
+        <header class="flex shrink-0 items-center justify-between border-b border-slate-800 bg-slate-900 px-5 py-4">
           <div class="flex items-center gap-3">
             <span class="flex gap-1.5" aria-hidden="true">
               <span class="h-3 w-3 rounded-full bg-rose-500"></span>
               <span class="h-3 w-3 rounded-full bg-amber-400"></span>
               <span class="h-3 w-3 rounded-full bg-emerald-500"></span>
             </span>
-            <h2 id="terminal-dialog-title" class="font-mono text-sm font-bold">
-              DeepSeek Harness · 终端输出
-            </h2>
+            <h2 id="terminal-dialog-title" class="font-mono text-sm font-bold">DeepSeek Harness · 终端输出</h2>
           </div>
           <button
             type="button"
@@ -452,18 +355,8 @@ watch(output, async () => {
             aria-label="关闭终端输出"
             @click="closeOutputDialog"
           >
-            <svg
-              class="h-5 w-5"
-              viewBox="0 0 24 24"
-              fill="none"
-              aria-hidden="true"
-            >
-              <path
-                d="m6 6 12 12M18 6 6 18"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-              />
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="m6 6 12 12M18 6 6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
             </svg>
           </button>
         </header>

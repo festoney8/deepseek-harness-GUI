@@ -5,9 +5,7 @@ import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const config = JSON.parse(
-  readFileSync(resolve(root, "src-tauri/tauri.conf.json"), "utf8"),
-);
+const config = JSON.parse(readFileSync(resolve(root, "src-tauri/tauri.conf.json"), "utf8"));
 const { productName, version } = config;
 
 const exe = resolve(root, `src-tauri/target/release/${productName}.exe`);

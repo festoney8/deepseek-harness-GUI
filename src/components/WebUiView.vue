@@ -5,15 +5,7 @@ const { port } = defineProps<{ port: number }>();
 <template>
   <iframe
     :src="`http://127.0.0.1:${port}/`"
-    allow="
-      camera *;
-      clipboard-read *;
-      clipboard-write *;
-      downloads *;
-      fullscreen *;
-      microphone *;
-      speaker-selection *;
-    "
+    allow="camera *; clipboard-read *; clipboard-write *; downloads *; fullscreen *; microphone *; speaker-selection *"
     class="h-full w-full border-0 bg-white dark:bg-slate-900"
   />
 </template>
