@@ -99,7 +99,6 @@ const installUpdateMirrorLabel = computed(() => installUpdateText("mirror", "镜
 const startBlockReason = computed(() => {
   if (state.node == null || state.npm == null) return "请先安装 Node.js 环境";
   if (state.local == null) return "请先安装 DeepSeek Harness";
-  if (state.local !== state.remote) return "请先更新 DeepSeek Harness";
   return "";
 });
 const startDisabled = computed(() => busy.value || Boolean(startBlockReason.value));
@@ -135,7 +134,12 @@ const statusRows = computed(() => [
     state.versionError,
     state.local !== null && state.remote !== state.local,
   ),
-  versionRow("最新 DSH 版本（镜像源）", state.remoteMirror, state.versionChecked),
+  versionRow(
+    "最新 DSH 版本（镜像源）",
+    state.remoteMirror,
+    state.versionChecked,
+    state.local !== null && state.remoteMirror !== state.local,
+  ),
   {
     label: "本地 DSH 版本",
     value: state.local ?? (state.versionChecked ? "未安装" : "检查中…"),
@@ -311,7 +315,7 @@ watch(output, async () => {
           <p class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase">Actions</p>
           <h2 class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100">快捷操作</h2>
 
-          <div class="mt-7 grid grid-cols-2 gap-3">
+          <div class="mt-9 grid grid-cols-2 gap-3">
             <button
               type="button"
               class="col-start-1 row-start-1 inline-flex min-h-12 cursor-pointer items-center justify-center gap-2 rounded-xl border border-blue-200 bg-white px-4 font-bold text-blue-700 shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none disabled:cursor-not-allowed disabled:border-slate-300/60 disabled:bg-slate-200/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:border-slate-300/60 disabled:hover:bg-slate-200/60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700 dark:disabled:border-slate-700/60 dark:disabled:bg-slate-800/60 dark:disabled:text-slate-500/70 dark:disabled:hover:border-slate-700/60 dark:disabled:hover:bg-slate-800/60"
@@ -352,6 +356,12 @@ watch(output, async () => {
               </svg>
               {{ starting ? "正在运行…" : "运行 DeepSeek Harness" }}
             </button>
+            <p
+              v-if="startBlockReason"
+              class="col-span-2 row-start-4 text-center text-xs font-medium text-rose-500 dark:text-rose-400"
+            >
+              {{ startBlockReason }}
+            </p>
 
             <button
               type="button"
