@@ -14,6 +14,8 @@ export interface RuntimeSnapshot {
   npm: string | null;
   /** 格子二：远端 / 本地 dsh 版本（local null = 未安装；remote null = 获取失败） */
   remote: string | null;
+  /** 镜像源查询到的远端版本（null = 获取失败，仅用于展示） */
+  remoteMirror: string | null;
   local: string | null;
   versionError: boolean;
   /** 版本检查是否已完成（false = 尚未检查，显示“检查中”） */
@@ -28,6 +30,7 @@ export const state = ref<RuntimeSnapshot>({
   node: null,
   npm: null,
   remote: null,
+  remoteMirror: null,
   local: null,
   versionError: false,
   versionChecked: false,

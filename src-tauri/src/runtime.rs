@@ -23,6 +23,9 @@ const START_TIMEOUT: Duration = Duration::from_secs(120);
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
 /// UI 输出缓冲上限，超出丢弃最旧保留最新
 const OUTPUT_LIMIT: usize = 1_048_576;
+/// 安装与版本查询共用的 npm registry 常量
+const REGISTRY_OFFICIAL: &str = "https://registry.npmjs.org";
+const REGISTRY_MIRROR: &str = "https://registry.npmmirror.com";
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +51,8 @@ pub struct Snapshot {
     pub npm: Option<String>,
     /// 格子二：远端 / 本地 dsh 版本（local None = 未安装或安装不完整；remote None = 获取失败）
     pub remote: Option<String>,
+    /// 镜像源查询到的远端版本（None = 获取失败，仅用于展示）
+    pub remote_mirror: Option<String>,
     pub local: Option<String>,
     pub version_error: bool,
     /// 版本检查是否已完成（false = 尚未检查，前端显示“检查中”）
@@ -217,11 +222,11 @@ fn worker_loop(app: AppHandle, rx: Receiver<Intent>, shared: Shared, base: PathB
             }
             Ok(Intent::Install) => {
                 log::info!("intent: install dsh (official registry)");
-                install_dsh(&app, &shared, &session, "https://registry.npmjs.org");
+                install_dsh(&app, &shared, &session, REGISTRY_OFFICIAL);
             }
             Ok(Intent::InstallMirror) => {
                 log::info!("intent: install dsh (mirror registry)");
-                install_dsh(&app, &shared, &session, "https://registry.npmmirror.com");
+                install_dsh(&app, &shared, &session, REGISTRY_MIRROR);
             }
             Ok(Intent::Start) => {
                 let Some(port) = find_port() else {
@@ -478,17 +483,29 @@ fn check_env(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
     snapshot.npm = npm;
 }
 
-fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
-    let remote = stream_capture(
+/// 从指定 registry 查询 dsh 最新版本
+fn fetch_remote_version(
+    app: &AppHandle,
+    shared: &Shared,
+    session: &Arc<Session>,
+    registry: &str,
+) -> Option<String> {
+    let display = format!("npm view @deepseek-ai/dsh version --registry={registry}");
+    stream_capture(
         app,
         shared,
         session,
         CommandSpec {
-            display: "npm view @deepseek-ai/dsh version",
+            display: &display,
             program: "cmd",
-            args: &["/C", "npm", "view", "@deepseek-ai/dsh", "version"],
+            args: &["/C", "npm", "view", "@deepseek-ai/dsh", "version", "--registry", registry],
         },
-    );
+    )
+}
+
+fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
+    let remote = fetch_remote_version(app, shared, session, REGISTRY_OFFICIAL);
+    let remote_mirror = fetch_remote_version(app, shared, session, REGISTRY_MIRROR);
     // 本地检测改用 `dsh -V`：安装不完整时该命令报错而非输出版本号，
     // 因此 local 能同时反映"已安装"与"安装完整"两个状态。
     let local = stream_capture(
@@ -503,12 +520,13 @@ fn check_version(app: &AppHandle, shared: &Shared, session: &Arc<Session>) {
     )
     .and_then(|out| parse_local_version(&out));
     let version_error = remote.is_none();
-    log::info!("dsh version check: remote={remote:?} local={local:?}");
+    log::info!("dsh version check: remote={remote:?} remoteMirror={remote_mirror:?} local={local:?}");
     let mut snapshot = shared
         .snapshot
         .lock()
         .unwrap_or_else(|error| error.into_inner());
     snapshot.remote = remote;
+    snapshot.remote_mirror = remote_mirror;
     snapshot.local = local;
     snapshot.version_error = version_error;
     snapshot.version_checked = true;

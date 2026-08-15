@@ -103,6 +103,19 @@ const startBlockReason = computed(() => {
   return "";
 });
 const startDisabled = computed(() => busy.value || Boolean(startBlockReason.value));
+/** 版本行的三态（有值/失败/检查中）显示与样式；highlighted 时对已有版本改用琥珀色提示 */
+const versionRow = (label: string, value: string | null, failed: boolean, highlighted = false) => ({
+  label,
+  value: value ?? (failed ? "获取失败" : "检查中…"),
+  valueClass: value
+    ? highlighted
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-slate-900 dark:text-slate-100"
+    : failed
+      ? "text-rose-600 dark:text-rose-400"
+      : "text-amber-600 dark:text-amber-400",
+  dotClass: value ? "bg-emerald-500" : failed ? "bg-rose-500" : "bg-amber-400",
+});
 const statusRows = computed(() => [
   {
     label: "node 版本（推荐 v24 及以上）",
@@ -116,18 +129,13 @@ const statusRows = computed(() => [
     valueClass: state.npm ? "text-slate-900 dark:text-slate-100" : "text-rose-600 dark:text-rose-400",
     dotClass: state.npm ? "bg-emerald-500" : "bg-rose-500",
   },
-  {
-    label: "最新 DSH 版本",
-    value: state.remote ?? (state.versionError ? "获取失败" : "检查中…"),
-    valueClass: state.remote
-      ? state.local !== null && state.remote !== state.local
-        ? "text-amber-600 dark:text-amber-400"
-        : "text-slate-900 dark:text-slate-100"
-      : state.versionError
-        ? "text-rose-600 dark:text-rose-400"
-        : "text-amber-600 dark:text-amber-400",
-    dotClass: state.remote ? "bg-emerald-500" : state.versionError ? "bg-rose-500" : "bg-amber-400",
-  },
+  versionRow(
+    "最新 DSH 版本（官方源）",
+    state.remote,
+    state.versionError,
+    state.local !== null && state.remote !== state.local,
+  ),
+  versionRow("最新 DSH 版本（镜像源）", state.remoteMirror, state.versionChecked),
   {
     label: "本地 DSH 版本",
     value: state.local ?? (state.versionChecked ? "未安装" : "检查中…"),
@@ -332,7 +340,7 @@ watch(output, async () => {
 
             <button
               type="button"
-              class="col-span-2 row-start-3 mt-2 inline-flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60 dark:shadow-blue-950 dark:hover:shadow-blue-950 dark:disabled:bg-slate-700/60 dark:disabled:text-slate-400/70 dark:disabled:hover:bg-slate-700/60"
+              class="col-span-2 row-start-3 mt-3 inline-flex min-h-14 cursor-pointer items-center justify-center gap-3 rounded-xl bg-blue-600 px-5 text-lg font-black text-white shadow-lg shadow-blue-200 transition hover:-translate-y-0.5 hover:bg-blue-700 hover:shadow-xl hover:shadow-blue-200 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-slate-300/60 disabled:text-slate-500/70 disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:bg-slate-300/60 dark:shadow-blue-950 dark:hover:shadow-blue-950 dark:disabled:bg-slate-700/60 dark:disabled:text-slate-400/70 dark:disabled:hover:bg-slate-700/60"
               :disabled="startDisabled"
               :aria-busy="starting"
               @click="startServer"
