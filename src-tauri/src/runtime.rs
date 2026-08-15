@@ -394,7 +394,7 @@ struct CommandSpec<'a> {
 }
 
 /// 以指定 registry 全局安装/更新 dsh，成功则刷新版本信息
-fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registry: &'static str) {
+fn install_dsh(app: &AppHandle, shared: &Shared, session: &Arc<Session>, registry: &str) {
     log::info!("installing dsh globally via npm (registry={registry})");
     emit_state(
         app,

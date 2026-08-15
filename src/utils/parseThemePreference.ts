@@ -8,7 +8,7 @@ interface SettingsFile {
 
 /** 从 dsh settings.yaml 文本中提取 ui-theme.preference，缺失/非法/解析失败一律 system */
 export function parseThemePreference(text: string): ThemePreference {
-  let data: SettingsFile | null;
+  let data: SettingsFile;
   try {
     data = (load(text) ?? {}) as SettingsFile;
   } catch {

@@ -11,6 +11,10 @@ function hideInTray() {
   closeRequested.value = false;
 }
 
+/** 退出对话框的非危险操作按钮样式 */
+const dialogBtnClass =
+  "cursor-pointer rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700";
+
 onMounted(initRuntime);
 onMounted(initTheme);
 onUnmounted(disposeRuntime);
@@ -29,18 +33,8 @@ onUnmounted(disposeTheme);
       <div class="w-80 rounded-lg bg-white p-5 shadow-xl dark:bg-slate-800">
         <h2 class="text-sm font-semibold dark:text-slate-100">退出 DeepSeek Harness？</h2>
         <div class="mt-12 flex justify-end gap-2">
-          <button
-            class="cursor-pointer rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-            @click="closeRequested = false"
-          >
-            取消
-          </button>
-          <button
-            class="cursor-pointer rounded-md border border-slate-300 px-3 py-1 text-sm text-slate-600 transition hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-            @click="hideInTray"
-          >
-            最小化到托盘
-          </button>
+          <button :class="dialogBtnClass" @click="closeRequested = false">取消</button>
+          <button :class="dialogBtnClass" @click="hideInTray">最小化到托盘</button>
           <button
             class="cursor-pointer rounded-md border border-transparent bg-red-500 px-3 py-1 text-sm text-white transition hover:bg-red-600"
             @click="exitApp"

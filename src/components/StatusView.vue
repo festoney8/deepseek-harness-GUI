@@ -83,26 +83,19 @@ function startInstall(source: "official" | "mirror") {
   else installDshMirror();
 }
 
+const installUpdateText = (source: "official" | "mirror", suffix: string) =>
+  installing.value && installingSource.value === source
+    ? state.local
+      ? "更新中…"
+      : "安装中…"
+    : state.local === null
+      ? `安装 DSH (${suffix})`
+      : `更新 DSH (${suffix})`;
+
 /** 安装/更新按钮文案：按需安装或更新（官方源） */
-const installUpdateLabel = computed(() =>
-  installing.value && installingSource.value === "official"
-    ? state.local
-      ? "更新中…"
-      : "安装中…"
-    : state.local === null
-      ? "安装 DSH (官方源)"
-      : "更新 DSH (官方源)",
-);
+const installUpdateLabel = computed(() => installUpdateText("official", "官方源"));
 /** 安装/更新按钮文案：按需安装或更新（镜像源） */
-const installUpdateMirrorLabel = computed(() =>
-  installing.value && installingSource.value === "mirror"
-    ? state.local
-      ? "更新中…"
-      : "安装中…"
-    : state.local === null
-      ? "安装 DSH (镜像源)"
-      : "更新 DSH (镜像源)",
-);
+const installUpdateMirrorLabel = computed(() => installUpdateText("mirror", "镜像源"));
 const startBlockReason = computed(() => {
   if (state.node == null || state.npm == null) return "请先安装 Node.js 环境";
   if (state.local == null) return "请先安装 DeepSeek Harness";
