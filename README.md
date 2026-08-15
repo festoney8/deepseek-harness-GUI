@@ -4,7 +4,7 @@
 
 ---
 
-![](public/1.png)
+![](images/1.png)
 
 ## 安装
 
