@@ -34,6 +34,7 @@
     "@iconify/types": "^2.0.0",
     "@tauri-apps/cli": "^2.11.4",
     "@vitejs/plugin-vue": "^5.2.1",
+    "daisyui": "^5.7.17",
     "eslint": "^10.8.1",
     "eslint-plugin-vue": "^10.10.0",
     "globals": "^17.11.0",

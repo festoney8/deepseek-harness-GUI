@@ -1,13 +1,70 @@
 @import "tailwindcss";
-
-/* Tailwind v4 默认 dark 是媒体查询，切换为 class 模式（html.dark） */
-@custom-variant dark (&:where(.dark, .dark *));
-
-html {
-  color-scheme: light;
+@plugin "daisyui" {
+  themes:
+    light --default,
+    dark --prefersdark;
 }
-html.dark {
+
+:root {
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #f8fafc;
+  --color-base-300: #e2e8f0;
+  --color-base-content: #1e293b;
+  --color-primary: #2563eb;
+  --color-primary-content: #ffffff;
+  --color-info: #0284c7;
+  --color-info-content: #ffffff;
+  --color-success: #10b981;
+  --color-success-content: #ffffff;
+  --color-warning: #d97706;
+  --color-warning-content: #1f2937;
+  --color-error: #e11d48;
+  --color-error-content: #ffffff;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.75rem;
+  --radius-box: 1.5rem;
+  --dsh-hero-title: #315d9c;
+}
+
+:root[data-theme="dark"] {
   color-scheme: dark;
+  --color-base-100: #0f172a;
+  --color-base-200: #0b1220;
+  --color-base-300: #1e293b;
+  --color-base-content: #e2e8f0;
+  --color-primary: #60a5fa;
+  --color-primary-content: #0f172a;
+  --color-info: #38bdf8;
+  --color-info-content: #082f49;
+  --color-success: #34d399;
+  --color-success-content: #052e16;
+  --color-warning: #fbbf24;
+  --color-warning-content: #451a03;
+  --color-error: #fb7185;
+  --color-error-content: #4c0519;
+  --dsh-hero-title: #bfdbfe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+    --color-base-100: #0f172a;
+    --color-base-200: #0b1220;
+    --color-base-300: #1e293b;
+    --color-base-content: #e2e8f0;
+    --color-primary: #60a5fa;
+    --color-primary-content: #0f172a;
+    --color-info: #38bdf8;
+    --color-info-content: #082f49;
+    --color-success: #34d399;
+    --color-success-content: #052e16;
+    --color-warning: #fbbf24;
+    --color-warning-content: #451a03;
+    --color-error: #fb7185;
+    --color-error-content: #4c0519;
+    --dsh-hero-title: #bfdbfe;
+  }
 }
 
 html,
@@ -18,13 +75,53 @@ body,
 
 body {
   margin: 0;
-  color: #1e293b;
-  background: #ffffff;
+  color: var(--color-base-content);
+  background: var(--color-base-100);
   font-family: "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
   user-select: none;
 }
 
-html.dark body {
-  color: #e2e8f0;
-  background: #0f172a;
+input,
+button,
+a {
+  user-select: text;
+}
+
+.dsh-status-view {
+  background: radial-gradient(circle at top, #eff6ff 0, #ffffff 42%, #f8fafc 100%);
+  color: #0f172a;
+}
+
+.dsh-panel {
+  border-color: color-mix(in srgb, var(--color-primary) 25%, transparent);
+  background: color-mix(in srgb, var(--color-base-100) 95%, transparent);
+  box-shadow: 0 24px 70px -35px rgb(37 99 235 / 50%);
+}
+
+.dsh-hero-title {
+  color: var(--dsh-hero-title);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .dsh-status-view,
+  :root[data-theme="dark"] .dsh-status-view {
+    background: radial-gradient(circle at top, #0f172a 0, #020617 42%, #0b1220 100%);
+    color: #f1f5f9;
+  }
+
+  :root:not([data-theme]) .dsh-panel,
+  :root[data-theme="dark"] .dsh-panel {
+    border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+    box-shadow: 0 24px 70px -35px rgb(2 6 23 / 90%);
+  }
+}
+
+:root[data-theme="dark"] .dsh-status-view {
+  background: radial-gradient(circle at top, #0f172a 0, #020617 42%, #0b1220 100%);
+  color: #f1f5f9;
+}
+
+:root[data-theme="dark"] .dsh-panel {
+  border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
+  box-shadow: 0 24px 70px -35px rgb(2 6 23 / 90%);
 }

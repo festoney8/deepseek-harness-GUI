@@ -6,10 +6,7 @@ export type ResolvedTheme = "light" | "dark";
 
 const SETTINGS_REL = ".dsh/settings.yaml";
 const POLL_MS = 3_000;
-
-/** 配置文件偏好；文件缺失时为 system */
 const preference = ref<ThemePreference>("system");
-/** 系统深浅色，仅由 matchMedia 更新 */
 const systemDark = ref(false);
 
 export const theme = computed<ResolvedTheme>(() =>
@@ -17,10 +14,16 @@ export const theme = computed<ResolvedTheme>(() =>
 );
 
 watch(
-  theme,
-  (t) => {
-    document.documentElement.classList.toggle("dark", t === "dark");
-    document.documentElement.style.colorScheme = t;
+  [preference, theme],
+  ([preferred, resolved]) => {
+    const root = document.documentElement;
+    root.classList.remove("dark");
+    if (preferred === "system") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.dataset.theme = preferred;
+    }
+    root.style.colorScheme = resolved;
   },
   { immediate: true },
 );
@@ -28,12 +31,12 @@ watch(
 let pollId: number | null = null;
 let unwatch: (() => void) | null = null;
 let media: MediaQueryList | null = null;
-let onMediaChange: ((e: MediaQueryListEvent) => void) | null = null;
+let onMediaChange: ((event: MediaQueryListEvent) => void) | null = null;
 
 export function initTheme() {
   if (pollId != null || unwatch != null) return;
   media = window.matchMedia("(prefers-color-scheme: dark)");
-  onMediaChange = (e) => (systemDark.value = e.matches);
+  onMediaChange = (event) => (systemDark.value = event.matches);
   media.addEventListener("change", onMediaChange);
   systemDark.value = media.matches;
   startPolling();
@@ -62,7 +65,6 @@ function stopPolling() {
   }
 }
 
-/** 轮询与监听共用的入口：文件出现则停轮询并转监听，否则保持 system */
 async function tick() {
   if (!(await exists(SETTINGS_REL, { baseDir: BaseDirectory.Home }))) {
     preference.value = "system";
@@ -71,17 +73,15 @@ async function tick() {
   stopPolling();
   if (unwatch == null) {
     try {
-      // 防抖 watch
       unwatch = await watchFile(SETTINGS_REL, () => void applyFileTheme(), {
         baseDir: BaseDirectory.Home,
         delayMs: 100,
       });
     } catch {
-      startPolling(); // 监听建立失败则退回轮询
+      startPolling();
       return;
     }
   }
-  // 监听建立后读取
   await applyFileTheme();
 }
 
@@ -89,6 +89,6 @@ async function applyFileTheme() {
   try {
     preference.value = parseThemePreference(await readTextFile(SETTINGS_REL, { baseDir: BaseDirectory.Home }));
   } catch {
-    // 文件写入中途读取失败：保留上次值，等下一次事件
+    // 配置文件写入过程中读取失败时，等待下一次监听事件。
   }
 }

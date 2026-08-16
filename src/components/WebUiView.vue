@@ -6,6 +6,6 @@ const { url } = defineProps<{ url: string }>();
   <iframe
     :src="url"
     allow="camera *; clipboard-read *; clipboard-write *; downloads *; fullscreen *; microphone *; speaker-selection *"
-    class="h-full w-full border-0 bg-white dark:bg-slate-900"
+    class="bg-base-100 h-full w-full border-0"
   />
 </template>

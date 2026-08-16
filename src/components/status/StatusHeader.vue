@@ -9,9 +9,8 @@ const LINKS = {
   releases: "https://github.com/festoney8/deepseek-harness-GUI/releases",
 } as const;
 
-const { appVersion, latestVersion, versionOutdated } = defineProps<{
+const { appVersion, versionOutdated } = defineProps<{
   appVersion: string;
-  latestVersion: string;
   versionOutdated: boolean;
 }>();
 
@@ -21,49 +20,48 @@ function openExternal(url: string) {
 </script>
 
 <template>
-  <header class="flex items-center justify-center gap-8">
-    <div class="relative shrink-0">
-      <div class="absolute inset-4 rounded-full bg-blue-400/20 blur-2xl" aria-hidden="true"></div>
-      <img :src="logoUrl" alt="DeepSeek Harness GUI logo" class="relative h-36 w-36 object-contain drop-shadow-xl" />
-    </div>
+  <header class="hero bg-transparent">
+    <div class="hero-content flex-row items-center justify-start gap-8 p-0">
+      <div class="relative shrink-0">
+        <div class="absolute inset-4 rounded-full bg-blue-400/20 blur-2xl" aria-hidden="true"></div>
+        <img :src="logoUrl" alt="DeepSeek Harness GUI logo" class="relative h-36 w-36 object-contain drop-shadow-xl" />
+      </div>
 
-    <div class="min-w-0">
-      <h1 class="text-4xl font-black text-[#315d9c] lg:text-5xl dark:text-blue-200">DeepSeek Harness GUI</h1>
-      <nav class="mt-5 ml-1 flex items-center gap-4" aria-label="项目链接">
-        <button
-          type="button"
-          class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none dark:text-blue-200 dark:hover:text-blue-100"
-          @click="openExternal(LINKS.marketplace)"
-        >
-          插件市场
-          <IconLink class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </button>
-        <span class="h-5 w-px bg-blue-200 dark:bg-blue-900" aria-hidden="true"></span>
-        <button
-          type="button"
-          class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold text-[#315d9c] transition hover:text-blue-500 focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none dark:text-blue-200 dark:hover:text-blue-100"
-          @click="openExternal(LINKS.github)"
-        >
-          项目 GitHub
-          <IconLink class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </button>
-        <span class="h-5 w-px bg-blue-200 dark:bg-blue-900" aria-hidden="true"></span>
-        <button
-          type="button"
-          class="group inline-flex cursor-pointer items-center gap-1.5 text-base font-bold transition focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-4 focus-visible:outline-none"
-          :class="
-            versionOutdated
-              ? 'text-amber-600 hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300'
-              : 'text-[#315d9c] hover:text-blue-500 dark:text-blue-200 dark:hover:text-blue-100'
-          "
-          @click="openExternal(LINKS.releases)"
-        >
-          最新 {{ latestVersion }}
-          <IconLink class="h-4 w-4 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-        </button>
-        <span class="h-5 w-px bg-blue-200 dark:bg-blue-900" aria-hidden="true"></span>
-        <span class="text-base font-bold text-[#315d9c] dark:text-blue-200">当前 v{{ appVersion }}</span>
-      </nav>
+      <div class="min-w-0">
+        <h1 class="dsh-hero-title text-4xl font-black lg:text-5xl">DeepSeek Harness GUI</h1>
+        <nav class="mt-5 ml-1 flex flex-wrap items-center gap-x-4 gap-y-2" aria-label="项目链接">
+          <button
+            type="button"
+            class="link link-primary link-hover inline-flex cursor-pointer items-center gap-1.5 text-base font-bold"
+            @click="openExternal(LINKS.marketplace)"
+          >
+            插件市场
+            <IconLink class="h-4 w-4" />
+          </button>
+          <span class="bg-primary/20 h-5 w-px" aria-hidden="true"></span>
+          <button
+            type="button"
+            class="link link-primary link-hover inline-flex cursor-pointer items-center gap-1.5 text-base font-bold"
+            @click="openExternal(LINKS.github)"
+          >
+            项目 GitHub
+            <IconLink class="h-4 w-4" />
+          </button>
+          <span class="bg-primary/20 h-5 w-px" aria-hidden="true"></span>
+          <span class="text-base-content/80 text-base font-bold">
+            版本：v{{ appVersion || "正在加载…" }}
+            <button
+              v-if="versionOutdated"
+              type="button"
+              class="link link-primary link-hover ml-1 inline-flex items-center gap-1 font-bold whitespace-nowrap"
+              @click="openExternal(LINKS.releases)"
+            >
+              有更新
+              <IconLink class="ml-0.5 h-4 w-4" aria-hidden="true" />
+            </button>
+          </span>
+        </nav>
+      </div>
     </div>
   </header>
 </template>

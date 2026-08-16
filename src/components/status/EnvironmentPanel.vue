@@ -3,36 +3,41 @@ import { computed, ref } from "vue";
 import type { RuntimeSnapshot } from "../../composables/useRuntime";
 import { checkEnv, checkVersion } from "../../composables/useRuntime";
 
+interface StatusRow {
+  label: string;
+  value: string;
+  valueClass: string;
+  status: "info" | "warning" | "error";
+  loading: boolean;
+}
+
 const { state } = defineProps<{ state: RuntimeSnapshot }>();
 
-const busy = computed(() => state.phase === "installing" || state.phase === "starting");
+const versionRow = (label: string, value: string | null, failed: boolean, highlighted = false): StatusRow => {
+  const loading = value === null && !failed;
+  return {
+    label,
+    value: value ?? (failed ? "获取失败" : "正在加载…"),
+    valueClass: value ? (highlighted ? "text-warning" : "text-base-content") : failed ? "text-error" : "text-warning",
+    status: failed ? "error" : "info",
+    loading,
+  };
+};
 
-/** 版本行的三态（有值/失败/检查中）显示与样式；highlighted 时对已有版本改用琥珀色提示 */
-const versionRow = (label: string, value: string | null, failed: boolean, highlighted = false) => ({
-  label,
-  value: value ?? (failed ? "获取失败" : "检查中…"),
-  valueClass: value
-    ? highlighted
-      ? "text-amber-600 dark:text-amber-400"
-      : "text-slate-900 dark:text-slate-100"
-    : failed
-      ? "text-rose-600 dark:text-rose-400"
-      : "text-amber-600 dark:text-amber-400",
-  dotClass: value ? "bg-emerald-500" : failed ? "bg-rose-500" : "bg-amber-400",
-});
-const statusRows = computed(() => [
-  {
-    label: "node 版本（推荐 v24 及以上）",
-    value: state.node ?? "未检测到",
-    valueClass: state.node ? "text-slate-900 dark:text-slate-100" : "text-rose-600 dark:text-rose-400",
-    dotClass: state.node ? "bg-emerald-500" : "bg-rose-500",
-  },
-  {
-    label: "npm 版本",
-    value: state.npm ?? "未检测到",
-    valueClass: state.npm ? "text-slate-900 dark:text-slate-100" : "text-rose-600 dark:text-rose-400",
-    dotClass: state.npm ? "bg-emerald-500" : "bg-rose-500",
-  },
+const environmentRow = (label: string, value: string | null): StatusRow => {
+  const loading = value === null && !state.versionChecked;
+  return {
+    label,
+    value: value ?? (loading ? "正在加载…" : "未检测到"),
+    valueClass: value ? "text-base-content" : loading ? "text-warning" : "text-error",
+    status: value ? "info" : loading ? "warning" : "error",
+    loading,
+  };
+};
+
+const statusRows = computed<StatusRow[]>(() => [
+  environmentRow("node 版本（推荐 v24 及以上）", state.node),
+  environmentRow("npm 版本", state.npm),
   versionRow(
     "最新 DSH 版本（官方源）",
     state.remote,
@@ -42,48 +47,45 @@ const statusRows = computed(() => [
   versionRow(
     "最新 DSH 版本（镜像源）",
     state.remoteMirror,
-    state.versionChecked,
+    state.versionChecked && state.remoteMirror === null,
     state.local !== null && state.remoteMirror !== state.local,
   ),
   {
     label: "本地 DSH 版本",
-    value: state.local ?? (state.versionChecked ? "未安装" : "检查中…"),
-    valueClass: state.local ? "text-slate-900 dark:text-slate-100" : "text-amber-600 dark:text-amber-400",
-    dotClass: state.local ? "bg-emerald-500" : "bg-amber-400",
+    value: state.local ?? (state.versionChecked ? "未安装" : "正在加载…"),
+    valueClass: state.local ? "text-base-content" : state.versionChecked ? "text-warning" : "text-warning",
+    status: state.local ? "info" : state.versionChecked ? "error" : "warning",
+    loading: !state.versionChecked,
   },
 ]);
 
-/** 重新检查按钮 icon 的旋转动画进行中（转两圈后由 animationend 清除） */
 const checking = ref(false);
 
 function recheckEnvironment() {
   if (checking.value) return;
   checking.value = true;
-  void Promise.allSettled([checkEnv(), checkVersion()]);
+  void Promise.allSettled([checkEnv(), checkVersion()]).finally(() => {
+    window.setTimeout(() => {
+      checking.value = false;
+    }, 1200);
+  });
 }
 </script>
 
 <template>
-  <div class="p-8 lg:p-10">
-    <div class="flex items-center justify-between gap-4">
-      <div>
-        <p class="text-xs font-bold tracking-[0.2em] text-blue-500 uppercase dark:text-blue-200">Environment</p>
-        <h2 class="mt-1 text-xl font-black text-slate-800 dark:text-slate-100">环境检查</h2>
+  <section class="min-w-0 p-8 lg:p-10" aria-labelledby="environment-title">
+    <div class="flex items-start justify-between gap-4">
+      <div class="pl-3">
+        <h2 id="environment-title" class="text-base-content text-xl font-black">环境检查</h2>
       </div>
       <button
         type="button"
-        class="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-blue-600 transition hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-40 dark:text-blue-200 dark:hover:bg-blue-950"
-        :disabled="busy"
+        class="btn btn-ghost btn-sm text-primary shrink-0 gap-1.5 rounded-xl text-base"
+        :disabled="checking || state.phase === 'installing' || state.phase === 'starting'"
         @click="recheckEnvironment"
       >
-        <svg
-          class="h-4 w-4"
-          :class="{ 'animate-spin-twice': checking }"
-          @animationend="checking = false"
-          viewBox="0 0 24 24"
-          fill="none"
-          aria-hidden="true"
-        >
+        <span v-if="checking" class="loading loading-spinner loading-xs" aria-label="正在检查"></span>
+        <svg v-else class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path
             d="M20 6v5h-5M4 18v-5h5"
             stroke="currentColor"
@@ -98,36 +100,29 @@ function recheckEnvironment() {
             stroke-linecap="round"
           />
         </svg>
-        重新检查
+        {{ checking ? "正在检查…" : "重新检查" }}
       </button>
     </div>
 
-    <dl class="mt-7 space-y-1">
-      <div
+    <ul class="list mt-6 w-full" aria-label="环境和版本状态">
+      <li
         v-for="row in statusRows"
         :key="row.label"
-        class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6 rounded-xl px-3 py-3 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+        class="list-row grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-xl px-3 py-3"
       >
-        <dt class="flex items-center gap-3 font-semibold text-slate-600 dark:text-slate-400">
-          <span class="h-2.5 w-2.5 shrink-0 rounded-full shadow-sm" :class="row.dotClass" aria-hidden="true"></span>
-          {{ row.label }}
-        </dt>
-        <dd class="max-w-48 truncate text-base font-bold" :class="row.valueClass" :title="row.value">
+        <div class="text-base-content/70 flex min-w-0 items-center gap-3 font-semibold">
+          <span
+            class="status status-md shrink-0"
+            :class="[row.loading ? 'status-warning animate-bounce' : `status-${row.status}`]"
+            :aria-label="row.loading ? '正在加载' : undefined"
+            :aria-hidden="!row.loading"
+          ></span>
+          <span class="truncate" :title="row.label">{{ row.label }}</span>
+        </div>
+        <span class="max-w-56 truncate text-right text-base font-bold" :class="row.valueClass" :title="row.value">
           {{ row.value }}
-        </dd>
-      </div>
-    </dl>
-  </div>
+        </span>
+      </li>
+    </ul>
+  </section>
 </template>
-
-<style scoped>
-.animate-spin-twice {
-  animation: spin-twice 1s linear 1;
-}
-
-@keyframes spin-twice {
-  to {
-    transform: rotate(720deg);
-  }
-}
-</style>

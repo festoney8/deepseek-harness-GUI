@@ -59,6 +59,9 @@ importers:
       "@vitejs/plugin-vue":
         specifier: ^5.2.1
         version: 5.2.1(vite@6.4.3(jiti@2.7.0)(lightningcss@1.32.0)(yaml@2.9.0))(vue@3.5.41(typescript@5.6.2))
+      daisyui:
+        specifier: ^5.7.17
+        version: 5.7.17
       eslint:
         specifier: ^10.8.1
         version: 10.8.1(jiti@2.7.0)
@@ -1104,6 +1107,10 @@ packages:
   csstype@3.2.3:
     resolution:
       { integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ== }
+
+  daisyui@5.7.17:
+    resolution:
+      { integrity: sha512-w5U5FdL9hH4/zh8eLXytWQt3c0DgHS1WDw+1yuQykT8nSIE9Vc5wkJVeDymD1JlRDLANDawvN4iIGVaxgV6Cjw== }
 
   de-indent@1.0.2:
     resolution:
@@ -2656,6 +2663,8 @@ snapshots:
   cssesc@3.0.0: {}
 
   csstype@3.2.3: {}
+
+  daisyui@5.7.17: {}
 
   de-indent@1.0.2: {}
 

@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from "vue";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import IconMinimize from "~icons/mingcute/minimize-fill";
+import IconMaximize from "~icons/mdi/maximize";
+import IconClose from "~icons/mingcute/close-line";
 import logoMiniUrl from "../assets/logo_mini.png";
 
 const win = getCurrentWindow();
@@ -20,43 +23,38 @@ onUnmounted(() => unlisten?.());
 </script>
 
 <template>
-  <header
-    class="flex h-8 shrink-0 items-stretch border-b border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800"
-    data-tauri-drag-region
-  >
+  <header class="border-base-300 bg-base-200 flex h-8 shrink-0 items-stretch border-b" data-tauri-drag-region>
     <div class="flex flex-1 items-center gap-2 px-3" data-tauri-drag-region>
       <img :src="logoMiniUrl" alt="logo" class="h-5 w-5 shrink-0 rounded" draggable="false" />
-      <span class="text-xs font-medium text-slate-600 dark:text-slate-300">DeepSeek Harness GUI</span>
+      <span class="text-base-content/70 text-xs font-medium">DeepSeek Harness GUI</span>
     </div>
+
     <button
-      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
+      type="button"
+      class="btn btn-ghost btn-square btn-xs text-base-content/60 hover:bg-base-300 h-8 w-11 rounded-none"
       title="最小化"
+      aria-label="最小化"
       @click="win.minimize()"
     >
-      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-        <path d="M0 5h10" stroke="currentColor" stroke-width="1" />
-      </svg>
+      <IconMinimize class="h-4 w-4" aria-hidden="true" />
     </button>
     <button
-      class="flex w-11 items-center justify-center text-slate-500 hover:bg-slate-200 dark:text-slate-400 dark:hover:bg-slate-700"
+      type="button"
+      class="btn btn-ghost btn-square btn-xs text-base-content/60 hover:bg-base-300 h-8 w-11 rounded-none"
       :title="maximized ? '还原' : '最大化'"
+      :aria-label="maximized ? '还原' : '最大化'"
       @click="win.toggleMaximize()"
     >
-      <svg v-if="!maximized" width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-        <rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="currentColor" />
-      </svg>
-      <svg v-else width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-        <path d="M0.5 3.5h6v6h-6zM3.5 0.5h6v6" fill="none" stroke="currentColor" transform="translate(0 0)" />
-      </svg>
+      <IconMaximize class="h-4 w-4" aria-hidden="true" />
     </button>
     <button
-      class="flex w-11 items-center justify-center text-slate-500 hover:bg-red-500 hover:text-white dark:text-slate-400 dark:hover:bg-red-500 dark:hover:text-white"
+      type="button"
+      class="btn btn-ghost btn-square btn-xs text-base-content/60 hover:bg-error hover:text-error-content h-8 w-11 rounded-none"
       title="关闭"
+      aria-label="关闭"
       @click="win.close()"
     >
-      <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
-        <path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1" />
-      </svg>
+      <IconClose class="h-4 w-4" aria-hidden="true" />
     </button>
   </header>
 </template>
