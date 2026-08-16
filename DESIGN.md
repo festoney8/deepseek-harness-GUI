@@ -1,5 +1,13 @@
 # DeepSeek Harness GUI 后端设计选型
 
+## 0. 需求
+
+DSH（DeepSeek Harness）是一个使用命令 `npm install -g @deepseek-ai/dsh` 安装的应用，安装后，命令行中可使用使用命令 `dsh --profile web --port <PORT>` 启动一个 http web server，浏览器打开 127.0.0.1:PORT 即可访问 WEBUI。
+
+DSH 应用有大量的访问网络、读写文件、执行命令行的权限。
+
+本项目使用 Tauri 给这一应用包装一个壳子，让它变成 APP，同时保留原应用的所有权限。
+
 ## 1. 文档状态与范围
 
 本文记录当前已经确认的 Tauri 后端设计。实现范围以 Rust 后端、IPC、跨平台进程管理、网络探测、主题监听、日志和系统托盘为主，前端视觉与页面结构不在本文范围内。
@@ -356,61 +364,547 @@ interface ShellResult {
 
 ## 6. 平台进程管理
 
-### 6.1 平台内部接口
+### 6.1 模块职责与 seam
 
-`platform` 提供通用的受控进程抽象。其职责包括：
+`platform` 是后端唯一允许直接接触操作系统进程 API 的模块。它隐藏以下差异：
+
+- Windows `cmd.exe` 与 Unix `/bin/bash` 的命令构造。
+- Windows Job Object 与 Unix 进程组的创建和持有。
+- Windows 进程树终止与 Unix 信号发送。
+- 平台原生进程 handle、PID、PGID 和退出状态读取。
+- Windows npm command shim 与 Unix 可执行文件的启动形式。
+- 平台资源的释放和退出进程回收。
+
+`backend/shell.rs` 和 `backend/harness.rs` 不得出现以下内容：
 
 ```text
-spawn_managed
-wait
-try_wait
-terminate_tree
-build_shell_command
-build_dsh_command
+#[cfg(windows)]
+#[cfg(unix)]
+Windows handle
+Job Object
+PID / PGID
+SIGTERM / SIGKILL
+cmd.exe / bash
 ```
 
-`ManagedProcess` 表示完整受控进程树，不只是直接子进程 PID。
+平台模块不负责以下业务规则：
 
-平台实现必须支持：
+- Shell IPC 参数校验。
+- Shell 默认超时和 `ShellStatus` 映射。
+- dsh 单实例状态机。
+- dsh 启动前端口检查。
+- dsh HTTP 就绪探测。
+- dsh 事件发送。
+- stdout/stderr 文本解码和日志格式。
+- `IpcError` 构造。
+
+这些规则继续由通用 `backend` 模块负责。
+
+### 6.2 文件和编译期选型
+
+```text
+src-tauri/src/platform/
+├── mod.rs
+├── windows.rs
+└── unix.rs
+```
+
+只有 `platform/mod.rs` 负责 `cfg` 选型：
+
+```rust
+#[cfg(unix)]
+mod unix;
+#[cfg(windows)]
+mod windows;
+
+#[cfg(unix)]
+use unix as current;
+#[cfg(windows)]
+use windows as current;
+
+pub(crate) use current::ManagedProcess;
+```
+
+约束：
+
+- Windows 构建只编译 `windows.rs`。
+- macOS/Linux 构建只编译 `unix.rs`。
+- `backend` 只依赖 `platform/mod.rs` 暴露的类型和函数。
+- 不定义运行时平台枚举。
+- 不使用 `Box<dyn PlatformProcess>`。
+- 不提供动态平台切换。
+- `windows.rs` 和 `unix.rs` 必须实现相同的方法集合和行为契约。
+
+### 6.3 `mod.rs` 共享数据类型
+
+`platform/mod.rs` 定义平台无关的输入、输出和错误类型。平台原生 handle 只存在于当前平台实现的私有字段中。
+
+概念接口：
+
+```rust
+use std::{io, path::Path, time::Duration};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ProcessKind {
+    Shell,
+    Dsh,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct ProcessExit {
+    pub exit_code: Option<i32>,
+}
+
+pub(crate) struct SpawnedProcess {
+    pub process: ManagedProcess,
+    pub stdout: tokio::process::ChildStdout,
+    pub stderr: tokio::process::ChildStderr,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum PlatformError {
+    #[error("failed to build {kind:?} command: {source}")]
+    BuildCommand {
+        kind: ProcessKind,
+        #[source]
+        source: io::Error,
+    },
+
+    #[error("failed to spawn {kind:?} process: {source}")]
+    Spawn {
+        kind: ProcessKind,
+        #[source]
+        source: io::Error,
+    },
+
+    #[error("failed to control {kind:?} process tree: {source}")]
+    Control {
+        kind: ProcessKind,
+        #[source]
+        source: io::Error,
+    },
+
+    #[error("failed to wait for {kind:?} process: {source}")]
+    Wait {
+        kind: ProcessKind,
+        #[source]
+        source: io::Error,
+    },
+}
+```
+
+接口语义：
+
+- `ProcessKind` 只区分通用 Shell 与专用 dsh，用于错误上下文和日志。
+- `ProcessExit.exit_code` 只表达系统退出结果，不映射业务 `ShellStatus`。
+- 正常退出码映射为 `Some(code)`。
+- 无数字退出码的终止映射为 `None`。
+- `PlatformError` 是内部错误，不直接序列化给前端。
+- `backend/error.rs` 负责将 `PlatformError` 转换为业务错误。
+- `ipc.rs` 再将业务错误转换为 `IpcError`。
+- 平台函数不使用 `String` 作为错误类型。
+- 生产代码不使用 `unwrap()` 或 `expect()` 处理平台操作。
+
+`SpawnedProcess` 中的 stdout/stderr 管道在创建成功时必须存在。平台实现必须在 spawn 前配置：
+
+```text
+stdin  = null
+stdout = piped
+stderr = piped
+```
+
+stdout/stderr 的读取、UTF-8 lossy 解码和业务日志输出不属于平台层。
+
+### 6.4 `mod.rs` 对内接口
+
+`platform/mod.rs` 对 `backend` 暴露以下静态接口：
+
+```rust
+pub(crate) fn spawn_shell(
+    command: &str,
+    cwd: &Path,
+) -> Result<SpawnedProcess, PlatformError> {
+    current::spawn_shell(command, cwd)
+}
+
+pub(crate) fn spawn_dsh(
+    port: u16,
+) -> Result<SpawnedProcess, PlatformError> {
+    current::spawn_dsh(port)
+}
+```
+
+`ManagedProcess` 在 `windows.rs` 和 `unix.rs` 中分别定义，但必须提供一致的方法：
+
+```rust
+impl ManagedProcess {
+    pub(crate) fn kind(&self) -> ProcessKind;
+
+    pub(crate) fn try_wait(
+        &self,
+    ) -> Result<Option<ProcessExit>, PlatformError>;
+
+    pub(crate) async fn wait(
+        &self,
+    ) -> Result<ProcessExit, PlatformError>;
+
+    pub(crate) async fn terminate_tree(
+        &self,
+        grace_period: Duration,
+    ) -> Result<ProcessExit, PlatformError>;
+}
+```
+
+方法契约：
+
+#### `kind`
+
+- 返回创建时固定的 `ProcessKind`。
+- 该值在进程整个生命周期内不变。
+
+#### `try_wait`
+
+- 不阻塞当前任务。
+- 进程仍在运行时返回 `Ok(None)`。
+- 进程已经退出时返回缓存的 `Ok(Some(ProcessExit))`。
+- 可以重复调用。
+- 不消费退出结果。
+
+#### `wait`
 
 - 异步等待进程退出。
-- 查询进程是否已经退出。
-- 捕获 stdout/stderr。
-- 正常退出码读取。
-- 无退出码状态表达。
-- 完整进程树终止。
-- shell timeout 清理。
-- dsh 主动停止。
-- 应用退出时的 dsh 清理。
+- 进程已经退出时立即返回缓存结果。
+- 可以被多个任务同时调用。
+- 所有等待者必须得到同一个 `ProcessExit`。
+- 不要求调用者持有可变引用。
+- 不允许在等待期间持有 dsh 状态机互斥锁。
 
-### 6.2 Windows
+#### `terminate_tree`
 
-Windows 平台实现位于 `platform/windows.rs`。
+- 终止该 `ManagedProcess` 对应的完整进程树。
+- 已经退出时直接返回缓存的退出结果。
+- 可以与另一个任务中的 `wait()` 并发执行。
+- 可以被重复调用。
+- 并发终止请求只执行一次实际终止流程，其他调用等待同一个结果。
+- 返回前必须完成直接子进程回收。
+- Unix 使用传入的 `grace_period` 控制 `SIGTERM` 到 `SIGKILL` 的等待时间。
+- Windows 保留相同参数，但终止 Job Object 时不执行 Unix 信号等待。
+
+### 6.5 `ManagedProcess` 通用并发框架
+
+`ManagedProcess` 是可克隆的轻量控制 handle。内部可使用 `Arc` 共享平台资源和退出状态，但不得复制操作系统资源的所有权语义。
+
+统一内部框架：
+
+```text
+spawn_shell / spawn_dsh
+  ├─ 创建平台进程树容器
+  ├─ 创建并启动直接子进程
+  ├─ 取出 stdout/stderr
+  ├─ 启动唯一 reaper/supervisor
+  ├─ 返回 SpawnedProcess
+  │    ├─ ManagedProcess
+  │    ├─ stdout
+  │    └─ stderr
+  └─ supervisor 等待退出并缓存 ProcessExit
+```
+
+`ManagedProcess` 的共享状态至少包含：
+
+```text
+ProcessKind
+平台控制资源
+退出结果缓存
+退出通知
+终止流程互斥状态
+```
+
+并发约束：
+
+- 只有一个 supervisor/reaper 负责等待直接子进程，避免重复 `wait`。
+- supervisor 必须持有直接子进程的可变所有权。
+- `wait()` 通过共享退出通知等待 supervisor 结果。
+- `try_wait()` 读取共享退出缓存。
+- `terminate_tree()` 使用独立的平台控制资源发起终止，不需要取得子进程可变所有权。
+- `terminate_tree()` 之后仍由同一个 supervisor 回收直接子进程。
+- 后台 dsh 退出监控持有一个 `ManagedProcess` clone。
+- dsh 状态持有另一个 `ManagedProcess` clone，用于主动停止。
+- Shell 超时任务可以调用 `terminate_tree()`，同时主执行任务等待退出结果。
+- 最后一个 handle 被释放时关闭平台资源。
+
+Windows Job handle 与 Unix PGID 都通过私有字段封装。`backend` 不得依赖其具体类型。
+
+### 6.6 Windows 通用框架
+
+`platform/windows.rs` 负责 Windows 命令构造、Job Object、进程 handle 和进程树终止。
+
+结构框架：
+
+```rust
+use std::sync::Arc;
+
+pub(crate) struct ManagedProcess {
+    inner: Arc<WindowsProcess>,
+}
+
+struct WindowsProcess {
+    kind: ProcessKind,
+    job: OwnedJobHandle,
+    process_id: u32,
+    exit_state: SharedExitState,
+    termination_state: TerminationState,
+}
+
+pub(super) fn spawn_shell(
+    command: &str,
+    cwd: &Path,
+) -> Result<SpawnedProcess, PlatformError>;
+
+pub(super) fn spawn_dsh(
+    port: u16,
+) -> Result<SpawnedProcess, PlatformError>;
+```
+
+上述私有辅助类型表示职责，不要求跨平台共享具体定义：
+
+- `OwnedJobHandle` 独占 Job Object handle，并在 `Drop` 时关闭 handle。
+- `SharedExitState` 缓存 `ProcessExit` 并通知所有等待任务。
+- `TerminationState` 保证终止流程只执行一次。
+- Windows 原生 handle 不暴露到 `platform/mod.rs` 之外。
+
+#### 6.6.1 Windows Shell 构造
+
+`spawn_shell` 构造：
+
+```text
+program = cmd.exe
+args    = /D /S /C <command>
+cwd     = 已由 backend/shell.rs 解析并验证的绝对路径
+env     = 继承应用启动时修复后的环境
+stdin   = null
+stdout  = piped
+stderr  = piped
+```
+
+#### 6.6.2 Windows dsh 构造
+
+`spawn_dsh` 构造受控命令：
+
+```text
+dsh web --port PORT
+```
 
 约束：
 
-- 受控命令使用 Job Object。
-- shell 每次调用拥有独立 Job Object。
-- dsh 拥有独立、长生命周期 Job Object。
-- Job Object 覆盖 shell/dsh 创建的后代进程。
-- Job Object 配置关闭 handle 时终止其中的进程。
-- shell timeout 通过终止对应 Job Object 清理进程树。
-- `stop_dsh` 通过 dsh Job Object 终止进程树。
-- Windows shell 使用 `cmd.exe`。
-- Windows 平台实现负责基于修复后的 PATH 启动 dsh。
+- 使用修复后的 PATH 解析 npm 全局安装的 dsh 命令入口。
+- Windows command shim 的解析和启动细节只存在于 `windows.rs`。
+- dsh 的直接启动进程及其 Node 后代进程必须属于同一个 Job Object。
+- dsh 的 cwd 不由前端提供。
+- stdout/stderr 必须通过 `SpawnedProcess` 返回。
 
-### 6.3 Unix
+#### 6.6.3 Job Object 创建流程
 
-Unix 平台实现位于 `platform/unix.rs`，同时覆盖 macOS 和 Linux。
+每个 Shell 调用和 dsh 实例分别创建一个 Job Object：
+
+1. 创建 Job Object。
+2. 设置 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`。
+3. 创建 stdout/stderr pipe。
+4. 创建目标进程。
+5. 在目标进程创建工作负载后代之前将其关联到 Job Object。
+6. 启动唯一 supervisor 等待直接子进程退出。
+7. 返回 `SpawnedProcess`。
+
+如果 Job Object 创建、配置或进程关联失败：
+
+- 终止已经创建的直接子进程。
+- 关闭已经创建的 Job handle 和 pipe handle。
+- 回收直接子进程。
+- 返回 `PlatformError::Spawn` 或 `PlatformError::Control`。
+- 不返回部分初始化的 `ManagedProcess`。
+
+#### 6.6.4 Windows 终止流程
+
+`terminate_tree` 执行：
+
+1. 检查共享退出缓存。
+2. 进程已退出时直接返回缓存结果。
+3. 取得终止流程执行权。
+4. 调用 Job Object 终止能力结束整个进程树。
+5. 等待 supervisor 回收直接子进程。
+6. 返回 supervisor 缓存的 `ProcessExit`。
+
+Windows 的 `grace_period` 不改变 Job Object 终止流程。业务层仍使用相同的方法签名。
+
+`JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` 同时作为资源释放时的清理保证。正常业务流程仍显式调用 `terminate_tree()`，不依赖 `Drop` 作为主要控制路径。
+
+### 6.7 Unix 通用框架
+
+`platform/unix.rs` 同时覆盖 macOS 和 Linux，负责 bash 命令构造、进程组创建和信号终止。
+
+结构框架：
+
+```rust
+use std::sync::Arc;
+
+pub(crate) struct ManagedProcess {
+    inner: Arc<UnixProcess>,
+}
+
+struct UnixProcess {
+    kind: ProcessKind,
+    leader_pid: u32,
+    process_group_id: i32,
+    exit_state: SharedExitState,
+    termination_state: TerminationState,
+}
+
+pub(super) fn spawn_shell(
+    command: &str,
+    cwd: &Path,
+) -> Result<SpawnedProcess, PlatformError>;
+
+pub(super) fn spawn_dsh(
+    port: u16,
+) -> Result<SpawnedProcess, PlatformError>;
+```
+
+上述私有辅助类型表示职责：
+
+- `leader_pid` 标识直接子进程，由唯一 supervisor 回收。
+- `process_group_id` 标识完整受控进程组。
+- `SharedExitState` 缓存直接子进程退出结果并通知等待任务。
+- `TerminationState` 保证信号终止流程只执行一次。
+
+#### 6.7.1 Unix Shell 构造
+
+`spawn_shell` 构造：
+
+```text
+program = /bin/bash
+args    = -c <command>
+cwd     = 已由 backend/shell.rs 解析并验证的绝对路径
+env     = 继承应用启动时修复后的环境
+stdin   = null
+stdout  = piped
+stderr  = piped
+```
+
+#### 6.7.2 Unix dsh 构造
+
+`spawn_dsh` 构造：
+
+```text
+program = dsh
+args    = web --port PORT
+env     = 继承应用启动时修复后的环境
+stdin   = null
+stdout  = piped
+stderr  = piped
+```
 
 约束：
 
-- 每个受控 shell 命令创建独立进程组。
-- dsh 创建独立进程组。
-- 终止操作向整个进程组发送信号。
-- 优雅停止使用 `SIGTERM`。
-- 强制停止使用 `SIGKILL`。
-- Unix shell 使用 `/bin/bash`。
+- 通过修复后的 PATH 查找 `dsh`。
+- dsh 的 cwd 不由前端提供。
+- dsh 必须成为新进程组的 leader。
+- dsh 创建的所有后代进程继承该进程组。
+
+#### 6.7.3 Unix 进程组创建流程
+
+每个 Shell 调用和 dsh 实例分别创建独立进程组：
+
+1. 创建 stdout/stderr pipe。
+2. 配置子进程在执行目标程序前进入新的进程组。
+3. 启动目标进程。
+4. 记录直接子进程 PID 和 PGID。
+5. 启动唯一 supervisor 等待直接子进程退出。
+6. 返回 `SpawnedProcess`。
+
+进程组必须在子进程执行用户命令之前建立，避免后代进程脱离受控进程组。
+
+#### 6.7.4 Unix 终止流程
+
+`terminate_tree(grace_period)` 执行：
+
+1. 检查共享退出缓存。
+2. 进程已退出时直接返回缓存结果。
+3. 取得终止流程执行权。
+4. 向整个进程组发送 `SIGTERM`。
+5. 等待 supervisor 退出通知，最长等待 `grace_period`。
+6. 在期限内退出时返回缓存结果。
+7. 到期后向整个进程组发送 `SIGKILL`。
+8. 等待 supervisor 回收直接子进程。
+9. 返回缓存的 `ProcessExit`。
+
+信号目标必须是整个进程组，不得只向 `leader_pid` 发送信号。
+
+当目标进程组已经不存在时，终止流程继续等待或读取 supervisor 的退出结果，不把“进程已经消失”当作新的业务失败。
+
+Unix `Drop` 不发送信号。正常停止、Shell timeout 和应用正常退出必须显式调用 `terminate_tree()`。
+
+### 6.8 通用调用流程
+
+#### 6.8.1 Shell
+
+`backend/shell.rs` 使用平台接口：
+
+```text
+校验 ShellRequest
+  -> 解析 cwd 和 timeout
+  -> platform::spawn_shell(command, cwd)
+  -> 并发读取 stdout/stderr
+  -> 等待 ManagedProcess::wait()
+     或 timeout 到期
+  -> timeout 时调用 terminate_tree(5 秒)
+  -> 等待输出读取完成
+  -> UTF-8 lossy 解码
+  -> 构造 ShellResult
+```
+
+Shell 的 `success/failed/timeout` 映射全部留在 `backend/shell.rs`。
+
+#### 6.8.2 dsh 启动
+
+`backend/harness.rs` 使用平台接口：
+
+```text
+检查端口
+  -> platform::spawn_dsh(port)
+  -> 启动 stdout/stderr 日志任务
+  -> 保存 ManagedProcess clone 和进程 generation
+  -> 启动 wait() 退出监控
+  -> 执行 HTTP 2xx 就绪探测
+  -> 成功后进入 Running
+```
+
+平台层不执行 TCP/HTTP 检查，也不发送 Tauri 事件。
+
+#### 6.8.3 dsh 停止
+
+```text
+取得当前 ManagedProcess
+  -> terminate_tree(5 秒)
+  -> 等待 stdout/stderr 日志任务完成
+  -> 核对 generation
+  -> 清理状态
+  -> 进入 Stopped
+```
+
+### 6.9 资源、安全与实现约束
+
+- Windows 原生 handle 使用拥有所有权的 RAII wrapper。
+- handle wrapper 必须实现正确的 `Send`/`Sync` 约束。
+- Unix PID/PGID 使用明确的内部类型，避免相互混用。
+- 平台原生错误统一转换为包含 `std::io::Error` 的 `PlatformError`。
+- 所有 `unsafe` 代码限制在 `windows.rs` 或 `unix.rs` 的最小私有函数中。
+- 每个 `unsafe` 块必须记录其 handle、PID、指针和生命周期不变量。
+- 不把原始 handle 或裸指针存入 Tauri managed state。
+- 不在持有同步 Mutex guard 时执行 `.await`。
+- 不在 `wait()` 期间独占 dsh 生命周期锁。
+- 不把 stdout/stderr 读取放入平台终止互斥区。
+- 进程自然退出、主动停止和超时终止最终都由唯一 supervisor 回收。
+- 平台资源初始化必须具备失败回滚，不能泄漏半初始化进程或 handle。
+- `ManagedProcess` 的业务身份由 `harness.rs` 的 generation 管理，平台层只负责系统进程身份。
 
 ## 7. dsh 生命周期
 
