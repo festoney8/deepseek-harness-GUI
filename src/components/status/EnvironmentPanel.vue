@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { RuntimeSnapshot } from "../../composables/useRuntime";
-import { checkEnv, checkVersion } from "../../composables/useRuntime";
+import { busy, checkEnv, checkVersion } from "../../composables/useRuntime";
 
 interface StatusRow {
   label: string;
@@ -17,20 +17,25 @@ const versionRow = (label: string, value: string | null, failed: boolean, highli
   const loading = value === null && !failed;
   return {
     label,
-    value: value ?? (failed ? "获取失败" : "正在加载…"),
+    value: value ?? (failed ? "获取失败" : "正在加载"),
     valueClass: value ? (highlighted ? "text-warning" : "text-base-content") : failed ? "text-error" : "text-warning",
     status: failed ? "error" : "info",
     loading,
   };
 };
 
-const environmentRow = (label: string, value: string | null): StatusRow => {
+const environmentRow = (
+  label: string,
+  value: string | null,
+  missing: { text?: string; tone?: "warning" | "error" } = {},
+): StatusRow => {
   const loading = value === null && !state.versionChecked;
+  const missingTone = missing.tone ?? "error";
   return {
     label,
-    value: value ?? (loading ? "正在加载…" : "未检测到"),
-    valueClass: value ? "text-base-content" : loading ? "text-warning" : "text-error",
-    status: value ? "info" : loading ? "warning" : "error",
+    value: value ?? (loading ? "正在加载" : (missing.text ?? "未检测到")),
+    valueClass: value ? "text-base-content" : loading || missingTone === "warning" ? "text-warning" : "text-error",
+    status: value ? "info" : loading ? "warning" : missingTone,
     loading,
   };
 };
@@ -50,13 +55,7 @@ const statusRows = computed<StatusRow[]>(() => [
     state.versionChecked && state.remoteMirror === null,
     state.local !== null && state.remoteMirror !== state.local,
   ),
-  {
-    label: "本地 DSH 版本",
-    value: state.local ?? (state.versionChecked ? "未安装" : "正在加载…"),
-    valueClass: state.local ? "text-base-content" : state.versionChecked ? "text-warning" : "text-warning",
-    status: state.local ? "info" : state.versionChecked ? "error" : "warning",
-    loading: !state.versionChecked,
-  },
+  environmentRow("本地 DSH 版本", state.local, { text: "未安装", tone: "warning" }),
 ]);
 
 const checking = ref(false);
@@ -81,7 +80,7 @@ function recheckEnvironment() {
       <button
         type="button"
         class="btn btn-ghost btn-sm text-primary shrink-0 gap-1.5 rounded-xl text-base"
-        :disabled="checking || state.phase === 'installing' || state.phase === 'starting'"
+        :disabled="checking || busy"
         @click="recheckEnvironment"
       >
         <span v-if="checking" class="loading loading-spinner loading-xs" aria-label="正在检查"></span>
@@ -100,7 +99,7 @@ function recheckEnvironment() {
             stroke-linecap="round"
           />
         </svg>
-        {{ checking ? "正在检查…" : "重新检查" }}
+        {{ checking ? "正在检查" : "重新检查" }}
       </button>
     </div>
 

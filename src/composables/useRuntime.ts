@@ -1,4 +1,4 @@
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
@@ -40,6 +40,11 @@ export const state = ref<RuntimeSnapshot>({
 });
 
 export const closeRequested = ref(false);
+
+/** 当前运行阶段（idle/installing/starting/ready/failed） */
+export const phase = computed(() => state.value.phase);
+/** 安装或启动进行中：各面板操作按钮的统一忙碌态 */
+export const busy = computed(() => phase.value === "installing" || phase.value === "starting");
 
 let unlisteners: UnlistenFn[] = [];
 

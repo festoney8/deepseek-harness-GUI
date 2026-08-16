@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import TitleBar from "./components/TitleBar.vue";
 import StatusView from "./components/StatusView.vue";
 import WebUiView from "./components/WebUiView.vue";
@@ -10,8 +10,7 @@ import { disposeTheme, initTheme } from "./composables/useTheme";
 const exitDialog = ref<HTMLDialogElement | null>(null);
 const { actionError } = useActionFeedback();
 
-watch(closeRequested, async (requested) => {
-  await nextTick();
+watch(closeRequested, (requested) => {
   const dialog = exitDialog.value;
   if (!dialog) return;
   if (requested && !dialog.open) {

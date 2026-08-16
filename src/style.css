@@ -103,14 +103,12 @@ a {
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) .dsh-status-view,
-  :root[data-theme="dark"] .dsh-status-view {
+  :root:not([data-theme]) .dsh-status-view {
     background: radial-gradient(circle at top, #0f172a 0, #020617 42%, #0b1220 100%);
     color: #f1f5f9;
   }
 
-  :root:not([data-theme]) .dsh-panel,
-  :root[data-theme="dark"] .dsh-panel {
+  :root:not([data-theme]) .dsh-panel {
     border-color: color-mix(in srgb, var(--color-primary) 35%, transparent);
     box-shadow: 0 24px 70px -35px rgb(2 6 23 / 90%);
   }

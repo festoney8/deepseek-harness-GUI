@@ -4,7 +4,7 @@ import { useLocalStorage } from "@vueuse/core";
 import IconDebugStart from "~icons/codicon/debug-start";
 import IconLink from "~icons/line-md/link";
 import type { RuntimeSnapshot } from "../../composables/useRuntime";
-import { startServer } from "../../composables/useRuntime";
+import { busy, phase, startServer } from "../../composables/useRuntime";
 import { beginAction, reportActionError } from "../../composables/useActionFeedback";
 
 const { state } = defineProps<{ state: RuntimeSnapshot }>();
@@ -13,8 +13,7 @@ const storedPort = useLocalStorage("dsh-connect-port", 3080);
 const hostInput = ref(storedHost.value);
 const portInput = ref(String(storedPort.value));
 
-const starting = computed(() => state.phase === "starting");
-const busy = computed(() => state.phase === "installing" || starting.value);
+const starting = computed(() => phase.value === "starting");
 const hostValid = computed(() => {
   const host = hostInput.value.trim().toLowerCase();
   if (host === "localhost") return true;
@@ -69,7 +68,7 @@ function runServer() {
     <div class="mt-6 space-y-3">
       <div>
         <label
-          class="input dsh-input-shell focus-within:border-primary focus-within:ring-primary/20 w-full rounded-xl focus-within:ring-2 focus-within:outline-none"
+          class="input focus-within:border-primary focus-within:ring-primary/20 w-full rounded-xl focus-within:ring-2 focus-within:outline-none"
           :class="{ 'input-error focus-within:border-error focus-within:ring-error/20': !hostValid }"
         >
           <span class="label text-base">主机</span>
@@ -88,7 +87,7 @@ function runServer() {
 
       <div>
         <label
-          class="input dsh-input-shell focus-within:border-primary focus-within:ring-primary/20 w-full rounded-xl focus-within:ring-2 focus-within:outline-none"
+          class="input focus-within:border-primary focus-within:ring-primary/20 w-full rounded-xl focus-within:ring-2 focus-within:outline-none"
           :class="{ 'input-error focus-within:border-error focus-within:ring-error/20': !portValid }"
         >
           <span class="label text-base">端口</span>

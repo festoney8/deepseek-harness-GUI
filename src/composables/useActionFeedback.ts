@@ -4,7 +4,6 @@ import { state } from "./useRuntime";
 export const actionError = ref<string | null>(null);
 
 let actionPending = false;
-let lastFailureKey = "";
 
 function errorMessage(error: unknown) {
   if (typeof error === "string") return error;
@@ -21,7 +20,6 @@ function errorMessage(error: unknown) {
 
 export function beginAction() {
   actionPending = true;
-  lastFailureKey = "";
   actionError.value = null;
 }
 
@@ -32,7 +30,6 @@ export function reportActionError(error: unknown) {
 
 export function clearActionError() {
   actionPending = false;
-  lastFailureKey = "";
   actionError.value = null;
 }
 
@@ -41,11 +38,11 @@ export function useActionFeedback() {
     state,
     (snapshot) => {
       if (snapshot.phase === "failed" && snapshot.detail && actionPending) {
-        const failureKey = `${snapshot.phase}:${snapshot.detail}`;
-        if (failureKey !== lastFailureKey) {
-          lastFailureKey = failureKey;
-          actionError.value = snapshot.detail;
-        }
+        actionError.value = snapshot.detail;
+        actionPending = false;
+      } else if (actionPending && (snapshot.phase === "idle" || snapshot.phase === "ready")) {
+        // 动作成功完成（安装 → idle，启动 → ready），清理待处理标记，
+        // 避免后续无关的 failed 事件误触发 toast。
         actionPending = false;
       }
     },

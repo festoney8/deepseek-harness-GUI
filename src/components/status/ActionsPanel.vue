@@ -4,8 +4,9 @@ import { useLocalStorage } from "@vueuse/core";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import IconWeb from "~icons/streamline-plump/web";
 import IconLog from "~icons/ix/log";
+import IconInstall from "~icons/clarity/install-line";
 import type { RuntimeSnapshot } from "../../composables/useRuntime";
-import { installDsh, openLogDir } from "../../composables/useRuntime";
+import { busy, installDsh, openLogDir, phase } from "../../composables/useRuntime";
 import { beginAction, reportActionError } from "../../composables/useActionFeedback";
 
 const LINKS = {
@@ -13,9 +14,7 @@ const LINKS = {
 } as const;
 
 const { state } = defineProps<{ state: RuntimeSnapshot }>();
-const installing = computed(() => state.phase === "installing");
-const starting = computed(() => state.phase === "starting");
-const busy = computed(() => installing.value || starting.value);
+const installing = computed(() => phase.value === "installing");
 const environmentReady = computed(() => Boolean(state.node && state.npm));
 const useMirror = useLocalStorage("dsh-use-mirror", false);
 
@@ -74,19 +73,23 @@ function startInstall() {
       <div class="divider"></div>
       <button
         type="button"
-        class="btn btn-block min-h-12 rounded-xl font-bold disabled:opacity-100"
+        class="btn btn-block min-h-12 justify-start gap-2 rounded-xl px-4 font-bold disabled:opacity-100"
         :class="installUpdateDisabled ? 'btn-outline btn-neutral' : 'btn-outline btn-primary'"
         :disabled="installUpdateDisabled"
         :aria-busy="installing"
         @click="startInstall"
       >
         <span v-if="installing" class="loading loading-spinner loading-sm" aria-label="正在安装"></span>
+        <IconInstall v-else class="h-5 w-5" />
         {{ installUpdateLabel }}
       </button>
       <label class="label text-base-content/70 mt-2 cursor-pointer justify-start gap-2 px-0 text-base">
         <input v-model="useMirror" type="checkbox" class="checkbox checkbox-primary" :disabled="busy" />
         <span>使用镜像源</span>
       </label>
+      <p v-if="installUpdateDisabled && selectedSourceFailed" class="text-error mt-1 text-xs font-medium">
+        {{ useMirror ? "镜像源版本查询失败，可取消勾选改用官方源。" : "官方源版本查询失败，可勾选使用镜像源。" }}
+      </p>
     </div>
   </section>
 </template>

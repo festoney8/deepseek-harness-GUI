@@ -17,7 +17,6 @@ watch(
   [preference, theme],
   ([preferred, resolved]) => {
     const root = document.documentElement;
-    root.classList.remove("dark");
     if (preferred === "system") {
       root.removeAttribute("data-theme");
     } else {

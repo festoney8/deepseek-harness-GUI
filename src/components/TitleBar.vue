@@ -9,6 +9,7 @@ import logoMiniUrl from "../assets/logo_mini.png";
 const win = getCurrentWindow();
 const maximized = ref(false);
 let unlisten: (() => void) | undefined;
+const winBtnClass = "btn btn-ghost btn-square btn-xs h-8 w-11 rounded-none text-base-content/60 hover:bg-base-300";
 
 async function syncMaximized() {
   maximized.value = await win.isMaximized();
@@ -29,18 +30,12 @@ onUnmounted(() => unlisten?.());
       <span class="text-base-content/70 text-xs font-medium">DeepSeek Harness GUI</span>
     </div>
 
-    <button
-      type="button"
-      class="btn btn-ghost btn-square btn-xs text-base-content/60 hover:bg-base-300 h-8 w-11 rounded-none"
-      title="最小化"
-      aria-label="最小化"
-      @click="win.minimize()"
-    >
+    <button type="button" :class="winBtnClass" title="最小化" aria-label="最小化" @click="win.minimize()">
       <IconMinimize class="h-4 w-4" aria-hidden="true" />
     </button>
     <button
       type="button"
-      class="btn btn-ghost btn-square btn-xs text-base-content/60 hover:bg-base-300 h-8 w-11 rounded-none"
+      :class="winBtnClass"
       :title="maximized ? '还原' : '最大化'"
       :aria-label="maximized ? '还原' : '最大化'"
       @click="win.toggleMaximize()"
@@ -49,7 +44,7 @@ onUnmounted(() => unlisten?.());
     </button>
     <button
       type="button"
-      class="btn btn-ghost btn-square btn-xs text-base-content/60 hover:bg-error hover:text-error-content h-8 w-11 rounded-none"
+      :class="[winBtnClass, 'hover:bg-error hover:text-error-content']"
       title="关闭"
       aria-label="关闭"
       @click="win.close()"
