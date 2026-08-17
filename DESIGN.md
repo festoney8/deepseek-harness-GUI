@@ -691,7 +691,7 @@ stderr  = piped
 `spawn_dsh` 构造受控命令：
 
 ```text
-dsh web --port PORT
+dsh --profile web --port <PORT>
 ```
 
 约束：
@@ -947,7 +947,7 @@ start_dsh(port: u16) -> Result<String, IpcError>
 3. 将状态变为 `Starting`。
 4. 检查 `127.0.0.1:PORT` 是否已经存在 TCP 服务。
 5. 端口已被占用时恢复 `Stopped`，返回 `port_occupied`。
-6. 通过平台受控进程接口启动 `dsh web --port PORT`。
+6. 通过平台受控进程接口启动 `dsh --profile web --port <PORT>`。
 7. 捕获并持续读取 dsh stdout/stderr。
 8. 后台监控 dsh 是否提前退出。
 9. 后端轮询 `http://127.0.0.1:PORT/`。

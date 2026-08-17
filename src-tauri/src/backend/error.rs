@@ -1,0 +1,57 @@
+use crate::platform::PlatformError;
+
+/// 后端业务层统一返回的内部错误。
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum BackendError {
+    /// 命令文本为空。
+    #[error("命令不能为空")]
+    InvalidCommand,
+    /// 请求的超时时间不大于零。
+    #[error("超时时间必须大于零")]
+    InvalidTimeout,
+    /// 解析后的工作目录不可用。
+    #[error("工作目录无效")]
+    InvalidCwd,
+    /// Shell 进程创建失败。
+    #[error("无法启动 Shell 进程")]
+    ShellSpawnFailed,
+    /// 远程主机格式不受支持。
+    #[error("主机地址无效")]
+    InvalidHost,
+    /// 请求端口不在有效范围内。
+    #[error("端口无效")]
+    InvalidPort,
+    /// 目标服务未能通过可用性探测。
+    #[error("服务不可用")]
+    ServiceUnavailable,
+    /// 本地 DSH 启动端口已被占用。
+    #[error("端口已被占用")]
+    PortOccupied,
+    /// 已有生命周期变更操作正在执行。
+    #[error("另一个生命周期操作正在进行")]
+    OperationInProgress,
+    /// 当前已经维护着运行中的 DSH 实例。
+    #[error("DSH 已经在运行")]
+    DshAlreadyRunning,
+    /// 当前没有可停止的 DSH 实例。
+    #[error("DSH 当前未运行")]
+    ProcessNotRunning,
+    /// DSH 受控进程创建失败。
+    #[error("无法启动 DSH 进程")]
+    DshSpawnFailed,
+    /// DSH 未在规定时间内完成就绪。
+    #[error("DSH 启动超时")]
+    DshStartTimeout,
+    /// DSH 在完成就绪探测前退出。
+    #[error("DSH 在就绪前退出")]
+    DshExitedEarly,
+    /// 尚未成功读取到主题值。
+    #[error("当前没有可用主题")]
+    ThemeNotAvailable,
+    /// 系统无法打开本次启动的日志目录。
+    #[error("无法打开日志目录")]
+    OpenLogsFailed,
+    /// 平台进程管理层返回的类型化错误。
+    #[error(transparent)]
+    Platform(#[from] PlatformError),
+}
