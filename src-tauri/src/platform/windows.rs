@@ -6,7 +6,6 @@ use std::{
         io::{AsRawHandle, FromRawHandle, OwnedHandle},
         process::CommandExt,
     },
-    path::Path,
     process::{Command, Stdio},
     ptr,
     sync::{Arc, Mutex},
@@ -129,13 +128,6 @@ impl ManagedProcess {
         terminate_job(self.inner.job.raw(), self.inner.kind)?;
         self.wait().await
     }
-}
-
-/// 使用 Windows Shell 解释器创建受控命令进程树。
-pub(super) fn spawn_shell(command: &str, cwd: &Path) -> Result<SpawnedProcess, PlatformError> {
-    let mut process = Command::new("cmd.exe");
-    process.args(["/D", "/S", "/C", command]).current_dir(cwd);
-    spawn(process, ProcessKind::Shell)
 }
 
 /// 使用 Windows 命令入口创建受控 DSH 进程树。

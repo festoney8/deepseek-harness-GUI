@@ -1,4 +1,4 @@
-use std::{io, path::Path};
+use std::io;
 
 #[cfg(unix)]
 mod unix;
@@ -15,8 +15,6 @@ pub(crate) use current::ManagedProcess;
 /// 标识平台进程所属的业务用途。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ProcessKind {
-    /// 由通用 Shell IPC 创建的短命令进程。
-    Shell,
     /// 由专用生命周期管理器创建的 DSH 服务进程。
     Dsh,
 }
@@ -77,11 +75,6 @@ pub(crate) enum PlatformError {
         #[source]
         source: io::Error,
     },
-}
-
-/// 使用当前平台实现启动受控 Shell 进程树。
-pub(crate) fn spawn_shell(command: &str, cwd: &Path) -> Result<SpawnedProcess, PlatformError> {
-    current::spawn_shell(command, cwd)
 }
 
 /// 使用当前平台实现启动受控 DSH 进程树。

@@ -3,18 +3,9 @@ use crate::platform::PlatformError;
 /// 后端业务层统一返回的内部错误。
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum BackendError {
-    /// 命令文本为空。
-    #[error("命令不能为空")]
-    InvalidCommand,
     /// 请求的超时时间不大于零。
     #[error("超时时间必须大于零")]
     InvalidTimeout,
-    /// 解析后的工作目录不可用。
-    #[error("工作目录无效")]
-    InvalidCwd,
-    /// Shell 进程创建失败。
-    #[error("无法启动 Shell 进程")]
-    ShellSpawnFailed,
     /// 远程主机格式不受支持。
     #[error("主机地址无效")]
     InvalidHost,

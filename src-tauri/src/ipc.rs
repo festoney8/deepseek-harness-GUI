@@ -1,8 +1,6 @@
 use tauri::{AppHandle, State};
 
-use crate::backend::{
-    self, BackendError, HarnessState, LogState, ShellRequest, ShellResult, ThemeState,
-};
+use crate::backend::{self, BackendError, HarnessState, LogState, ThemeState};
 
 /// 前后端 IPC 边界使用的稳定结构化错误。
 #[derive(Debug, Clone, serde::Serialize)]
@@ -19,12 +17,6 @@ impl IpcError {
     fn from_backend(error: BackendError) -> Self {
         todo!()
     }
-}
-
-/// 执行通用 Shell 命令。
-#[tauri::command]
-pub(crate) async fn shell(request: ShellRequest) -> Result<ShellResult, IpcError> {
-    todo!()
 }
 
 /// 启动本地 DSH 服务。

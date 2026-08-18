@@ -1,4 +1,4 @@
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use super::{PlatformError, ProcessExit, ProcessKind, SpawnedProcess};
 
@@ -39,11 +39,6 @@ impl ManagedProcess {
     ) -> Result<ProcessExit, PlatformError> {
         todo!()
     }
-}
-
-/// 使用 Bash 创建独立进程组中的受控命令进程树。
-pub(super) fn spawn_shell(command: &str, cwd: &Path) -> Result<SpawnedProcess, PlatformError> {
-    todo!()
 }
 
 /// 创建独立进程组中的受控 DSH 进程树。

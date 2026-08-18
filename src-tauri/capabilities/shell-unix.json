@@ -1,0 +1,49 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "shell-unix",
+  "description": "Allow the main window to run fixed Node.js and DSH setup commands on macOS and Linux",
+  "windows": ["main"],
+  "platforms": ["macOS", "linux"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "node-version",
+          "cmd": "node",
+          "args": ["-V"],
+          "sidecar": false
+        },
+        {
+          "name": "npm-version",
+          "cmd": "npm",
+          "args": ["-V"],
+          "sidecar": false
+        },
+        {
+          "name": "dsh-version",
+          "cmd": "dsh",
+          "args": ["-V"],
+          "sidecar": false
+        },
+        {
+          "name": "abcde-version",
+          "cmd": "abcde",
+          "args": ["-V"],
+          "sidecar": false
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "npm-install-dsh",
+          "cmd": "npm",
+          "args": ["i", "-g", "--verbose", "@deepseek-ai/dsh"],
+          "sidecar": false
+        }
+      ]
+    }
+  ]
+}
