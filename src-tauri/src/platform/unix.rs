@@ -63,11 +63,6 @@ impl WaitFailure {
 }
 
 impl ManagedProcess {
-    /// 返回该进程创建时确定的业务类型。
-    pub(crate) fn kind(&self) -> ProcessKind {
-        self.inner.kind
-    }
-
     /// 非阻塞读取已经缓存的进程退出结果。
     pub(crate) fn try_wait(&self) -> Result<Option<ProcessExit>, PlatformError> {
         let exit = self.inner.exit.lock().map_err(|_| PlatformError::Wait {

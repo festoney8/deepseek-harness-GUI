@@ -37,8 +37,6 @@ reqwest = "0.13"
 log = "0.4"
 fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
 tauri-plugin-shell = "2"
-serde-saphyr = "1.1.0"
-notify = "8.2.0"
 tauri-plugin-fs = { version = "2", features = ["watch"] }
 
 [target.'cfg(windows)'.dependencies]

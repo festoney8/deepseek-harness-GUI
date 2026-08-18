@@ -25,12 +25,6 @@
           "cmd": "dsh",
           "args": ["-V"],
           "sidecar": false
-        },
-        {
-          "name": "abcde-version",
-          "cmd": "abcde",
-          "args": ["-V"],
-          "sidecar": false
         }
       ]
     },
@@ -40,7 +34,7 @@
         {
           "name": "npm-install-dsh",
           "cmd": "npm",
-          "args": ["i", "-g", "--verbose", "@deepseek-ai/dsh"],
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh"],
           "sidecar": false
         }
       ]

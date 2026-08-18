@@ -39,15 +39,6 @@ pub(crate) struct SpawnedProcess {
 /// 平台进程构建、启动、控制和等待阶段的内部错误。
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum PlatformError {
-    /// 无法根据业务进程类型构造平台命令。
-    #[error("构建 {kind:?} 命令失败: {source}")]
-    BuildCommand {
-        /// 发生错误的业务进程类型。
-        kind: ProcessKind,
-        /// 平台 API 返回的原始错误。
-        #[source]
-        source: io::Error,
-    },
     /// 无法创建目标进程或完成必要的资源绑定。
     #[error("启动 {kind:?} 进程失败: {source}")]
     Spawn {

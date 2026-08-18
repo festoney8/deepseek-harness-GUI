@@ -39,6 +39,9 @@ pub(crate) enum BackendError {
     /// 系统无法打开本次启动的日志目录。
     #[error("无法打开日志目录")]
     OpenLogsFailed,
+    /// 系统无法创建本次启动的独立日志目录。
+    #[error("无法创建日志目录")]
+    LogDirCreateFailed,
     /// 系统托盘、菜单或窗口控制失败。
     #[error("托盘或窗口操作失败: {0}")]
     Tray(#[from] tauri::Error),

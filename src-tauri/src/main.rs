@@ -2,7 +2,5 @@
 
 /// 启动桌面应用入口。
 fn main() {
-    let _ = fix_path_env::fix(); // fix-path-env-rs
-
     deepseek_harness_gui_lib::run();
 }

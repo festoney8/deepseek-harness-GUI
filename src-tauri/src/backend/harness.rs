@@ -4,7 +4,7 @@ use std::{
 };
 
 use log::{error, info, warn};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
     sync::{Mutex, RwLock},
@@ -71,13 +71,17 @@ pub(crate) fn create_harness_state() -> HarnessState {
 /// 启动单实例 DSH 服务并等待 WebUI 就绪。
 pub(crate) async fn start_dsh(
     port: u16,
-    _app: &AppHandle,
+    app: &AppHandle,
     state: &HarnessState,
 ) -> Result<String, BackendError> {
-    start_dsh_inner(port, state).await
+    start_dsh_inner(port, app, state).await
 }
 
-async fn start_dsh_inner(port: u16, state: &HarnessState) -> Result<String, BackendError> {
+async fn start_dsh_inner(
+    port: u16,
+    app: &AppHandle,
+    state: &HarnessState,
+) -> Result<String, BackendError> {
     if port == 0 {
         return Err(BackendError::InvalidPort);
     }
@@ -111,7 +115,12 @@ async fn start_dsh_inner(port: u16, state: &HarnessState) -> Result<String, Back
             lifecycle.process = Some(process.clone());
         }
     }
-    spawn_exit_monitor(Arc::clone(&state.lifecycle), process.clone(), generation);
+    spawn_exit_monitor(
+        app.clone(),
+        Arc::clone(&state.lifecycle),
+        process.clone(),
+        generation,
+    );
 
     let deadline = Instant::now() + START_TIMEOUT;
     let address = format!("http://127.0.0.1:{port}");
@@ -166,16 +175,6 @@ pub(crate) async fn stop_dsh(state: &HarnessState) -> Result<(), BackendError> {
     Ok(())
 }
 
-/// 监控 DSH 进程退出并清理当前实例状态。
-pub(crate) async fn monitor_dsh_exit(
-    _app: AppHandle,
-    state: Arc<HarnessState>,
-    process: ManagedProcess,
-    generation: u64,
-) -> Result<(), BackendError> {
-    monitor_exit(state.lifecycle.clone(), process, generation).await
-}
-
 /// 将停止状态切换为启动状态并返回新实例代次。
 async fn begin_start(lifecycle: &RwLock<HarnessLifecycle>) -> Result<u64, BackendError> {
     let mut lifecycle = lifecycle.write().await;
@@ -192,19 +191,24 @@ async fn begin_start(lifecycle: &RwLock<HarnessLifecycle>) -> Result<u64, Backen
 
 /// 创建不持有生命周期操作锁的后台退出监控任务。
 fn spawn_exit_monitor(
+    app: AppHandle,
     lifecycle: Arc<RwLock<HarnessLifecycle>>,
     process: ManagedProcess,
     generation: u64,
 ) {
     tokio::spawn(async move {
-        if let Err(error) = monitor_exit(lifecycle, process, generation).await {
+        if let Err(error) = monitor_exit(app, lifecycle, process, generation).await {
             error!("dsh exit monitor failed: {error:?}");
         }
     });
 }
 
 /// 等待进程退出，并仅在代次仍匹配时清理生命周期状态。
+///
+/// 仅当退出发生在 `Running` 阶段（即 dsh 自行退出）时向前端发送
+/// `dsh_exited` 事件；主动停止和启动超时终止不打扰前端。
 async fn monitor_exit(
+    app: AppHandle,
     lifecycle: Arc<RwLock<HarnessLifecycle>>,
     process: ManagedProcess,
     generation: u64,
@@ -212,9 +216,14 @@ async fn monitor_exit(
     let exit = process.wait().await?;
     let mut lifecycle = lifecycle.write().await;
     if lifecycle.generation == generation && lifecycle.process.is_some() {
+        let was_running = lifecycle.phase == HarnessPhase::Running;
         lifecycle.phase = HarnessPhase::Stopped;
         lifecycle.process = None;
         info!("dsh exited: generation={generation}, exit={exit:?}");
+        if was_running {
+            let payload = serde_json::json!({ "exitCode": exit.exit_code });
+            let _ = app.emit("dsh_exited", payload);
+        }
     }
     Ok(())
 }
