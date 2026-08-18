@@ -81,10 +81,15 @@ pub(crate) enum PlatformError {
 
 /// 使用当前平台实现启动受控 Shell 进程树。
 pub(crate) fn spawn_shell(command: &str, cwd: &Path) -> Result<SpawnedProcess, PlatformError> {
-    todo!()
+    current::spawn_shell(command, cwd)
 }
 
 /// 使用当前平台实现启动受控 DSH 进程树。
 pub(crate) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
-    todo!()
+    current::spawn_dsh(port)
+}
+
+#[cfg(all(test, windows))]
+pub(crate) fn spawn_missing_dsh_for_test(port: u16) -> Result<SpawnedProcess, PlatformError> {
+    current::spawn_missing_dsh_for_test(port)
 }
