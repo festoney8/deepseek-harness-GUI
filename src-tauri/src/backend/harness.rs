@@ -1,6 +1,4 @@
 use std::{
-    io::{Read, Write},
-    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -13,7 +11,7 @@ use tokio::{
 
 use crate::platform::{self, ManagedProcess};
 
-use super::BackendError;
+use super::{check_http, check_tcp, BackendError};
 
 const START_TIMEOUT: Duration = Duration::from_secs(10);
 const PROBE_INTERVAL: Duration = Duration::from_millis(200);
@@ -72,7 +70,7 @@ pub(crate) async fn start_dsh(
         .map_err(|_| BackendError::OperationInProgress)?;
     let generation = begin_start(&state.lifecycle).await?;
 
-    if port_is_occupied(port) {
+    if check_tcp("127.0.0.1", port, PROBE_IO_TIMEOUT).await? {
         reset_if_current(&state.lifecycle, generation).await;
         return Err(BackendError::PortOccupied);
     }
@@ -98,6 +96,7 @@ pub(crate) async fn start_dsh(
     spawn_exit_monitor(Arc::clone(&state.lifecycle), process.clone(), generation);
 
     let deadline = Instant::now() + START_TIMEOUT;
+    let address = format!("http://127.0.0.1:{port}");
     loop {
         if let Some(exit) = process.try_wait()? {
             eprintln!("[dsh][exited-before-ready] {exit:?}");
@@ -105,13 +104,12 @@ pub(crate) async fn start_dsh(
             return Err(BackendError::DshExitedEarly);
         }
 
-        if http_is_ready(port) {
+        if check_http(&address, PROBE_IO_TIMEOUT).await? {
             let mut lifecycle = state.lifecycle.write().await;
             if lifecycle.generation != generation || lifecycle.process.is_none() {
                 return Err(BackendError::DshExitedEarly);
             }
             lifecycle.phase = HarnessPhase::Running;
-            let address = format!("http://127.0.0.1:{port}");
             println!("[dsh][ready] {address}");
             return Ok(address);
         }
@@ -206,39 +204,6 @@ async fn reset_if_current(lifecycle: &RwLock<HarnessLifecycle>, generation: u64)
         lifecycle.phase = HarnessPhase::Stopped;
         lifecycle.process = None;
     }
-}
-
-fn loopback(port: u16) -> SocketAddr {
-    SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), port)
-}
-
-fn port_is_occupied(port: u16) -> bool {
-    TcpStream::connect_timeout(&loopback(port), PROBE_IO_TIMEOUT).is_ok()
-}
-
-fn http_is_ready(port: u16) -> bool {
-    let Ok(mut stream) = TcpStream::connect_timeout(&loopback(port), PROBE_IO_TIMEOUT) else {
-        return false;
-    };
-    if stream.set_read_timeout(Some(PROBE_IO_TIMEOUT)).is_err()
-        || stream.set_write_timeout(Some(PROBE_IO_TIMEOUT)).is_err()
-        || stream
-            .write_all(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n")
-            .is_err()
-    {
-        return false;
-    }
-
-    let mut response = [0_u8; 64];
-    let Ok(length) = stream.read(&mut response) else {
-        return false;
-    };
-    let status = String::from_utf8_lossy(&response[..length]);
-    status
-        .split_whitespace()
-        .nth(1)
-        .and_then(|value| value.parse::<u16>().ok())
-        .is_some_and(|code| (200..300).contains(&code))
 }
 
 fn print_stream(name: &'static str, stream: impl AsyncRead + Unpin + Send + 'static) {
