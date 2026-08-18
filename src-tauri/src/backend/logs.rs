@@ -4,8 +4,13 @@ use tauri::AppHandle;
 
 use super::BackendError;
 
-/// 保存本次应用启动所使用日志目录的共享状态。
-#[derive(Debug, Clone)]
+/// 创建只输出到终端的 Tauri 日志插件。
+pub(crate) fn create_logger() -> tauri_plugin_log::Builder {
+    tauri_plugin_log::Builder::new().targets([tauri_plugin_log::Target::new(
+        tauri_plugin_log::TargetKind::Stdout,
+    )])
+}
+
 pub(crate) struct LogState {
     /// 本次启动日志目录的绝对路径。
     pub session_dir: PathBuf,

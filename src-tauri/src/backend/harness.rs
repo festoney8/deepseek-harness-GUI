@@ -3,6 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
+use log::{error, info, warn};
 use tauri::AppHandle;
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
@@ -78,7 +79,7 @@ pub(crate) async fn start_dsh(
     let spawned = match platform::spawn_dsh(port) {
         Ok(spawned) => spawned,
         Err(error) => {
-            eprintln!("[dsh][spawn-error] {error:?}");
+            error!("dsh spawn failed: {error:?}");
             reset_if_current(&state.lifecycle, generation).await;
             return Err(BackendError::DshSpawnFailed);
         }
@@ -99,7 +100,7 @@ pub(crate) async fn start_dsh(
     let address = format!("http://127.0.0.1:{port}");
     loop {
         if let Some(exit) = process.try_wait()? {
-            eprintln!("[dsh][exited-before-ready] {exit:?}");
+            warn!("dsh exited before WebUI readiness: {exit:?}");
             reset_if_current(&state.lifecycle, generation).await;
             return Err(BackendError::DshExitedEarly);
         }
@@ -110,12 +111,12 @@ pub(crate) async fn start_dsh(
                 return Err(BackendError::DshExitedEarly);
             }
             lifecycle.phase = HarnessPhase::Running;
-            println!("[dsh][ready] {address}");
+            info!("dsh WebUI ready at {address}");
             return Ok(address);
         }
 
         if Instant::now() >= deadline {
-            eprintln!("[dsh][start-timeout] port={port}");
+            warn!("dsh startup timed out on port {port}");
             let termination = process.terminate_tree(STOP_GRACE_PERIOD).await;
             reset_if_current(&state.lifecycle, generation).await;
             termination?;
@@ -143,7 +144,7 @@ pub(crate) async fn stop_dsh(state: &HarnessState) -> Result<(), BackendError> {
     };
 
     let exit = process.terminate_tree(STOP_GRACE_PERIOD).await?;
-    println!("[dsh][stopped] exit={exit:?}");
+    info!("dsh process tree stopped: exit={exit:?}");
     reset_if_current(&state.lifecycle, generation).await;
     Ok(())
 }
@@ -178,7 +179,7 @@ fn spawn_exit_monitor(
 ) {
     tokio::spawn(async move {
         if let Err(error) = monitor_exit(lifecycle, process, generation).await {
-            eprintln!("[dsh][monitor-error] {error:?}");
+            error!("dsh exit monitor failed: {error:?}");
         }
     });
 }
@@ -193,7 +194,7 @@ async fn monitor_exit(
     if lifecycle.generation == generation && lifecycle.process.is_some() {
         lifecycle.phase = HarnessPhase::Stopped;
         lifecycle.process = None;
-        println!("[dsh][exited] generation={generation} exit={exit:?}");
+        info!("dsh exited: generation={generation}, exit={exit:?}");
     }
     Ok(())
 }
@@ -214,17 +215,19 @@ fn print_stream(name: &'static str, stream: impl AsyncRead + Unpin + Send + 'sta
             match stream.read(&mut buffer).await {
                 Ok(0) => break,
                 Ok(length) => {
-                    print!(
-                        "[dsh][{name}] {}",
-                        String::from_utf8_lossy(&buffer[..length])
-                    );
+                    let message = String::from_utf8_lossy(&buffer[..length]);
+                    if name == "stderr" {
+                        error!("[dsh][{name}] {message}");
+                    } else {
+                        info!("[dsh][{name}] {message}");
+                    }
                 }
                 Err(error) => {
-                    eprintln!("[dsh][{name}-read-error] {error:?}");
+                    error!("dsh {name} stream read failed: {error:?}");
                     break;
                 }
             }
         }
-        println!("[dsh][{name}-closed]");
+        info!("dsh {name} stream closed");
     });
 }

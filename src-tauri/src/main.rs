@@ -2,5 +2,5 @@
 
 /// 启动桌面应用入口。
 fn main() {
-    todo!()
+    deepseek_harness_gui_lib::run();
 }
