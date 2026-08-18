@@ -39,6 +39,12 @@ pub(crate) enum BackendError {
     /// 系统无法打开本次启动的日志目录。
     #[error("无法打开日志目录")]
     OpenLogsFailed,
+    /// 系统托盘、菜单或窗口控制失败。
+    #[error("托盘或窗口操作失败: {0}")]
+    Tray(#[from] tauri::Error),
+    /// 找不到主窗口或应用的默认托盘图标。
+    #[error("主窗口或默认图标不可用")]
+    WindowResourceMissing,
     /// 平台进程管理层返回的类型化错误。
     #[error(transparent)]
     Platform(#[from] PlatformError),
