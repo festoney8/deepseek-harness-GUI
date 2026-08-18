@@ -32,9 +32,15 @@
       "identifier": "shell:allow-spawn",
       "allow": [
         {
-          "name": "npm-install-dsh",
+          "name": "npm-install-dsh-npmjs",
           "cmd": "npm",
-          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh"],
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh", "--registry=https://registry.npmjs.org"],
+          "sidecar": false
+        },
+        {
+          "name": "npm-install-dsh-npmmirror",
+          "cmd": "npm",
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh", "--registry=https://registry.npmmirror.org"],
           "sidecar": false
         }
       ]

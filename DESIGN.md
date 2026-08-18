@@ -23,7 +23,7 @@ Frontend
   ├─ Command.create("node-version")
   ├─ Command.create("npm-version")
   ├─ Command.create("dsh-version")
-  ├─ Command.create("npm-install-dsh")
+  ├─ Command.create("npm-install-dsh-npmjs" / "npm-install-dsh-npmmirror")
   ├─ invoke("start_dsh")
   ├─ invoke("stop_dsh")
   ├─ invoke("connect_remote")
@@ -181,7 +181,8 @@ open_logs_failed
 node -V
 npm -V
 dsh -V
-npm install -g --verbose @deepseek-ai/dsh
+npm install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmjs.org
+npm install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmmirror.org
 ```
 
 边界约束：
@@ -212,11 +213,12 @@ PATH 规则：
 前端只使用平台无关的逻辑命令名；capability 按目标平台将逻辑命令映射到实际程序和固定参数。
 
 ```text
-逻辑命令名       Windows 实际程序   macOS/Linux 实际程序   固定参数
-node-version     node.exe           node                    -V
-npm-version      npm.cmd            npm                     -V
-dsh-version      dsh.cmd            dsh                     -V
-npm-install-dsh  npm.cmd            npm                     install -g --verbose @deepseek-ai/dsh
+逻辑命令名                Windows 实际程序   macOS/Linux 实际程序   固定参数
+node-version              node.exe           node                    -V
+npm-version               npm.cmd            npm                     -V
+dsh-version               dsh.cmd            dsh                     -V
+npm-install-dsh-npmjs     npm.cmd            npm                     install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmjs.org
+npm-install-dsh-npmmirror npm.cmd            npm                     install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmmirror.org
 ```
 
 约束：
@@ -224,9 +226,10 @@ npm-install-dsh  npm.cmd            npm                     install -g --verbose
 - Windows 必须显式配置 `npm.cmd` 和 `dsh.cmd`，不能依赖裸命令名自动解析 command shim。
 - `node.exe` 可以通过修复后的 PATH 查找；Unix 命令使用无扩展名入口。
 - Windows 与 macOS/Linux 使用平台限定的 capability，但保持相同的逻辑命令名。
-- capability 只允许上述四种固定操作，不向前端开放任意程序或任意参数。
+- capability 只允许上述五种固定操作，不向前端开放任意程序或任意参数。
 - `node-version`、`npm-version` 和 `dsh-version` 授予 `shell:allow-execute`。
-- `npm-install-dsh` 授予 `shell:allow-spawn`。
+- `npm-install-dsh-npmjs` 和 `npm-install-dsh-npmmirror` 授予 `shell:allow-spawn`。
+- 原 `npm-install-dsh` 已拆分为双 registry 变体，前端以单一 `useInstallDsh(mirror)` composable 封装二者。
 - 前端传给 `Command.create()` 的名称是 capability 中的逻辑命令名，不是操作系统实际程序名。
 
 ### 5.4 `execute`：版本检查
@@ -250,12 +253,18 @@ const dshResult = await Command.create("dsh-version").execute();
 
 ### 5.5 `spawn`：dsh 安装
 
-`npm install -g --verbose @deepseek-ai/dsh` 运行时间相对更长且输出量大，统一使用 `spawn()`，在进程运行期间持续消费 stdout/stderr。
+`npm install -g --verbose @deepseek-ai/dsh --registry=<REGISTRY>` 运行时间相对更长且输出量大，统一使用 `spawn()`，在进程运行期间持续消费 stdout/stderr。registry 固定为官方源或 npmmirror 源，对应两个固定 scope 命令，前端通过 `useInstallDsh(mirror)` composable 选择。
 
 ```typescript
 import { Command } from "@tauri-apps/plugin-shell";
 
-const command = Command.create("npm-install-dsh");
+const command = Command.create("npm-install-dsh-npmjs", [
+  "install",
+  "-g",
+  "--verbose",
+  "@deepseek-ai/dsh",
+  "--registry=https://registry.npmjs.org",
+]);
 
 command.stdout.on("data", appendInstallOutput);
 command.stderr.on("data", appendInstallOutput);
@@ -267,7 +276,7 @@ await command.spawn();
 
 安装流程：
 
-1. 前端调用 `npm-install-dsh` 的 `spawn()`。
+1. 前端调用 `npm-install-dsh-npmjs` 或 `npm-install-dsh-npmmirror` 的 `spawn()`。
 2. 注册并持续消费 stdout/stderr，避免大量输出只在结束后一次性显示。
 3. `close.code === 0` 时再次调用 `dsh-version` 的 `execute()`。
 4. `dsh-version` 成功后认为 dsh 已安装并可以运行。
@@ -280,7 +289,7 @@ await command.spawn();
 3. 使用 `dsh-version.execute()` 执行 `dsh -V`。
 4. Node 或 npm 不存在时，前端提示用户前往官网安装。
 5. dsh 不存在时，前端显示安装按钮。
-6. 安装按钮使用 `npm-install-dsh.spawn()` 执行安装并实时展示输出。
+6. 安装按钮使用 `npm-install-dsh-npmjs` 或 `npm-install-dsh-npmmirror` 的 `spawn()` 执行安装并实时展示输出。
 7. 安装成功后再次使用 `dsh-version.execute()` 验证。
 8. `dsh-version` 退出码为 `0` 后认为 dsh 可以运行。
 
@@ -1001,12 +1010,7 @@ type ThemePreference = "light" | "dark" | "system";
 ### 9.4 前端调用示例
 
 ```typescript
-import {
-  BaseDirectory,
-  exists,
-  readTextFile,
-  watch,
-} from "@tauri-apps/plugin-fs";
+import { BaseDirectory, exists, readTextFile, watch } from "@tauri-apps/plugin-fs";
 import { parse } from "yaml";
 
 const settingsPath = ".dsh/settings.yaml";
@@ -1014,11 +1018,7 @@ const homeOptions = { baseDir: BaseDirectory.Home };
 
 function parseTheme(contents: string): "light" | "dark" | "system" {
   const preference = parse(contents)?.["ui-theme"]?.preference;
-  return preference === "light" ||
-    preference === "dark" ||
-    preference === "system"
-    ? preference
-    : "system";
+  return preference === "light" || preference === "dark" || preference === "system" ? preference : "system";
 }
 ```
 
