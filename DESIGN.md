@@ -16,11 +16,14 @@ DSH 应用有大量的访问网络、读写文件、执行命令行的权限。
 
 ## 2. 总体架构
 
-后端采用“统一业务入口 + 单一 IPC 文件 + 编译期平台适配”的结构。
+后端采用“统一业务入口 + 单一 IPC 文件 + 编译期平台适配”的结构；短命令由前端通过 `tauri-plugin-shell` 直接执行，长生命周期的 dsh 由 Rust 后端统一管理。
 
 ```text
 Frontend
-  ├─ invoke("shell")
+  ├─ Command.create("node-version")
+  ├─ Command.create("npm-version")
+  ├─ Command.create("dsh-version")
+  ├─ Command.create("npm-install-dsh")
   ├─ invoke("start_dsh")
   ├─ invoke("stop_dsh")
   ├─ invoke("connect_remote")
@@ -30,12 +33,12 @@ Frontend
   ├─ listen("send_curr_theme")
   └─ listen("dsh_exited")
           │
-          ▼
-src-tauri/src/ipc.rs
-          │
+          ├──────────────────────┐
+          ▼                      ▼
+src-tauri/src/ipc.rs       tauri-plugin-shell
+          │                 (短命令)
           ▼
 src-tauri/src/backend/mod.rs
-  ├─ shell.rs
   ├─ harness.rs
   ├─ network.rs
   ├─ theme.rs
@@ -52,16 +55,17 @@ src-tauri/src/platform/mod.rs
 架构约束：
 
 - `main.rs` 只调用库入口，不承载业务逻辑。
-- `lib.rs` 负责 Tauri Builder、插件注册、状态初始化、后台任务启动和应用生命周期接线。
+- `lib.rs` 负责 Tauri Builder、插件注册、PATH 初始化、状态初始化、后台任务启动和应用生命周期接线。
 - 所有自定义 Tauri commands 集中在 `ipc.rs`。
 - `ipc.rs` 只做参数接收、业务调用和错误转换，不实现业务流程。
+- 短命令不再经过自定义 `shell` IPC，由前端直接调用 `tauri-plugin-shell`。
 - `backend/mod.rs` 是后端统一业务 façade，对 `ipc.rs` 暴露业务函数。
 - 通用业务逻辑全部位于 `backend`。
-- 只有真正依赖操作系统的进程创建、进程树管理和终止逻辑位于 `platform`。
+- 只有真正依赖操作系统的 dsh 进程创建、进程树管理和终止逻辑位于 `platform`。
 - `platform/mod.rs` 使用 `cfg` 在编译期选择 `unix.rs` 或 `windows.rs`。
 - 平台选型使用静态分派，不提供运行时平台切换。
 - Unix 和 Windows 平台实现提供相同的内部进程控制接口。
-- 所有 IPC command 都是异步调用。
+- 所有自定义 IPC command 都是异步调用。
 - 不共享状态的 IPC 可以并发执行。
 - `start_dsh` 和 `stop_dsh` 共享同一个 dsh 生命周期，只允许串行改变该状态。
 
@@ -75,7 +79,6 @@ src-tauri/src/
 ├── backend/
 │   ├── mod.rs
 │   ├── error.rs
-│   ├── shell.rs
 │   ├── harness.rs
 │   ├── network.rs
 │   ├── theme.rs
@@ -92,7 +95,6 @@ src-tauri/src/
 最终公共 IPC 接口为：
 
 ```text
-shell(request) -> ShellResult
 start_dsh(port) -> address
 stop_dsh() -> success
 connect_remote(host, port) -> address
@@ -104,7 +106,6 @@ get_curr_theme() -> theme
 Rust 侧概念签名：
 
 ```rust
-async fn shell(request: ShellRequest) -> Result<ShellResult, IpcError>;
 async fn start_dsh(port: u16) -> Result<String, IpcError>;
 async fn stop_dsh() -> Result<(), IpcError>;
 async fn connect_remote(host: String, port: u16) -> Result<String, IpcError>;
@@ -121,7 +122,7 @@ check_http
 check_https
 ```
 
-环境检查和 dsh 安装通过通用 `shell` IPC 完成，不提供独立的 `check_env` 或 `install_dsh` IPC。
+环境检查和 dsh 安装由前端直接通过 `tauri-plugin-shell` 完成，不提供自定义 `shell`、`check_env` 或 `install_dsh` IPC。
 
 ## 4. 统一错误契约
 
@@ -153,15 +154,12 @@ interface IpcError {
 - 前端不得通过解析 `message` 判断错误类型。
 - 内部模块保留具体错误类型和完整错误链。
 - 只有 `ipc.rs` 将内部错误映射为 `IpcError`。
+- `tauri-plugin-shell` 的调用错误由前端单独处理，不纳入自定义 `IpcError` 契约。
 - 底层系统错误、路径、命令上下文和错误链写入日志，不默认暴露给前端。
 
 稳定错误码至少覆盖：
 
 ```text
-invalid_command
-invalid_timeout
-invalid_cwd
-shell_spawn_failed
 invalid_host
 invalid_port
 service_unavailable
@@ -176,206 +174,143 @@ theme_not_available
 open_logs_failed
 ```
 
-## 5. 通用 Shell IPC
+## 5. 前端短命令执行
 
-### 5.1 职责
+### 5.1 职责与边界
 
-前端不直接调用 `@tauri-apps/plugin-shell`。所有短命令统一通过自定义 Rust `shell` IPC 执行。
+短时运行且不需要后端维护生命周期的命令，由前端直接通过 `@tauri-apps/plugin-shell` 执行，不再提供自定义 `shell` IPC。
 
-典型调用：
+当前只覆盖以下操作：
 
 ```text
 node -V
 npm -V
 dsh -V
-npm install -g @deepseek-ai/dsh
+npm install -g --verbose @deepseek-ai/dsh
 ```
 
-前端环境检查流程：
+边界约束：
 
-1. 调用 `shell` 执行 `node -V`。
-2. 调用 `shell` 执行 `npm -V`。
-3. 调用 `shell` 执行 `dsh -V`。
-4. Node 或 npm 不存在时，前端提示用户前往官网安装。
-5. dsh 不存在时，前端显示安装按钮。
-6. 安装按钮通过 `shell` 执行 `npm install -g @deepseek-ai/dsh`。
-7. 安装结束后再次通过 `shell` 执行 `dsh -V`。
-8. `dsh -V` 成功后认为 dsh 可以运行。
+- 版本检查和 dsh 安装不进入 `ipc.rs`、`backend` 或 `platform`。
+- 前端使用 `Command.create()` 和参数数组，不拼接完整 shell 命令字符串。
+- 不显式调用 Windows `cmd.exe` 或 Unix shell，不支持管道、重定向、条件执行和 shell 变量展开。
+- `dsh --profile web --port <PORT>` 是长生命周期受控进程，始终通过 `start_dsh` 和 `stop_dsh` 管理，不允许前端通过 shell 插件启动。
+- shell 插件进程不复用 dsh 的 Job Object、Unix 进程组或生命周期状态机。
 
-### 5.2 请求结构
+### 5.2 PATH 修复时机
 
-```rust
-#[derive(Debug, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ShellRequest {
-    pub command: String,
-    pub cwd: Option<std::path::PathBuf>,
-    pub timeout_ms: Option<i64>,
-}
-```
-
-对应前端：
-
-```typescript
-interface ShellRequest {
-  command: string;
-  cwd?: string;
-  timeoutMs?: number;
-}
-```
-
-请求规则：
-
-- `command` 是完整 shell 命令字符串。
-- `command` 不能为空。
-- 不提供独立的 `args`。
-- 不提供自定义 `env`。
-- 不提供 request ID。
-- 首版不提供主动取消。
-- `timeoutMs` 单位固定为毫秒。
-- `timeoutMs` 省略时默认 30 秒。
-- `timeoutMs <= 0` 返回 `invalid_timeout`。
-- Rust 先用有符号整数接收并校验 `timeoutMs`，校验完成后再转换成 `Duration`。
-
-### 5.3 Shell 解释器
-
-各平台使用固定解释器：
-
-```text
-Windows       -> cmd.exe /D /S /C <command>
-macOS/Linux   -> /bin/bash -c <command>
-```
-
-`command` 按目标系统解释器的语法执行，可以包含管道、重定向和条件执行。前端负责生成目标系统可识别的命令文本。
-
-### 5.4 工作目录
-
-`cwd` 规则：
-
-- `cwd` 省略时使用用户 Home 目录。
-- 绝对路径直接作为工作目录。
-- 相对路径相对于用户 Home 目录解析。
-- 解析后的目录必须存在。
-- 解析后的路径必须是目录。
-- Rust 不自动创建工作目录。
-- 无效工作目录返回 `invalid_cwd`。
-
-### 5.5 PATH
-
-应用启动时调用一次 `fix-path-env-rs` 的 PATH 修复入口，且必须发生在启动任何 shell 或 dsh 子进程之前。
+应用进入 `lib.rs::run()` 后尽早调用一次 `fix_path_env::fix()`，且必须发生在任何 shell 插件命令或 dsh 子进程启动之前。
 
 PATH 规则：
 
-- 所有 shell 子进程继承修复后的应用环境。
-- dsh 专用进程继承同一份修复后的 PATH。
-- `ShellRequest` 不允许覆盖环境变量。
-- 应用运行期间系统 PATH 的变化不会自动重新加载。
-- PATH 发生变化后需要重启应用。
+- PATH 修复作用于当前 Tauri Rust 进程的环境。
+- 后续由 `tauri-plugin-shell` 和 dsh 平台层创建的子进程继承修复后的 PATH。
+- 前端不读取、不拼接也不覆盖 PATH。
 - PATH 修复失败时记录 error 日志，但不阻止 Tauri 应用启动。
-- PATH 修复失败后，命令找不到时由对应 shell 或 dsh 操作返回具体错误。
+- PATH 修复失败后，命令找不到时由对应插件调用或 dsh 操作返回具体错误。
+- 应用运行期间系统 PATH 的变化不会自动重新加载。
+- 安装 Node.js、npm 或修改 PATH 后需要重启应用。
+- `fix-path-env-rs` 只修复 PATH，不提供 shell 解释器语义，也不会在 Windows 上把 `npm` 或 `dsh` 自动扩展为 `.cmd`。
 
-### 5.6 返回结构
+### 5.3 跨平台命令映射和 capability
 
-```rust
-#[derive(Debug, serde::Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ShellResult {
-    pub exit_code: Option<i32>,
-    pub stdout: String,
-    pub stderr: String,
-    pub status: ShellStatus,
-}
-
-#[derive(Debug, serde::Serialize)]
-#[serde(rename_all = "lowercase")]
-pub enum ShellStatus {
-    Success,
-    Failed,
-    Timeout,
-}
-```
-
-对应前端：
-
-```typescript
-interface ShellResult {
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-  status: "success" | "failed" | "timeout";
-}
-```
-
-`ShellResult` 不包含嵌套 `error` 字段。
-
-状态映射：
+前端只使用平台无关的逻辑命令名；capability 按目标平台将逻辑命令映射到实际程序和固定参数。
 
 ```text
-进程退出码为 0          -> status = success
-进程退出码非 0          -> status = failed
-进程无退出码异常结束     -> status = failed, exitCode = null
-达到 timeoutMs          -> status = timeout, exitCode = null
+逻辑命令名       Windows 实际程序   macOS/Linux 实际程序   固定参数
+node-version     node.exe           node                    -V
+npm-version      npm.cmd            npm                     -V
+dsh-version      dsh.cmd            dsh                     -V
+npm-install-dsh  npm.cmd            npm                     install -g --verbose @deepseek-ai/dsh
 ```
 
-命令已经启动后的正常退出、非零退出和超时都返回 `Ok(ShellResult)`。
+约束：
 
-以下情况通过外层 `Err(IpcError)` 返回：
+- Windows 必须显式配置 `npm.cmd` 和 `dsh.cmd`，不能依赖裸命令名自动解析 command shim。
+- `node.exe` 可以通过修复后的 PATH 查找；Unix 命令使用无扩展名入口。
+- Windows 与 macOS/Linux 使用平台限定的 capability，但保持相同的逻辑命令名。
+- capability 只允许上述四种固定操作，不向前端开放任意程序或任意参数。
+- `node-version`、`npm-version` 和 `dsh-version` 授予 `shell:allow-execute`。
+- `npm-install-dsh` 授予 `shell:allow-spawn`。
+- 前端传给 `Command.create()` 的名称是 capability 中的逻辑命令名，不是操作系统实际程序名。
 
-- 请求参数非法。
-- Home 目录无法确定。
-- cwd 无效。
-- shell 解释器无法创建。
-- 子进程在建立有效执行结果前发生内部错误。
+### 5.4 `execute`：版本检查
 
-### 5.7 输出捕获
+`node -V`、`npm -V` 和 `dsh -V` 输出少且应立即结束，统一使用 `execute()`，等待进程退出后一次性读取 `code`、`signal`、`stdout` 和 `stderr`。
 
-输出规则：
+```typescript
+import { Command } from "@tauri-apps/plugin-shell";
 
-- 同时捕获 `stdout` 和 `stderr`。
-- 两个流在进程运行期间并发读取，避免管道阻塞。
-- 命令结束后一次性返回完整输出。
-- 输出使用 UTF-8 lossy 解码。
-- 非法 UTF-8 字节替换为 Unicode replacement character。
-- 不返回 base64 或原始字节数组。
-- `stdout` 和 `stderr` 不设置大小上限。
-- 不提供截断标识。
+const nodeResult = await Command.create("node-version").execute();
+const npmResult = await Command.create("npm-version").execute();
+const dshResult = await Command.create("dsh-version").execute();
+```
 
-### 5.8 并发
+结果规则：
 
-- 通用 shell IPC 不设置并发上限。
-- 每个调用立即创建独立的受控进程树。
-- shell 调用之间不共享业务状态。
-- 每个调用独立计算超时。
-- 每个调用独立收集输出和退出状态。
+- `code === 0` 表示对应命令可执行。
+- `code !== 0` 表示命令已启动但执行失败，前端可以展示 `stderr`。
+- Promise rejection 表示权限拒绝、程序未找到或进程创建失败等插件调用错误。
+- 前端根据退出码判断结果，不解析版本输出文本来判断命令是否存在。
 
-### 5.9 超时和进程树清理
+### 5.5 `spawn`：dsh 安装
 
-达到 `timeoutMs` 后：
+`npm install -g --verbose @deepseek-ai/dsh` 运行时间相对更长且输出量大，统一使用 `spawn()`，在进程运行期间持续消费 stdout/stderr。
 
-- `status` 固定为 `timeout`。
-- `exitCode` 固定为 `null`。
-- 必须终止 shell 解释器及其创建的完整进程树。
-- Windows 通过对应 Job Object 终止整个进程树。
-- Unix 向对应进程组发送 `SIGTERM`。
-- Unix 在 `SIGTERM` 后最多等待 5 秒。
-- 进程组仍未退出时发送 `SIGKILL`。
-- Unix 调用的最晚返回时间可能达到 `timeoutMs + 5 秒`。
-- 超时前已经读取到的 stdout/stderr 仍放入 `ShellResult`。
+```typescript
+import { Command } from "@tauri-apps/plugin-shell";
+
+const command = Command.create("npm-install-dsh");
+
+command.stdout.on("data", appendInstallOutput);
+command.stderr.on("data", appendInstallOutput);
+command.on("close", ({ code }) => finishInstallation(code));
+command.on("error", reportInstallError);
+
+await command.spawn();
+```
+
+安装流程：
+
+1. 前端调用 `npm-install-dsh` 的 `spawn()`。
+2. 注册并持续消费 stdout/stderr，避免大量输出只在结束后一次性显示。
+3. `close.code === 0` 时再次调用 `dsh-version` 的 `execute()`。
+4. `dsh-version` 成功后认为 dsh 已安装并可以运行。
+5. 安装进程只属于当前前端操作，不写入 Rust dsh 生命周期状态，也不作为应用后台服务维护。
+
+### 5.6 前端环境检查流程
+
+1. 使用 `node-version.execute()` 执行 `node -V`。
+2. 使用 `npm-version.execute()` 执行 `npm -V`。
+3. 使用 `dsh-version.execute()` 执行 `dsh -V`。
+4. Node 或 npm 不存在时，前端提示用户前往官网安装。
+5. dsh 不存在时，前端显示安装按钮。
+6. 安装按钮使用 `npm-install-dsh.spawn()` 执行安装并实时展示输出。
+7. 安装成功后再次使用 `dsh-version.execute()` 验证。
+8. `dsh-version` 退出码为 `0` 后认为 dsh 可以运行。
+
+### 5.7 插件调用语义
+
+- shell 插件调用错误不经过自定义 `IpcError`，由前端单独归一化和展示。
+- shell 插件命令之间不共享业务状态，可以并发执行；前端应避免重复触发同一个安装操作。
+- 不为版本检查或安装命令提供自定义 Rust 超时、Job Object 或 Unix 进程组清理。
+- `execute()` 只用于立即返回且输出有限的版本检查。
+- `spawn()` 只用于需要实时消费大量输出的安装操作。
+- 前端不通过 shell 插件执行任意用户输入命令。
 
 ## 6. 平台进程管理
 
 ### 6.1 模块职责与 seam
 
-`platform` 是后端唯一允许直接接触操作系统进程 API 的模块。它隐藏以下差异：
+`platform` 是后端唯一允许直接接触 dsh 操作系统进程 API 的模块。它隐藏以下差异：
 
-- Windows `cmd.exe` 与 Unix `/bin/bash` 的命令构造。
 - Windows Job Object 与 Unix 进程组的创建和持有。
 - Windows 进程树终止与 Unix 信号发送。
 - 平台原生进程 handle、PID、PGID 和退出状态读取。
-- Windows npm command shim 与 Unix 可执行文件的启动形式。
+- Windows dsh command shim 与 Unix 可执行文件的启动形式。
 - 平台资源的释放和退出进程回收。
 
-`backend/shell.rs` 和 `backend/harness.rs` 不得出现以下内容：
+`backend/harness.rs` 不得出现以下内容：
 
 ```text
 #[cfg(windows)]
@@ -389,8 +324,7 @@ cmd.exe / bash
 
 平台模块不负责以下业务规则：
 
-- Shell IPC 参数校验。
-- Shell 默认超时和 `ShellStatus` 映射。
+- 前端 shell 插件命令的 capability、参数或结果处理。
 - dsh 单实例状态机。
 - dsh 启动前端口检查。
 - dsh HTTP 就绪探测。
@@ -398,7 +332,7 @@ cmd.exe / bash
 - stdout/stderr 文本解码和日志格式。
 - `IpcError` 构造。
 
-这些规则继续由通用 `backend` 模块负责。
+这些规则继续由前端或通用 `backend` 模块负责。
 
 ### 6.2 文件和编译期选型
 
@@ -442,13 +376,7 @@ pub(crate) use current::ManagedProcess;
 概念接口：
 
 ```rust
-use std::{io, path::Path, time::Duration};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ProcessKind {
-    Shell,
-    Dsh,
-}
+use std::{io, time::Duration};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct ProcessExit {
@@ -463,30 +391,26 @@ pub(crate) struct SpawnedProcess {
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum PlatformError {
-    #[error("failed to build {kind:?} command: {source}")]
+    #[error("failed to build dsh command: {source}")]
     BuildCommand {
-        kind: ProcessKind,
         #[source]
         source: io::Error,
     },
 
-    #[error("failed to spawn {kind:?} process: {source}")]
+    #[error("failed to spawn dsh process: {source}")]
     Spawn {
-        kind: ProcessKind,
         #[source]
         source: io::Error,
     },
 
-    #[error("failed to control {kind:?} process tree: {source}")]
+    #[error("failed to control dsh process tree: {source}")]
     Control {
-        kind: ProcessKind,
         #[source]
         source: io::Error,
     },
 
-    #[error("failed to wait for {kind:?} process: {source}")]
+    #[error("failed to wait for dsh process: {source}")]
     Wait {
-        kind: ProcessKind,
         #[source]
         source: io::Error,
     },
@@ -495,8 +419,7 @@ pub(crate) enum PlatformError {
 
 接口语义：
 
-- `ProcessKind` 只区分通用 Shell 与专用 dsh，用于错误上下文和日志。
-- `ProcessExit.exit_code` 只表达系统退出结果，不映射业务 `ShellStatus`。
+- `ProcessExit.exit_code` 只表达系统退出结果，不映射业务错误。
 - 正常退出码映射为 `Some(code)`。
 - 无数字退出码的终止映射为 `None`。
 - `PlatformError` 是内部错误，不直接序列化给前端。
@@ -520,13 +443,6 @@ stdout/stderr 的读取、UTF-8 lossy 解码和业务日志输出不属于平台
 `platform/mod.rs` 对 `backend` 暴露以下静态接口：
 
 ```rust
-pub(crate) fn spawn_shell(
-    command: &str,
-    cwd: &Path,
-) -> Result<SpawnedProcess, PlatformError> {
-    current::spawn_shell(command, cwd)
-}
-
 pub(crate) fn spawn_dsh(
     port: u16,
 ) -> Result<SpawnedProcess, PlatformError> {
@@ -538,8 +454,6 @@ pub(crate) fn spawn_dsh(
 
 ```rust
 impl ManagedProcess {
-    pub(crate) fn kind(&self) -> ProcessKind;
-
     pub(crate) fn try_wait(
         &self,
     ) -> Result<Option<ProcessExit>, PlatformError>;
@@ -556,11 +470,6 @@ impl ManagedProcess {
 ```
 
 方法契约：
-
-#### `kind`
-
-- 返回创建时固定的 `ProcessKind`。
-- 该值在进程整个生命周期内不变。
 
 #### `try_wait`
 
@@ -597,7 +506,7 @@ impl ManagedProcess {
 统一内部框架：
 
 ```text
-spawn_shell / spawn_dsh
+spawn_dsh
   ├─ 创建平台进程树容器
   ├─ 创建并启动直接子进程
   ├─ 取出 stdout/stderr
@@ -612,7 +521,6 @@ spawn_shell / spawn_dsh
 `ManagedProcess` 的共享状态至少包含：
 
 ```text
-ProcessKind
 平台控制资源
 退出结果缓存
 退出通知
@@ -629,14 +537,13 @@ ProcessKind
 - `terminate_tree()` 之后仍由同一个 supervisor 回收直接子进程。
 - 后台 dsh 退出监控持有一个 `ManagedProcess` clone。
 - dsh 状态持有另一个 `ManagedProcess` clone，用于主动停止。
-- Shell 超时任务可以调用 `terminate_tree()`，同时主执行任务等待退出结果。
 - 最后一个 handle 被释放时关闭平台资源。
 
 Windows Job handle 与 Unix PGID 都通过私有字段封装。`backend` 不得依赖其具体类型。
 
-### 6.6 Windows 通用框架
+### 6.6 Windows dsh 框架
 
-`platform/windows.rs` 负责 Windows 命令构造、Job Object、进程 handle 和进程树终止。
+`platform/windows.rs` 负责 Windows dsh 命令构造、Job Object、进程 handle 和进程树终止。
 
 结构框架：
 
@@ -648,17 +555,11 @@ pub(crate) struct ManagedProcess {
 }
 
 struct WindowsProcess {
-    kind: ProcessKind,
     job: OwnedJobHandle,
     process_id: u32,
     exit_state: SharedExitState,
     termination_state: TerminationState,
 }
-
-pub(super) fn spawn_shell(
-    command: &str,
-    cwd: &Path,
-) -> Result<SpawnedProcess, PlatformError>;
 
 pub(super) fn spawn_dsh(
     port: u16,
@@ -672,21 +573,7 @@ pub(super) fn spawn_dsh(
 - `TerminationState` 保证终止流程只执行一次。
 - Windows 原生 handle 不暴露到 `platform/mod.rs` 之外。
 
-#### 6.6.1 Windows Shell 构造
-
-`spawn_shell` 构造：
-
-```text
-program = cmd.exe
-args    = /D /S /C <command>
-cwd     = 已由 backend/shell.rs 解析并验证的绝对路径
-env     = 继承应用启动时修复后的环境
-stdin   = null
-stdout  = piped
-stderr  = piped
-```
-
-#### 6.6.2 Windows dsh 构造
+#### 6.6.1 Windows dsh 构造
 
 `spawn_dsh` 构造受控命令：
 
@@ -702,9 +589,9 @@ dsh --profile web --port <PORT>
 - dsh 的 cwd 不由前端提供。
 - stdout/stderr 必须通过 `SpawnedProcess` 返回。
 
-#### 6.6.3 Job Object 创建流程
+#### 6.6.2 Job Object 创建流程
 
-每个 Shell 调用和 dsh 实例分别创建一个 Job Object：
+每个 dsh 实例创建一个 Job Object：
 
 1. 创建 Job Object。
 2. 设置 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`。
@@ -722,7 +609,7 @@ dsh --profile web --port <PORT>
 - 返回 `PlatformError::Spawn` 或 `PlatformError::Control`。
 - 不返回部分初始化的 `ManagedProcess`。
 
-#### 6.6.4 Windows 终止流程
+#### 6.6.3 Windows 终止流程
 
 `terminate_tree` 执行：
 
@@ -737,9 +624,9 @@ Windows 的 `grace_period` 不改变 Job Object 终止流程。业务层仍使�
 
 `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` 同时作为资源释放时的清理保证。正常业务流程仍显式调用 `terminate_tree()`，不依赖 `Drop` 作为主要控制路径。
 
-### 6.7 Unix 通用框架
+### 6.7 Unix dsh 框架
 
-`platform/unix.rs` 同时覆盖 macOS 和 Linux，负责 bash 命令构造、进程组创建和信号终止。
+`platform/unix.rs` 同时覆盖 macOS 和 Linux，负责 dsh 命令构造、进程组创建和信号终止。
 
 结构框架：
 
@@ -751,17 +638,11 @@ pub(crate) struct ManagedProcess {
 }
 
 struct UnixProcess {
-    kind: ProcessKind,
     leader_pid: u32,
     process_group_id: i32,
     exit_state: SharedExitState,
     termination_state: TerminationState,
 }
-
-pub(super) fn spawn_shell(
-    command: &str,
-    cwd: &Path,
-) -> Result<SpawnedProcess, PlatformError>;
 
 pub(super) fn spawn_dsh(
     port: u16,
@@ -775,27 +656,13 @@ pub(super) fn spawn_dsh(
 - `SharedExitState` 缓存直接子进程退出结果并通知等待任务。
 - `TerminationState` 保证信号终止流程只执行一次。
 
-#### 6.7.1 Unix Shell 构造
-
-`spawn_shell` 构造：
-
-```text
-program = /bin/bash
-args    = -c <command>
-cwd     = 已由 backend/shell.rs 解析并验证的绝对路径
-env     = 继承应用启动时修复后的环境
-stdin   = null
-stdout  = piped
-stderr  = piped
-```
-
-#### 6.7.2 Unix dsh 构造
+#### 6.7.1 Unix dsh 构造
 
 `spawn_dsh` 构造：
 
 ```text
 program = dsh
-args    = web --port PORT
+args    = --profile web --port PORT
 env     = 继承应用启动时修复后的环境
 stdin   = null
 stdout  = piped
@@ -809,9 +676,9 @@ stderr  = piped
 - dsh 必须成为新进程组的 leader。
 - dsh 创建的所有后代进程继承该进程组。
 
-#### 6.7.3 Unix 进程组创建流程
+#### 6.7.2 Unix 进程组创建流程
 
-每个 Shell 调用和 dsh 实例分别创建独立进程组：
+每个 dsh 实例创建独立进程组：
 
 1. 创建 stdout/stderr pipe。
 2. 配置子进程在执行目标程序前进入新的进程组。
@@ -820,9 +687,9 @@ stderr  = piped
 5. 启动唯一 supervisor 等待直接子进程退出。
 6. 返回 `SpawnedProcess`。
 
-进程组必须在子进程执行用户命令之前建立，避免后代进程脱离受控进程组。
+进程组必须在 dsh 创建后代进程之前建立，避免后代进程脱离受控进程组。
 
-#### 6.7.4 Unix 终止流程
+#### 6.7.3 Unix 终止流程
 
 `terminate_tree(grace_period)` 执行：
 
@@ -840,30 +707,11 @@ stderr  = piped
 
 当目标进程组已经不存在时，终止流程继续等待或读取 supervisor 的退出结果，不把“进程已经消失”当作新的业务失败。
 
-Unix `Drop` 不发送信号。正常停止、Shell timeout 和应用正常退出必须显式调用 `terminate_tree()`。
+Unix `Drop` 不发送信号。正常停止、dsh 启动超时和应用正常退出必须显式调用 `terminate_tree()`。
 
 ### 6.8 通用调用流程
 
-#### 6.8.1 Shell
-
-`backend/shell.rs` 使用平台接口：
-
-```text
-校验 ShellRequest
-  -> 解析 cwd 和 timeout
-  -> platform::spawn_shell(command, cwd)
-  -> 并发读取 stdout/stderr
-  -> 等待 ManagedProcess::wait()
-     或 timeout 到期
-  -> timeout 时调用 terminate_tree(5 秒)
-  -> 等待输出读取完成
-  -> UTF-8 lossy 解码
-  -> 构造 ShellResult
-```
-
-Shell 的 `success/failed/timeout` 映射全部留在 `backend/shell.rs`。
-
-#### 6.8.2 dsh 启动
+#### 6.8.1 dsh 启动
 
 `backend/harness.rs` 使用平台接口：
 
@@ -879,7 +727,7 @@ Shell 的 `success/failed/timeout` 映射全部留在 `backend/shell.rs`。
 
 平台层不执行 TCP/HTTP 检查，也不发送 Tauri 事件。
 
-#### 6.8.3 dsh 停止
+#### 6.8.2 dsh 停止
 
 ```text
 取得当前 ManagedProcess
@@ -902,7 +750,8 @@ Shell 的 `success/failed/timeout` 映射全部留在 `backend/shell.rs`。
 - 不在持有同步 Mutex guard 时执行 `.await`。
 - 不在 `wait()` 期间独占 dsh 生命周期锁。
 - 不把 stdout/stderr 读取放入平台终止互斥区。
-- 进程自然退出、主动停止和超时终止最终都由唯一 supervisor 回收。
+- 短命令不进入平台层。
+- dsh 进程自然退出、主动停止和启动超时终止最终都由唯一 supervisor 回收。
 - 平台资源初始化必须具备失败回滚，不能泄漏半初始化进程或 handle。
 - `ManagedProcess` 的业务身份由 `harness.rs` 的 generation 管理，平台层只负责系统进程身份。
 
@@ -924,7 +773,7 @@ Stopped -> Starting -> Running -> Stopping -> Stopped
 - `Running` 状态再次调用 `start_dsh` 返回 `dsh_already_running`。
 - `Stopped` 状态调用 `stop_dsh` 返回 `process_not_running`。
 - TCP/HTTP 探测和其他 IPC 不受 dsh 生命周期锁影响。
-- shell IPC 与 dsh 生命周期独立。
+- 前端 shell 插件命令与 dsh 生命周期独立。
 - 后台退出监控必须核对进程身份，旧进程的退出通知不能覆盖新进程状态。
 
 ### 7.2 启动接口
@@ -1249,18 +1098,19 @@ open_logs() -> Result<(), IpcError>
 
 `lib.rs::run()` 按以下顺序组织初始化职责：
 
-1. 解析应用所需的平台标准目录。
-2. 创建本次启动的 timestamp 日志目录。
-3. 配置并注册一次 `tauri-plugin-log`。
-4. 调用 `fix-path-env-rs` 修复应用 PATH。
-5. 注册 `tauri-plugin-opener`。
-6. 初始化 dsh 状态、主题缓存和本次日志目录状态。
-7. 注册系统托盘及菜单事件。
-8. 注册 `ipc.rs` 中的全部 commands。
-9. 在 setup 阶段启动主题轮询/监听任务。
-10. 进入 Tauri 事件循环。
+1. 调用 `fix-path-env-rs` 修复应用 PATH，且不得在此前启动任何子进程。
+2. 解析应用所需的平台标准目录。
+3. 创建本次启动的 timestamp 日志目录。
+4. 配置并注册一次 `tauri-plugin-log`。
+5. 注册 `tauri-plugin-shell`。
+6. 注册 `tauri-plugin-opener`。
+7. 初始化 dsh 状态、主题缓存和本次日志目录状态。
+8. 注册系统托盘及菜单事件。
+9. 注册 `ipc.rs` 中的全部自定义 commands。
+10. 在 setup 阶段启动主题轮询/监听任务。
+11. 进入 Tauri 事件循环。
 
-PATH 修复失败只记录 error 日志，应用继续初始化。
+PATH 修复失败只记录 error 日志，应用继续初始化。前端只能在 Tauri 初始化完成后调用 shell 插件，因此所有 shell 插件进程和 dsh 子进程都继承修复后的 PATH。
 
 ## 13. Tauri 插件和权限
 
@@ -1268,15 +1118,17 @@ PATH 修复失败只记录 error 日志，应用继续初始化。
 
 ```text
 tauri-plugin-log
+tauri-plugin-shell
 tauri-plugin-opener
 ```
 
-通用 Shell 由自定义 Rust IPC 实现，因此：
+短命令由前端直接使用 `@tauri-apps/plugin-shell`：
 
-- 前端不依赖 `@tauri-apps/plugin-shell`。
-- Rust 后端不依赖 `tauri-plugin-shell`。
-- capability 不授予 `shell:*` 插件权限。
-- shell 执行能力只通过自定义 `shell` command 暴露。
+- Rust 后端注册一次 `tauri-plugin-shell`。
+- 前端依赖 `@tauri-apps/plugin-shell`，不再调用自定义 `shell` command。
+- capability 按平台将相同逻辑命令名映射到实际的 `node`、`npm` 和 `dsh` 入口。
+- capability 只授予版本检查和 dsh 安装所需的 `shell:allow-execute`、`shell:allow-spawn` 及固定 scope。
+- 不授予任意命令、任意参数、`shell:allow-kill` 或 `shell:allow-stdin-write`。
 
 主题监听由 Rust 文件监听实现，不依赖前端文件 watch。
 
@@ -1287,6 +1139,7 @@ tauri-plugin-opener
 ```text
 Tauri v2                      应用运行时、IPC、事件、窗口和托盘
 tauri-plugin-log              文件日志
+tauri-plugin-shell            前端短命令执行和安装输出流
 tauri-plugin-opener           打开本次日志目录
 fix-path-env-rs               修复 GUI 应用 PATH
 tokio                         异步进程、任务、IO、互斥和超时
@@ -1303,13 +1156,13 @@ Windows API 依赖              Job Object 和进程树管理
 
 ## 15. 全局行为约束
 
-- 前端只通过已定义 IPC 和事件与后端业务交互。
-- 通用 shell 允许执行完整目标平台 shell 命令。
-- shell 没有命令 allowlist。
-- shell 不设置并发上限。
-- shell 不设置输出大小上限。
-- shell 首版不支持主动取消。
-- dsh 始终由专用后端生命周期管理，不通过通用 shell 启动。
+- 前端通过已定义 IPC 和事件访问后端业务，通过 `tauri-plugin-shell` 访问固定短命令。
+- 不提供自定义 `shell` IPC。
+- shell 插件 capability 只允许固定的版本检查和 dsh 安装操作。
+- 前端使用参数数组，不执行任意完整 shell 命令字符串。
+- 版本检查使用 `execute()`，dsh 安装使用 `spawn()` 并实时消费 stdout/stderr。
+- shell 插件调用不进入 dsh 生命周期管理，也不提供自定义 Rust 超时或完整进程树清理。
+- dsh 始终由专用后端生命周期管理，不通过前端 shell 插件启动。
 - dsh 始终作为单实例受控进程树。
 - `start_dsh` 成功表示本地 WebUI 已返回 HTTP `2xx`，不是仅表示进程创建成功。
 - `connect_remote` 成功表示对应规范化地址经过 HTTP/HTTPS 探测可用。
