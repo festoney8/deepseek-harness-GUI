@@ -81,9 +81,3 @@ pub(crate) enum PlatformError {
 pub(crate) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
     current::spawn_dsh(port)
 }
-
-/// 仅供 Unix 调试测试模拟受控 DSH 被外部强制结束。
-#[cfg(all(test, unix))]
-pub(crate) fn force_kill_dsh_for_test(process: &ManagedProcess) -> Result<(), PlatformError> {
-    current::force_kill_dsh_for_test(process)
-}

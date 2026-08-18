@@ -132,12 +132,6 @@ pub(super) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
     spawn_dsh_command("dsh", port)
 }
 
-/// 仅供统一平台调试入口模拟外界直接强杀 DSH leader。
-#[cfg(test)]
-pub(super) fn force_kill_dsh_for_test(process: &ManagedProcess) -> Result<(), PlatformError> {
-    signal_process(process.inner.leader_pid, libc::SIGKILL, process.inner.kind)
-}
-
 fn spawn_dsh_command(program: &str, port: u16) -> Result<SpawnedProcess, PlatformError> {
     let mut command = Command::new(program);
     command.args(["--profile", "web", "--port", &port.to_string()]);
@@ -242,17 +236,6 @@ fn signal_process_group(
     // SAFETY: PGID 在成功 spawn 后由正 PID 构造；负 PGID 是 kill(2) 指定进程组的接口，
     // 调用不转移任何资源所有权。ESRCH 表示目标组已消失，按终止契约视为成功。
     let result = unsafe { libc::kill(-process_group_id.0, signal) };
-    map_signal_result(result, kind)
-}
-
-#[cfg(test)]
-fn signal_process(
-    process_id: LeaderPid,
-    signal: libc::c_int,
-    kind: ProcessKind,
-) -> Result<(), PlatformError> {
-    // SAFETY: PID 来自当前 ManagedProcess 的已成功创建直接子进程；调用不转移资源所有权。
-    let result = unsafe { libc::kill(process_id.0, signal) };
     map_signal_result(result, kind)
 }
 
