@@ -9,6 +9,9 @@ pub(crate) enum BackendError {
     /// 远程主机格式不受支持。
     #[error("主机地址无效")]
     InvalidHost,
+    /// 请求的网络协议不受支持。
+    #[error("协议无效")]
+    InvalidProtocol,
     /// 请求端口不在有效范围内。
     #[error("端口无效")]
     InvalidPort,

@@ -95,7 +95,7 @@ src-tauri/src/
 ```text
 start_dsh(port) -> address
 stop_dsh() -> success
-connect_remote(host, port) -> address
+connect_remote(protocol, host, port) -> address
 open_logs() -> success
 hide_to_tray() -> success
 ```
@@ -105,7 +105,7 @@ Rust 侧概念签名：
 ```rust
 async fn start_dsh(port: u16) -> Result<String, IpcError>;
 async fn stop_dsh() -> Result<(), IpcError>;
-async fn connect_remote(host: String, port: u16) -> Result<String, IpcError>;
+async fn connect_remote(protocol: String, host: String, port: u16) -> Result<String, IpcError>;
 async fn open_logs() -> Result<(), IpcError>;
 async fn hide_to_tray() -> Result<(), IpcError>;
 ```
@@ -114,8 +114,7 @@ async fn hide_to_tray() -> Result<(), IpcError>;
 
 ```text
 check_tcp
-check_http
-check_https
+check_url
 ```
 
 环境检查和 dsh 安装由前端直接通过 `tauri-plugin-shell` 完成；主题读取和监听由前端直接通过 `tauri-plugin-fs` 完成。不提供自定义 `shell`、`check_env`、`install_dsh` 或主题 IPC。
@@ -157,6 +156,7 @@ interface IpcError {
 
 ```text
 invalid_host
+invalid_protocol
 invalid_port
 service_unavailable
 port_occupied
@@ -879,8 +879,7 @@ stop_dsh() -> Result<(), IpcError>
 
 ```text
 check_tcp
-check_http
-check_https
+check_url
 ```
 
 这些函数只被 Rust 业务模块调用，不直接暴露给前端。
@@ -888,17 +887,19 @@ check_https
 用途：
 
 - `start_dsh` 使用 TCP 检查确认本地端口没有被占用。
-- `start_dsh` 使用 HTTP 检查确认本地 WebUI 已就绪。
-- `connect_remote` 使用 HTTPS/HTTP 检查确认远程服务可用。
+- `start_dsh` 使用 `check_url("http", ...)` 检查确认本地 WebUI 已就绪。
+- `connect_remote` 使用 `check_url(协议, ...)` 检查确认远程服务可用。
 
 ### 8.2 connect_remote 接口
 
 ```text
-connect_remote(host: String, port: u16) -> Result<String, IpcError>
+connect_remote(protocol: String, host: String, port: u16) -> Result<String, IpcError>
 ```
 
 输入规则：
 
+- `protocol` 只接受小写 `http` 或 `https`。
+- 其他 `protocol` 值返回 `invalid_protocol`。
 - `host` 只接受 `localhost` 或语法合法的 IPv4。
 - `localhost` 大小写不敏感。
 - 返回地址中的 `localhost` 统一规范化为小写 `localhost`。
@@ -914,35 +915,32 @@ connect_remote(host: String, port: u16) -> Result<String, IpcError>
 
 ### 8.3 协议探测
 
-对同一个规范化后的 `HOST:PORT` 同时启动：
+只对用户指定协议构造的单个地址发起探测：
 
 ```text
-https://HOST:PORT
-http://HOST:PORT
+http://HOST:PORT     （protocol = http 时）
+https://HOST:PORT    （protocol = https 时）
 ```
 
 探测规则：
 
-- HTTPS 和 HTTP 异步并行探测。
-- 每个探测拥有独立的 10 秒超时。
+- 按 `protocol` 选择 `http` 或 `https` 单路探测，不并行、不回退。
+- 探测拥有独立的 10 秒超时。
 - HTTPS 使用 `reqwest` 默认 TLS、证书验证和重定向行为。
-- 最终响应状态为 `2xx` 或 `3xx` 时视为远程服务可用。
-- 最终响应状态为 `4xx` 或 `5xx` 时视为当前协议不可用。
-- HTTPS 成功时立即返回 HTTPS 地址。
-- HTTP 先成功时暂存 HTTP 结果，继续等待 HTTPS。
-- HTTPS 失败或超时后，如果 HTTP 已成功，则返回 HTTP 地址。
-- HTTPS 和 HTTP 都失败时返回 `service_unavailable`。
+- 最终响应状态仅为 `2xx` 时视为服务可用。
+- `3xx`、`4xx`、`5xx` 及其他状态均视为当前协议不可用。
+- 服务可用时返回 `Ok(address)`，否则返回 `service_unavailable`。
 - 返回地址始终是规范化后的输入地址。
 - 不返回重定向后的最终地址。
 
 返回示例：
 
 ```text
-connect_remote("LOCALHOST", 3000)
--> "https://localhost:3000" 或 "http://localhost:3000"
+connect_remote("http", "LOCALHOST", 3000)
+-> "http://localhost:3000"
 
-connect_remote("127.0.0.1", 3000)
--> "https://127.0.0.1:3000" 或 "http://127.0.0.1:3000"
+connect_remote("https", "127.0.0.1", 3000)
+-> "https://127.0.0.1:3000"
 ```
 
 ## 9. 前端主题读取与监听
@@ -1223,7 +1221,7 @@ yaml                          解析 settings.yaml
 - dsh 始终由专用后端生命周期管理，不通过前端 shell 插件启动。
 - dsh 始终作为单实例受控进程树。
 - `start_dsh` 成功表示本地 WebUI 已返回 HTTP `2xx`，不是仅表示进程创建成功。
-- `connect_remote` 成功表示对应规范化地址经过 HTTP/HTTPS 探测可用。
+- `connect_remote` 成功表示对应规范化地址经过用户指定协议（http 或 https）探测可用。
 - 主题由可信本地前端通过 `tauri-plugin-fs` 读取和监听，缺失或无效主题值回退到 `system`。
 - 主题功能不使用自定义 IPC、Rust 状态缓存或自定义 Tauri 事件。
 - 正常退出必须清理 dsh。

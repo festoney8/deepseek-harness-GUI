@@ -25,30 +25,29 @@ pub(crate) async fn check_tcp(
     )
 }
 
-/// 检查指定 HTTP 地址是否满足服务可用条件。
-pub(crate) async fn check_http(url: &str, timeout: Duration) -> Result<bool, BackendError> {
-    check_http_url(url, "http", timeout).await
-}
-
-/// 检查指定 HTTPS 地址是否满足服务可用条件。
-pub(crate) async fn check_https(url: &str, timeout: Duration) -> Result<bool, BackendError> {
-    check_http_url(url, "https", timeout).await
-}
-
-/// 按指定协议探测 HTTP 服务。
-async fn check_http_url(
-    url: &str,
-    expected_scheme: &str,
+/// 按指定协议探测 `HOST:PORT` 的 HTTP 服务。
+///
+/// 协议只接受小写 `http` 或 `https`，其他值属于参数错误。
+/// 探测失败（URL 解析失败、连接失败、超时、非 2xx 响应）统一表示为
+/// `Ok(false)`，语义由调用方决定；只有参数错误作为业务错误返回。
+pub(crate) async fn check_url(
+    protocol: &str,
+    host: &str,
+    port: u16,
     timeout: Duration,
 ) -> Result<bool, BackendError> {
     if timeout.is_zero() {
         return Err(BackendError::InvalidTimeout);
     }
+    if protocol != "http" && protocol != "https" {
+        return Err(BackendError::InvalidProtocol);
+    }
 
-    let Ok(parsed_url) = reqwest::Url::parse(url) else {
+    let url = format!("{protocol}://{host}:{port}");
+    let Ok(parsed_url) = reqwest::Url::parse(&url) else {
         return Ok(false);
     };
-    if parsed_url.scheme() != expected_scheme {
+    if parsed_url.scheme() != protocol {
         return Ok(false);
     }
 
@@ -63,61 +62,26 @@ async fn check_http_url(
     Ok(response.status().is_success())
 }
 
-/// 并行探测远程服务并返回优先使用的规范化地址。
-pub(crate) async fn connect_remote(host: String, port: u16) -> Result<String, BackendError> {
+/// 按用户指定协议探测远程服务并返回对应地址。
+pub(crate) async fn connect_remote(
+    protocol: String,
+    host: String,
+    port: u16,
+) -> Result<String, BackendError> {
     if port == 0 {
         return Err(BackendError::InvalidPort);
     }
 
     let host = normalize_host(&host)?;
-    let http_url = format!("http://{host}:{port}");
-    let https_url = format!("https://{host}:{port}");
-    let http_probe = check_http(&http_url, REMOTE_PROBE_TIMEOUT);
-    let https_probe = check_https(&https_url, REMOTE_PROBE_TIMEOUT);
-    tokio::pin!(http_probe);
-    tokio::pin!(https_probe);
-
-    let mut http_done = false;
-    let mut https_done = false;
-    let mut http_available = false;
-    loop {
-        if https_done && http_available {
-            log::info!("remote HTTP service available after HTTPS fallback: {http_url}");
-            return Ok(http_url.clone());
-        }
-        if http_done && https_done {
-            log::warn!("remote service unavailable: host={host}, port={port}");
-            return Err(BackendError::ServiceUnavailable);
-        }
-
-        tokio::select! {
-            result = &mut https_probe, if !https_done => {
-                https_done = true;
-                match result {
-                    Ok(true) => {
-                        log::info!("remote HTTPS service available: {https_url}");
-                        return Ok(https_url.clone());
-                    }
-                    Ok(false) => log::debug!("remote HTTPS probe failed: {https_url}"),
-                    Err(error) => log::warn!("remote HTTPS probe errored: {https_url}, error={error:?}"),
-                }
-            }
-            result = &mut http_probe, if !http_done => {
-                http_done = true;
-                match result {
-                    Ok(true) => {
-                        http_available = true;
-                        if https_done {
-                            log::info!("remote HTTP service available after HTTPS fallback: {http_url}");
-                            return Ok(http_url.clone());
-                        }
-                        log::debug!("remote HTTP service available; waiting for HTTPS: {http_url}");
-                    }
-                    Ok(false) => log::debug!("remote HTTP probe failed: {http_url}"),
-                    Err(error) => log::warn!("remote HTTP probe errored: {http_url}, error={error:?}"),
-                }
-            }
-        }
+    if check_url(&protocol, &host, port, REMOTE_PROBE_TIMEOUT).await? {
+        log::info!("remote service available: {protocol}://{host}:{port}");
+        Ok(format!("{protocol}://{host}:{port}"))
+    } else {
+        log::warn!(
+            "remote service unavailable: protocol={}, host={host}, port={port}",
+            protocol
+        );
+        Err(BackendError::ServiceUnavailable)
     }
 }
 

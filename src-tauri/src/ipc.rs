@@ -26,6 +26,7 @@ impl IpcError {
                 ("tray_error", error.to_string())
             }
             BackendError::InvalidHost => ("invalid_host", error.to_string()),
+            BackendError::InvalidProtocol => ("invalid_protocol", error.to_string()),
             BackendError::InvalidPort => ("invalid_port", error.to_string()),
             BackendError::ServiceUnavailable => ("service_unavailable", error.to_string()),
             BackendError::PortOccupied => ("port_occupied", error.to_string()),
@@ -69,8 +70,12 @@ pub(crate) async fn stop_dsh(state: State<'_, HarnessState>) -> Result<(), IpcEr
 
 /// 探测并连接远程 DSH 服务。
 #[tauri::command]
-pub(crate) async fn connect_remote(host: String, port: u16) -> Result<String, IpcError> {
-    backend::connect_remote(host, port)
+pub(crate) async fn connect_remote(
+    protocol: String,
+    host: String,
+    port: u16,
+) -> Result<String, IpcError> {
+    backend::connect_remote(protocol, host, port)
         .await
         .map_err(IpcError::from_backend)
 }

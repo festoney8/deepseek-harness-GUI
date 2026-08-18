@@ -12,7 +12,7 @@ use tokio::{
 
 use crate::platform::{self, ManagedProcess};
 
-use super::{check_http, check_tcp, BackendError};
+use super::{check_tcp, check_url, BackendError};
 
 /// DSH 启动等待 WebUI 就绪的最长时间。
 const START_TIMEOUT: Duration = Duration::from_secs(10);
@@ -131,7 +131,7 @@ async fn start_dsh_inner(
             return Err(BackendError::DshExitedEarly);
         }
 
-        if check_http(&address, PROBE_IO_TIMEOUT).await? {
+        if check_url("http", "127.0.0.1", port, PROBE_IO_TIMEOUT).await? {
             let mut lifecycle = state.lifecycle.write().await;
             if lifecycle.generation != generation || lifecycle.process.is_none() {
                 return Err(BackendError::DshExitedEarly);
