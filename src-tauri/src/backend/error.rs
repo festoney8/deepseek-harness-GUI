@@ -36,9 +36,6 @@ pub(crate) enum BackendError {
     /// DSH 在完成就绪探测前退出。
     #[error("DSH 在就绪前退出")]
     DshExitedEarly,
-    /// 尚未成功读取到主题值。
-    #[error("当前没有可用主题")]
-    ThemeNotAvailable,
     /// 系统无法打开本次启动的日志目录。
     #[error("无法打开日志目录")]
     OpenLogsFailed,

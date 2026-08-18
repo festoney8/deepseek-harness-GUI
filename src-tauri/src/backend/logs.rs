@@ -11,6 +11,7 @@ pub(crate) fn create_logger() -> tauri_plugin_log::Builder {
     )])
 }
 
+/// 保存本次应用启动对应的日志目录。
 pub(crate) struct LogState {
     /// 本次启动日志目录的绝对路径。
     pub session_dir: PathBuf,

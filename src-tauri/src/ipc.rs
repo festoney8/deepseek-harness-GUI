@@ -1,6 +1,6 @@
 use tauri::{AppHandle, State};
 
-use crate::backend::{self, BackendError, HarnessState, LogState, ThemeState};
+use crate::backend::{self, BackendError, HarnessState, LogState};
 
 /// 前后端 IPC 边界使用的稳定结构化错误。
 #[derive(Debug, Clone, serde::Serialize)]
@@ -50,11 +50,5 @@ pub(crate) async fn open_logs(app: AppHandle, state: State<'_, LogState>) -> Res
 /// 隐藏主窗口到系统托盘。
 #[tauri::command]
 pub(crate) async fn hide_to_tray(app: AppHandle) -> Result<(), IpcError> {
-    todo!()
-}
-
-/// 获取最近一次成功解析的主题。
-#[tauri::command]
-pub(crate) async fn get_curr_theme(state: State<'_, ThemeState>) -> Result<String, IpcError> {
     todo!()
 }

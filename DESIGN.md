@@ -10,13 +10,13 @@ DSH 应用有大量的访问网络、读写文件、执行命令行的权限。
 
 ## 1. 文档状态与范围
 
-本文记录当前已经确认的 Tauri 后端设计。实现范围以 Rust 后端、IPC、跨平台进程管理、网络探测、主题监听、日志和系统托盘为主，前端视觉与页面结构不在本文范围内。
+本文记录当前已经确认的 Tauri 应用设计。实现范围以 Rust 后端、IPC、跨平台进程管理、网络探测、前端主题监听、日志和系统托盘为主，前端视觉与页面结构不在本文范围内。
 
 本文中的接口名称、状态语义、超时、路径规则和平台行为均作为实现约束。后续实现应优先保持接口稳定，再完善内部实现。
 
 ## 2. 总体架构
 
-后端采用“统一业务入口 + 单一 IPC 文件 + 编译期平台适配”的结构；短命令由前端通过 `tauri-plugin-shell` 直接执行，长生命周期的 dsh 由 Rust 后端统一管理。
+后端采用“统一业务入口 + 单一 IPC 文件 + 编译期平台适配”的结构；短命令由前端通过 `tauri-plugin-shell` 直接执行，主题配置由前端通过 `tauri-plugin-fs` 读取和监听，长生命周期的 dsh 由 Rust 后端统一管理。
 
 ```text
 Frontend
@@ -29,19 +29,17 @@ Frontend
   ├─ invoke("connect_remote")
   ├─ invoke("open_logs")
   ├─ invoke("hide_to_tray")
-  ├─ invoke("get_curr_theme")
-  ├─ listen("send_curr_theme")
+  ├─ fs.exists/readTextFile/watch("$HOME/.dsh/settings.yaml")
   └─ listen("dsh_exited")
           │
-          ├──────────────────────┐
-          ▼                      ▼
-src-tauri/src/ipc.rs       tauri-plugin-shell
-          │                 (短命令)
+          ├──────────────────────┬─────────────────────┐
+          ▼                      ▼                     ▼
+src-tauri/src/ipc.rs       tauri-plugin-shell     tauri-plugin-fs
+          │                 (短命令)               (主题配置)
           ▼
 src-tauri/src/backend/mod.rs
   ├─ harness.rs
   ├─ network.rs
-  ├─ theme.rs
   ├─ logs.rs
   ├─ tray.rs
   └─ error.rs
@@ -59,6 +57,7 @@ src-tauri/src/platform/mod.rs
 - 所有自定义 Tauri commands 集中在 `ipc.rs`。
 - `ipc.rs` 只做参数接收、业务调用和错误转换，不实现业务流程。
 - 短命令不再经过自定义 `shell` IPC，由前端直接调用 `tauri-plugin-shell`。
+- 主题配置不进入自定义 IPC 或 Rust `backend`，由前端通过 `tauri-plugin-fs` 读取和监听。
 - `backend/mod.rs` 是后端统一业务 façade，对 `ipc.rs` 暴露业务函数。
 - 通用业务逻辑全部位于 `backend`。
 - 只有真正依赖操作系统的 dsh 进程创建、进程树管理和终止逻辑位于 `platform`。
@@ -81,7 +80,6 @@ src-tauri/src/
 │   ├── error.rs
 │   ├── harness.rs
 │   ├── network.rs
-│   ├── theme.rs
 │   ├── logs.rs
 │   └── tray.rs
 └── platform/
@@ -100,7 +98,6 @@ stop_dsh() -> success
 connect_remote(host, port) -> address
 open_logs() -> success
 hide_to_tray() -> success
-get_curr_theme() -> theme
 ```
 
 Rust 侧概念签名：
@@ -111,7 +108,6 @@ async fn stop_dsh() -> Result<(), IpcError>;
 async fn connect_remote(host: String, port: u16) -> Result<String, IpcError>;
 async fn open_logs() -> Result<(), IpcError>;
 async fn hide_to_tray() -> Result<(), IpcError>;
-async fn get_curr_theme() -> Result<String, IpcError>;
 ```
 
 以下能力只作为 Rust 内部函数存在，不注册为 IPC command：
@@ -122,7 +118,7 @@ check_http
 check_https
 ```
 
-环境检查和 dsh 安装由前端直接通过 `tauri-plugin-shell` 完成，不提供自定义 `shell`、`check_env` 或 `install_dsh` IPC。
+环境检查和 dsh 安装由前端直接通过 `tauri-plugin-shell` 完成；主题读取和监听由前端直接通过 `tauri-plugin-fs` 完成。不提供自定义 `shell`、`check_env`、`install_dsh` 或主题 IPC。
 
 ## 4. 统一错误契约
 
@@ -154,7 +150,7 @@ interface IpcError {
 - 前端不得通过解析 `message` 判断错误类型。
 - 内部模块保留具体错误类型和完整错误链。
 - 只有 `ipc.rs` 将内部错误映射为 `IpcError`。
-- `tauri-plugin-shell` 的调用错误由前端单独处理，不纳入自定义 `IpcError` 契约。
+- `tauri-plugin-shell` 和 `tauri-plugin-fs` 的调用错误由前端单独处理，不纳入自定义 `IpcError` 契约。
 - 底层系统错误、路径、命令上下文和错误链写入日志，不默认暴露给前端。
 
 稳定错误码至少覆盖：
@@ -170,7 +166,6 @@ process_not_running
 dsh_spawn_failed
 dsh_start_timeout
 dsh_exited_early
-theme_not_available
 open_logs_failed
 ```
 
@@ -950,9 +945,11 @@ connect_remote("127.0.0.1", 3000)
 -> "https://127.0.0.1:3000" 或 "http://127.0.0.1:3000"
 ```
 
-## 9. 主题监听
+## 9. 前端主题读取与监听
 
-### 9.1 文件位置
+### 9.1 职责与文件位置
+
+主题只影响本地前端 UI，由前端直接通过 `@tauri-apps/plugin-fs` 读取和监听，不进入 `ipc.rs`、Rust `backend`、自定义事件或后端状态缓存。
 
 主题配置文件固定为：
 
@@ -960,62 +957,106 @@ connect_remote("127.0.0.1", 3000)
 $HOME/.dsh/settings.yaml
 ```
 
-读取字段：
+前端使用 `BaseDirectory.Home` 访问相对路径 `.dsh/settings.yaml`，由 Tauri 在 Windows、macOS 和 Linux 上解析用户 Home 目录；不手工拼接平台路径。需要绝对路径时，可以使用 `@tauri-apps/api/path` 的 `homeDir()` 和 `join()`。
+
+只读取以下字段：
 
 ```yaml
-ui-theme: <string>
+ui-theme:
+  preference: dark
 ```
 
-### 9.2 启动和监听流程
+其他 YAML 字段全部忽略。
 
-1. Tauri 启动后创建主题后台任务。
-2. 每 3 秒检查 `settings.yaml` 是否存在。
-3. 文件不存在时继续轮询。
-4. 文件出现后停止轮询。
-5. 立即读取并解析 `ui-theme`。
-6. 成功解析后缓存主题字符串。
-7. 向前端发送 `send_curr_theme` 事件。
-8. 直接监听 `settings.yaml` 文件本身。
-9. 文件修改时重新读取并解析。
-10. 成功解析新值后更新缓存并再次发送事件。
+### 9.2 主题值契约
 
-监听只针对 `settings.yaml` 文件本身，不监听 `$HOME/.dsh/` 父目录。
+前端主题类型固定为：
 
-### 9.3 数据契约
-
-主题事件：
-
-```text
-send_curr_theme
-payload：String
+```typescript
+type ThemePreference = "light" | "dark" | "system";
 ```
 
 主题值规则：
 
-- `ui-theme` 是字符串时原样发送。
-- 后端不限制主题枚举值。
-- YAML 解析失败时记录日志，不发送事件。
-- `ui-theme` 缺失时记录日志，不发送事件。
-- `ui-theme` 类型不是字符串时记录日志，不发送事件。
-- 解析失败不会终止应用。
-- 前端负责未知主题值的 fallback。
+- `ui-theme.preference` 为 `light`、`dark` 或 `system` 时使用该值。
+- `ui-theme` 或 `preference` 缺失时使用 `system`。
+- `preference` 类型错误或值不受支持时使用 `system`。
+- YAML 解析失败或文件读取失败时记录前端错误，并保留最近一次有效主题。
+- 尚未成功读取过主题时，前端初始主题固定为 `system`。
+- 不提供 `get_curr_theme` IPC、`send_curr_theme` 事件或 Rust 主题缓存。
 
-### 9.4 初始主题可靠性
+### 9.3 启动和监听流程
 
-后端缓存最近一次成功解析的主题。
+1. 本地前端启动时立即应用 `system`，避免等待文件期间主题未定义。
+2. 每 3 秒调用 `exists(".dsh/settings.yaml", { baseDir: BaseDirectory.Home })`。
+3. 文件不存在时继续轮询。
+4. 文件出现后停止轮询。
+5. 先调用 `watch()` 监听该文件，再执行首次读取，避免“读取完成到监听注册”之间丢失修改。
+6. `watch()` 使用 `delayMs: 300`，由 `tauri-plugin-fs` 合并连续文件事件。
+7. 使用 `readTextFile()` 读取文件，并通过前端 YAML 解析库解析 `ui-theme.preference`。
+8. 每次得到有效或 fallback 主题后更新前端主题状态并应用到 UI。
+9. 文件修改后重新读取并解析；不根据文件事件 payload 推断主题值。
+10. 页面或应用销毁时调用 `watch()` 返回的取消监听函数。
 
-```text
-get_curr_theme() -> Result<String, IpcError>
+当前版本不处理文件开始监听后又被删除的情况。监听只针对 `settings.yaml` 文件本身，不递归监听 `$HOME/.dsh/`。
+
+### 9.4 前端调用示例
+
+```typescript
+import {
+  BaseDirectory,
+  exists,
+  readTextFile,
+  watch,
+} from "@tauri-apps/plugin-fs";
+import { parse } from "yaml";
+
+const settingsPath = ".dsh/settings.yaml";
+const homeOptions = { baseDir: BaseDirectory.Home };
+
+function parseTheme(contents: string): "light" | "dark" | "system" {
+  const preference = parse(contents)?.["ui-theme"]?.preference;
+  return preference === "light" ||
+    preference === "dark" ||
+    preference === "system"
+    ? preference
+    : "system";
+}
 ```
 
-前端初始化顺序：
+业务层负责封装轮询、监听、读取和错误处理，页面组件只订阅前端主题状态，不直接操作文件系统。
 
-1. 注册 `send_curr_theme` 事件监听。
-2. 调用 `get_curr_theme()`。
-3. 查询成功时立即应用当前主题。
-4. 后续通过 `send_curr_theme` 接收变化。
+### 9.5 文件系统权限
 
-当前尚未发现有效主题时，`get_curr_theme()` 返回 `theme_not_available`。
+capability 只允许主窗口对单个主题配置文件执行存在检查、文本读取和监听：
+
+```json
+{
+  "identifier": "fs:allow-exists",
+  "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
+}
+```
+
+```json
+{
+  "identifier": "fs:allow-read-text-file",
+  "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
+}
+```
+
+```json
+{
+  "identifier": "fs:allow-watch",
+  "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
+}
+```
+
+权限约束：
+
+- 不授予 `$HOME/**` 或 `$HOME/.dsh/**` 的宽泛读取权限。
+- 不授予写入、创建、删除、目录遍历或递归监听权限。
+- 主题 capability 只授予承载本地包装器 UI 的可信 WebView，不授予可能加载远程 dsh WebUI 的窗口或 WebView。
+- 前端可以读取该 YAML 文件的完整文本，因此该文件不得存放不应暴露给本地前端的密钥或凭据。
 
 ## 10. 日志
 
@@ -1103,14 +1144,14 @@ open_logs() -> Result<(), IpcError>
 3. 创建本次启动的 timestamp 日志目录。
 4. 配置并注册一次 `tauri-plugin-log`。
 5. 注册 `tauri-plugin-shell`。
-6. 注册 `tauri-plugin-opener`。
-7. 初始化 dsh 状态、主题缓存和本次日志目录状态。
-8. 注册系统托盘及菜单事件。
-9. 注册 `ipc.rs` 中的全部自定义 commands。
-10. 在 setup 阶段启动主题轮询/监听任务。
+6. 注册启用 `watch` feature 的 `tauri-plugin-fs`。
+7. 注册 `tauri-plugin-opener`。
+8. 初始化 dsh 状态和本次日志目录状态。
+9. 注册系统托盘及菜单事件。
+10. 注册 `ipc.rs` 中的全部自定义 commands。
 11. 进入 Tauri 事件循环。
 
-PATH 修复失败只记录 error 日志，应用继续初始化。前端只能在 Tauri 初始化完成后调用 shell 插件，因此所有 shell 插件进程和 dsh 子进程都继承修复后的 PATH。
+PATH 修复失败只记录 error 日志，应用继续初始化。前端只能在 Tauri 初始化完成后调用 shell 和 fs 插件，因此 shell 插件进程和 dsh 子进程继承修复后的 PATH，主题文件路径由 fs/path API 按目标平台解析。
 
 ## 13. Tauri 插件和权限
 
@@ -1119,6 +1160,7 @@ PATH 修复失败只记录 error 日志，应用继续初始化。前端只能�
 ```text
 tauri-plugin-log
 tauri-plugin-shell
+tauri-plugin-fs
 tauri-plugin-opener
 ```
 
@@ -1130,33 +1172,49 @@ tauri-plugin-opener
 - capability 只授予版本检查和 dsh 安装所需的 `shell:allow-execute`、`shell:allow-spawn` 及固定 scope。
 - 不授予任意命令、任意参数、`shell:allow-kill` 或 `shell:allow-stdin-write`。
 
-主题监听由 Rust 文件监听实现，不依赖前端文件 watch。
+主题配置由前端直接使用 `@tauri-apps/plugin-fs`：
 
-## 14. Rust 依赖职责
+- Rust 后端注册启用 `watch` feature 的 `tauri-plugin-fs`。
+- 前端使用 `BaseDirectory.Home` 或 `@tauri-apps/api/path` 解析跨平台 Home 路径。
+- capability 仅向可信本地前端授予 `$HOME/.dsh/settings.yaml` 的 `fs:allow-exists`、`fs:allow-read-text-file` 和 `fs:allow-watch`。
+- 不授予主题文件的写入、删除、目录遍历或宽泛 Home 目录访问权限。
+- 不提供自定义主题 IPC、Rust 主题状态或 Rust 主题事件。
 
-实现需要以下依赖类别：
+## 14. 依赖职责
+
+Rust 依赖：
 
 ```text
 Tauri v2                      应用运行时、IPC、事件、窗口和托盘
 tauri-plugin-log              文件日志
 tauri-plugin-shell            前端短命令执行和安装输出流
+tauri-plugin-fs               前端主题文件读取和防抖监听，启用 watch feature
 tauri-plugin-opener           打开本次日志目录
 fix-path-env-rs               修复 GUI 应用 PATH
 tokio                         异步进程、任务、IO、互斥和超时
 reqwest                       HTTP/HTTPS 探测
 serde / serde_json            IPC 序列化
-serde_yaml                    settings.yaml 解析
-notify                         跨平台文件监听
 thiserror                      内部类型化错误
 Unix 进程/信号依赖            进程组、SIGTERM、SIGKILL
 Windows API 依赖              Job Object 和进程树管理
 ```
 
+前端依赖：
+
+```text
+@tauri-apps/plugin-shell       调用固定短命令
+@tauri-apps/plugin-fs          检查、读取和监听主题配置文件
+@tauri-apps/api               使用 path API 处理跨平台路径
+yaml                          解析 settings.yaml
+```
+
+文件监听由 `tauri-plugin-fs` 的 `watch` feature 内部提供，项目不再维护 Rust 主题解析或监听依赖。
+
 依赖版本和 feature 在实现阶段按当前官方文档确定。
 
 ## 15. 全局行为约束
 
-- 前端通过已定义 IPC 和事件访问后端业务，通过 `tauri-plugin-shell` 访问固定短命令。
+- 前端通过已定义 IPC 和事件访问后端业务，通过 `tauri-plugin-shell` 访问固定短命令，通过 `tauri-plugin-fs` 访问固定主题配置文件。
 - 不提供自定义 `shell` IPC。
 - shell 插件 capability 只允许固定的版本检查和 dsh 安装操作。
 - 前端使用参数数组，不执行任意完整 shell 命令字符串。
@@ -1166,6 +1224,7 @@ Windows API 依赖              Job Object 和进程树管理
 - dsh 始终作为单实例受控进程树。
 - `start_dsh` 成功表示本地 WebUI 已返回 HTTP `2xx`，不是仅表示进程创建成功。
 - `connect_remote` 成功表示对应规范化地址经过 HTTP/HTTPS 探测可用。
-- 主题变化由后端主动推送，查询接口只补偿初始事件时序。
+- 主题由可信本地前端通过 `tauri-plugin-fs` 读取和监听，缺失或无效主题值回退到 `system`。
+- 主题功能不使用自定义 IPC、Rust 状态缓存或自定义 Tauri 事件。
 - 正常退出必须清理 dsh。
 - Unix 强制终止 GUI 时可能遗留 dsh，这是当前版本接受的运行语义。

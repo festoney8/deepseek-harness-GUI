@@ -2,9 +2,13 @@ use std::{net::Ipv4Addr, time::Duration};
 
 use super::BackendError;
 
+/// 远程 HTTP/HTTPS 单协议探测的超时时间。
 const REMOTE_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// 检查指定主机端口是否可建立 TCP 连接。
+/// 使用 TCP 连接结果判断目标端口当前是否可达。
+///
+/// 连接失败和超时都表示端口不可达，而不是后端业务错误；只有零超时
+/// 属于调用参数错误。
 pub(crate) async fn check_tcp(
     host: &str,
     port: u16,
@@ -31,6 +35,7 @@ pub(crate) async fn check_https(url: &str, timeout: Duration) -> Result<bool, Ba
     check_http_url(url, "https", timeout).await
 }
 
+/// 按指定协议探测 HTTP 服务。
 async fn check_http_url(
     url: &str,
     expected_scheme: &str,
@@ -116,6 +121,7 @@ pub(crate) async fn connect_remote(host: String, port: u16) -> Result<String, Ba
     }
 }
 
+/// 将输入主机校验并转换为连接地址使用的规范文本。
 fn normalize_host(host: &str) -> Result<String, BackendError> {
     if host.eq_ignore_ascii_case("localhost") {
         return Ok(String::from("localhost"));
