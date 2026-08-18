@@ -776,6 +776,7 @@ name = "deepseek-harness-gui"
 version = "0.1.0"
 dependencies = [
  "fix-path-env",
+ "libc",
  "log",
  "notify",
  "reqwest",
