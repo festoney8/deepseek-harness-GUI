@@ -45,7 +45,6 @@ pub(crate) struct ManagedProcess {
 struct WindowsProcess {
     kind: ProcessKind,
     job: OwnedJob,
-    process_id: u32,
     exit: Mutex<Option<Result<ProcessExit, WaitFailure>>>,
     exited: Notify,
     termination: AsyncMutex<()>,
@@ -83,12 +82,6 @@ impl ManagedProcess {
     /// 返回该进程创建时确定的业务类型。
     pub(crate) fn kind(&self) -> ProcessKind {
         self.inner.kind
-    }
-
-    /// 返回直接子进程 PID，供 Windows 生命周期测试模拟外部强杀。
-    #[cfg(test)]
-    pub(crate) fn process_id(&self) -> u32 {
-        self.inner.process_id
     }
 
     /// 非阻塞读取已经缓存的进程退出结果。
@@ -150,11 +143,6 @@ pub(super) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
     spawn_dsh_command("dsh", port)
 }
 
-#[cfg(test)]
-pub(super) fn spawn_missing_dsh_for_test(port: u16) -> Result<SpawnedProcess, PlatformError> {
-    spawn_dsh_command("dsh-command-that-must-not-exist", port)
-}
-
 fn spawn_dsh_command(program: &str, port: u16) -> Result<SpawnedProcess, PlatformError> {
     let command = format!("{program} --profile web --port {port}");
     let mut process = Command::new("cmd.exe");
@@ -206,7 +194,6 @@ fn spawn(mut command: Command, kind: ProcessKind) -> Result<SpawnedProcess, Plat
     let inner = Arc::new(WindowsProcess {
         kind,
         job,
-        process_id,
         exit: Mutex::new(None),
         exited: Notify::new(),
         termination: AsyncMutex::new(()),

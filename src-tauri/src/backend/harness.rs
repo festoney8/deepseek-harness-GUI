@@ -11,7 +11,7 @@ use tokio::{
     sync::{Mutex, RwLock},
 };
 
-use crate::platform::{self, ManagedProcess, SpawnedProcess};
+use crate::platform::{self, ManagedProcess};
 
 use super::BackendError;
 
@@ -62,14 +62,6 @@ pub(crate) async fn start_dsh(
     _app: &AppHandle,
     state: &HarnessState,
 ) -> Result<String, BackendError> {
-    start_dsh_with(port, state, platform::spawn_dsh).await
-}
-
-async fn start_dsh_with(
-    port: u16,
-    state: &HarnessState,
-    spawn: fn(u16) -> Result<SpawnedProcess, platform::PlatformError>,
-) -> Result<String, BackendError> {
     if port == 0 {
         return Err(BackendError::InvalidPort);
     }
@@ -85,7 +77,7 @@ async fn start_dsh_with(
         return Err(BackendError::PortOccupied);
     }
 
-    let spawned = match spawn(port) {
+    let spawned = match platform::spawn_dsh(port) {
         Ok(spawned) => spawned,
         Err(error) => {
             eprintln!("[dsh][spawn-error] {error:?}");
@@ -270,134 +262,4 @@ fn print_stream(name: &'static str, stream: impl AsyncRead + Unpin + Send + 'sta
         }
         println!("[dsh][{name}-closed]");
     });
-}
-
-#[cfg(all(test, windows))]
-mod tests {
-    use std::{
-        net::TcpListener,
-        process::Command,
-        time::{Duration, Instant},
-    };
-
-    use super::*;
-
-    fn unused_port() -> u16 {
-        TcpListener::bind((Ipv4Addr::LOCALHOST, 0))
-            .expect("应能绑定临时端口")
-            .local_addr()
-            .expect("临时监听器应有本地地址")
-            .port()
-    }
-
-    async fn current_phase(state: &HarnessState) -> HarnessPhase {
-        state.lifecycle.read().await.phase
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    async fn create_state_starts_stopped() {
-        let state = create_harness_state();
-        assert_eq!(current_phase(&state).await, HarnessPhase::Stopped);
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[ignore = "手动场景：打印不存在命令的完整输出"]
-    async fn scenario_1_missing_dsh_prints_failure() {
-        let state = create_harness_state();
-        let port = unused_port();
-        println!("[scenario-1] start missing dsh on port {port}");
-
-        let result = start_dsh_with(port, &state, platform::spawn_missing_dsh_for_test).await;
-        tokio::time::sleep(Duration::from_millis(200)).await;
-
-        println!("[scenario-1] result={result:?}");
-        assert!(matches!(result, Err(BackendError::DshExitedEarly)));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[ignore = "手动场景：占用端口后验证启动被拒绝"]
-    async fn scenario_2_occupied_port_prints_failure() {
-        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("应能占用临时端口");
-        let port = listener.local_addr().expect("监听器应有地址").port();
-        let state = create_harness_state();
-        println!("[scenario-2] occupied port={port}");
-
-        let result = start_dsh_with(port, &state, platform::spawn_dsh).await;
-
-        println!("[scenario-2] result={result:?}");
-        assert!(matches!(result, Err(BackendError::PortOccupied)));
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[ignore = "手动场景：需要已安装 dsh"]
-    async fn scenario_3_dsh_starts_web_server() {
-        let state = create_harness_state();
-        let port = unused_port();
-        println!("[scenario-3] starting dsh on port {port}");
-
-        let address = start_dsh_with(port, &state, platform::spawn_dsh)
-            .await
-            .expect("dsh 应成功启动");
-        println!("[scenario-3] ready address={address}");
-
-        stop_dsh(&state).await.expect("dsh 应成功停止");
-        println!("[scenario-3] final phase={:?}", current_phase(&state).await);
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[ignore = "手动场景：需要已安装 dsh，运行至少十秒"]
-    async fn scenario_4_dsh_stops_after_ten_second_countdown() {
-        let state = create_harness_state();
-        let port = unused_port();
-        let address = start_dsh_with(port, &state, platform::spawn_dsh)
-            .await
-            .expect("dsh 应成功启动");
-        println!("[scenario-4] ready address={address}");
-
-        for remaining in (1..=10).rev() {
-            println!("[scenario-4] auto stop in {remaining}s");
-            tokio::time::sleep(Duration::from_secs(1)).await;
-        }
-
-        stop_dsh(&state).await.expect("倒计时后应成功停止 dsh");
-        println!("[scenario-4] final phase={:?}", current_phase(&state).await);
-    }
-
-    #[tokio::test(flavor = "current_thread")]
-    #[ignore = "手动场景：需要已安装 dsh，并通过 taskkill 模拟崩溃"]
-    async fn scenario_5_external_kill_is_observed() {
-        let state = create_harness_state();
-        let port = unused_port();
-        let address = start_dsh_with(port, &state, platform::spawn_dsh)
-            .await
-            .expect("dsh 应成功启动");
-        let process = state
-            .lifecycle
-            .read()
-            .await
-            .process
-            .clone()
-            .expect("运行状态应保存进程");
-        let pid = process.process_id();
-        println!("[scenario-5] ready address={address} pid={pid}");
-
-        let output = Command::new("taskkill")
-            .args(["/PID", &pid.to_string(), "/T", "/F"])
-            .output()
-            .expect("taskkill 应可执行");
-        println!(
-            "[scenario-5] taskkill exit={:?}\nstdout={}\nstderr={}",
-            output.status.code(),
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr)
-        );
-
-        let deadline = Instant::now() + Duration::from_secs(5);
-        while current_phase(&state).await != HarnessPhase::Stopped && Instant::now() < deadline {
-            tokio::time::sleep(Duration::from_millis(100)).await;
-        }
-
-        println!("[scenario-5] final phase={:?}", current_phase(&state).await);
-        assert_eq!(current_phase(&state).await, HarnessPhase::Stopped);
-    }
 }

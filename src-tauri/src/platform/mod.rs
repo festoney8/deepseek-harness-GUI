@@ -88,8 +88,3 @@ pub(crate) fn spawn_shell(command: &str, cwd: &Path) -> Result<SpawnedProcess, P
 pub(crate) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
     current::spawn_dsh(port)
 }
-
-#[cfg(all(test, windows))]
-pub(crate) fn spawn_missing_dsh_for_test(port: u16) -> Result<SpawnedProcess, PlatformError> {
-    current::spawn_missing_dsh_for_test(port)
-}
