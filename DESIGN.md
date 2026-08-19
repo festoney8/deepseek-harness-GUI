@@ -999,11 +999,11 @@ type ThemePreference = "light" | "dark" | "system";
 3. 文件不存在时继续轮询。
 4. 文件出现后停止轮询。
 5. 先调用 `watch()` 监听该文件，再执行首次读取，避免“读取完成到监听注册”之间丢失修改。
-6. `watch()` 使用 `delayMs: 300`，由 `tauri-plugin-fs` 合并连续文件事件。
+6. `watch()` 使用 `delayMs: 100`，由 `tauri-plugin-fs` 合并连续文件事件。
 7. 使用 `readTextFile()` 读取文件，并通过前端 YAML 解析库解析 `ui-theme.preference`。
 8. 每次得到有效或 fallback 主题后更新前端主题状态并应用到 UI。
 9. 文件修改后重新读取并解析；不根据文件事件 payload 推断主题值。
-10. 页面或应用销毁时调用 `watch()` 返回的取消监听函数。
+10. 监听与应用同生命周期：首次调用 `useTheme()` 即启动，此后不提供停止入口，应用退出时随进程清理。
 
 当前版本不处理文件开始监听后又被删除的情况。监听只针对 `settings.yaml` 文件本身，不递归监听 `$HOME/.dsh/`。
 
