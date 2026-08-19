@@ -1,39 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invokeIpc } from "../ipc/ipc";
 
-/** Rust 侧 IpcError 的镜像类型，字段与 ipc.rs 中 camelCase 序列化对齐。 */
-export interface IpcError {
-  code: string;
-  message: string;
-}
-
-/** dsh_exited 事件 payload，对应 backend/harness.rs 中 emit 的 JSON。 */
-export interface DshExitedPayload {
-  exitCode: number | null;
-}
-
-/**
- * 将 invoke rejection 归一化为 IpcError。Rust 侧序列化错误会以
- * `{ code, message }` 对象到达；其他非结构化值统一映射为 internal_error。
- */
-function toIpcError(payload: unknown): IpcError {
-  if (
-    typeof payload === "object" &&
-    payload !== null &&
-    typeof (payload as { code?: unknown }).code === "string" &&
-    typeof (payload as { message?: unknown }).message === "string"
-  ) {
-    return payload as IpcError;
-  }
-  return { code: "internal_error", message: "内部错误，请查看日志" };
-}
-
-async function invokeIpc<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
-  try {
-    return await invoke<T>(cmd, args);
-  } catch (error) {
-    throw toIpcError(error);
-  }
-}
+export type { DshExitedPayload, IpcError } from "../ipc/ipc";
 
 export const startDsh = (port: number) => invokeIpc<string>("start_dsh", { port });
 
