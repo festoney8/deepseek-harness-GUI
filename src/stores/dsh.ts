@@ -87,6 +87,22 @@ export const useDshStore = defineStore("dsh", () => {
   }
 
   /**
+   * 重启 dsh：先停止当前实例（已处于 Stopped 或无进程时视为停止完成），
+   * 再以同一端口启动。返回新的 WebUI 地址。
+   */
+  async function restart(port: number): Promise<string> {
+    try {
+      await stop();
+    } catch (error) {
+      const ipcError = error as IpcError;
+      if (ipcError.code !== "process_not_running") {
+        throw error;
+      }
+    }
+    return start(port);
+  }
+
+  /**
    * 注册 dsh_exited 监听。幂等；并发调用共享同一个挂起的注册 promise，
    * 确保只注册一次。返回 unlisten，供 dispose 或应用卸载时清理。
    * 只在 App.vue 挂载时调用一次，避免组件生命周期造成事件丢失。
@@ -119,6 +135,7 @@ export const useDshStore = defineStore("dsh", () => {
     canStart,
     start,
     stop,
+    restart,
     bindEvents,
     dispose,
   };

@@ -10,10 +10,10 @@ interface RegistryLatestResponse {
 
 /**
  * 查询 dsh 在 npm registry 的最新版本。
- * mirror 为 true（默认）时查询 npmmirror 源，否则查询官方源。
+ * mirror 为 true 时查询 npmmirror 源，否则查询官方源。
  * 网络或解析失败一律返回 undefined。
  */
-export function useLatestDshVer(mirror: MaybeRef<boolean> = true) {
+export function useLatestDshVer(mirror: MaybeRef<boolean>) {
   const version = ref<string | undefined>(undefined);
   const error = ref<string | null>(null);
   const checking = ref(false);
