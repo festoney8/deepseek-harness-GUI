@@ -2,7 +2,7 @@ import { ref, toValue, type MaybeRef } from "vue";
 import { fetchJson } from "../utils/http";
 
 const LATEST_URL_NPMJS = "https://registry.npmjs.org/@deepseek-ai/dsh/latest";
-const LATEST_URL_NPMMIRROR = "https://registry.npmmirror.org/@deepseek-ai/dsh/latest";
+const LATEST_URL_NPMMIRROR = "https://registry.npmmirror.com/@deepseek-ai/dsh/latest";
 
 interface RegistryLatestResponse {
   version?: string;

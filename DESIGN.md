@@ -178,11 +178,11 @@ open_logs_failed
 当前只覆盖以下操作：
 
 ```text
-node -V
-npm -V
+node -v
+npm -v
 dsh -V
 npm install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmjs.org
-npm install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmmirror.org
+npm install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmmirror.com
 ```
 
 边界约束：
@@ -214,11 +214,11 @@ PATH 规则：
 
 ```text
 逻辑命令名                Windows 实际程序   macOS/Linux 实际程序   固定参数
-node-version              node.exe           node                    -V
-npm-version               npm.cmd            npm                     -V
+node-version              node.exe           node                    -v
+npm-version               npm.cmd            npm                     -v
 dsh-version               dsh.cmd            dsh                     -V
 npm-install-dsh-npmjs     npm.cmd            npm                     install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmjs.org
-npm-install-dsh-npmmirror npm.cmd            npm                     install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmmirror.org
+npm-install-dsh-npmmirror npm.cmd            npm                     install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmmirror.com
 ```
 
 约束：
@@ -234,7 +234,7 @@ npm-install-dsh-npmmirror npm.cmd            npm                     install -g 
 
 ### 5.4 `execute`：版本检查
 
-`node -V`、`npm -V` 和 `dsh -V` 输出少且应立即结束，统一使用 `execute()`，等待进程退出后一次性读取 `code`、`signal`、`stdout` 和 `stderr`。
+`node -v`、`npm -v` 和 `dsh -V` 输出少且应立即结束，统一使用 `execute()`，等待进程退出后一次性读取 `code`、`signal`、`stdout` 和 `stderr`。
 
 ```typescript
 import { Command } from "@tauri-apps/plugin-shell";
@@ -284,8 +284,8 @@ await command.spawn();
 
 ### 5.6 前端环境检查流程
 
-1. 使用 `node-version.execute()` 执行 `node -V`。
-2. 使用 `npm-version.execute()` 执行 `npm -V`。
+1. 使用 `node-version.execute()` 执行 `node -v`。
+2. 使用 `npm-version.execute()` 执行 `npm -v`。
 3. 使用 `dsh-version.execute()` 执行 `dsh -V`。
 4. Node 或 npm 不存在时，前端提示用户前往官网安装。
 5. dsh 不存在时，前端显示安装按钮。

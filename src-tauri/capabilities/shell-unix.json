@@ -11,13 +11,13 @@
         {
           "name": "node-version",
           "cmd": "node",
-          "args": ["-V"],
+          "args": ["-v"],
           "sidecar": false
         },
         {
           "name": "npm-version",
           "cmd": "npm",
-          "args": ["-V"],
+          "args": ["-v"],
           "sidecar": false
         },
         {
@@ -40,7 +40,7 @@
         {
           "name": "npm-install-dsh-npmmirror",
           "cmd": "npm",
-          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh", "--registry=https://registry.npmmirror.org"],
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh", "--registry=https://registry.npmmirror.com"],
           "sidecar": false
         }
       ]

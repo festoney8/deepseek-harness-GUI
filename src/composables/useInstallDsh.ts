@@ -2,7 +2,7 @@ import { ref, toValue, type MaybeRef } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
 
 const NPM_REGISTRY = "https://registry.npmjs.org";
-const NPM_MIRROR_REGISTRY = "https://registry.npmmirror.org";
+const NPM_MIRROR_REGISTRY = "https://registry.npmmirror.com";
 
 /**
  * 通过 capability 逻辑命令安装 dsh，spawn 模式流式打印全部输出与报错。
