@@ -26,6 +26,47 @@ pub(crate) struct LogState {
     pub session_dir: PathBuf,
 }
 
+/// 清理日志目录下距今超过指定天数的会话日志目录。
+///
+/// 只删除目录名是秒级 Unix timestamp、且时间早于截止点的目录；
+/// 其他文件或目录保持不变。清理是尽力而为的操作，失败只记录日志，
+/// 不阻止应用启动。
+pub(crate) fn cleanup_old_logs(app_log_dir: &Path, max_age_days: u64) {
+    let now = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(now) => now.as_secs(),
+        Err(_) => return,
+    };
+    let cutoff = now.saturating_sub(max_age_days.saturating_mul(86_400));
+
+    let entries = match std::fs::read_dir(app_log_dir) {
+        Ok(entries) => entries,
+        Err(source) => {
+            error!(
+                "failed to read log dir {}: {source:?}",
+                app_log_dir.display()
+            );
+            return;
+        }
+    };
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        // 目录名必须是秒级 Unix timestamp，否则跳过。
+        let Ok(timestamp) = entry.file_name().to_string_lossy().parse::<u64>() else {
+            continue;
+        };
+        if timestamp < cutoff {
+            match std::fs::remove_dir_all(&path) {
+                Ok(()) => log::info!("removed old log dir {path:?}"),
+                Err(source) => error!("failed to remove old log dir {path:?}: {source:?}"),
+            }
+        }
+    }
+}
+
 /// 在应用日志目录下创建本次启动的独立日志目录。
 pub(crate) fn create_session_log_dir(app_log_dir: &Path) -> Result<PathBuf, BackendError> {
     let timestamp = SystemTime::now()

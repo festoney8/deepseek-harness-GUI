@@ -30,6 +30,8 @@ pub fn run() {
         .setup(|app| {
             // 解析平台标准日志目录，并创建本次启动的独立会话目录。
             let app_log_dir = app.path().app_log_dir()?;
+            // 启动时清理 7 天之前的会话日志目录。
+            backend::cleanup_old_logs(&app_log_dir, 7);
             let session_dir = backend::create_session_log_dir(&app_log_dir)?;
             // 日志插件只注册一次，文件 target 指向会话目录。
             app.handle().plugin(backend::create_logger(&session_dir).build())?;
