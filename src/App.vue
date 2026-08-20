@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useDshStore } from "./stores/dsh";
 import { useEnvStore, displayVersion } from "./stores/env";
-import { useTheme } from "./composables/useTheme";
+import { useThemeStore } from "./stores/theme";
 import { useConnectRemote } from "./composables/useConnectRemote";
 import { useInstallDsh } from "./composables/useInstallDsh";
 import { hideToTray, openLogs } from "./utils/ipc";
@@ -30,8 +30,9 @@ const latestDshMirrorDisplay = computed(() => displayVersion(env.latestDshVerWit
 const latestAppDisplay = computed(() => displayVersion(env.latestAppVer));
 const appDisplay = computed(() => displayVersion(env.appVer));
 
-// 4. 主题（单例，自动监听）
-const { theme } = useTheme();
+// 4. 主题（pinia 单例，start() 幂等启动监听）
+const themeStore = useThemeStore();
+themeStore.start();
 
 // 5. dsh 生命周期（pinia）
 const store = useDshStore();
@@ -180,7 +181,7 @@ onMounted(async () => {
 
     <section>
       <h2>4. 主题</h2>
-      <p>当前主题：{{ theme }}（修改 $HOME/.dsh/settings.yaml 后自动刷新）</p>
+      <p>当前主题：{{ themeStore.theme }}（修改 $HOME/.dsh/settings.yaml 后自动刷新）</p>
     </section>
 
     <section>
