@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
 import { useDshStore } from "./stores/dsh";
-import { useNodeVer } from "./composables/useNodeVer";
-import { useNpmVer } from "./composables/useNpmVer";
-import { useDshVer } from "./composables/useDshVer";
-import { useLatestDshVer } from "./composables/useLatestDshVer";
-import { useLatestAppVer } from "./composables/useLatestAppVer";
-import { useAppVer } from "./composables/useAppVer";
+import { useEnvStore, displayVersion } from "./stores/env";
 import { useTheme } from "./composables/useTheme";
 import { useConnectRemote } from "./composables/useConnectRemote";
 import { useInstallDsh } from "./composables/useInstallDsh";
@@ -25,18 +20,14 @@ function reportError(tag: string, error: unknown): void {
   alert(`[${tag}] ${message}`);
 }
 
-// 1. 环境版本（execute）
-const { version: nodeVersion, error: nodeError, check: checkNode } = useNodeVer();
-const { version: npmVersion, error: npmError, check: checkNpm } = useNpmVer();
-const { version: dshVersion, error: dshError, check: checkDsh } = useDshVer();
-
-// 2. 最新版本（fetch）
-const useMirror = ref(true);
-const { version: latestDshVersion, error: latestDshError, check: checkLatestDsh } = useLatestDshVer(useMirror);
-const { version: latestAppVersion, error: latestAppError, check: checkLatestApp } = useLatestAppVer();
-
-// 3. App 版本
-const { version: appVersion, error: appError, check: checkApp } = useAppVer();
+// 1-3. 版本号统一由 useEnvStore 管理
+const env = useEnvStore();
+const nodeDisplay = computed(() => displayVersion(env.nodeVer));
+const npmDisplay = computed(() => displayVersion(env.npmVer));
+const dshDisplay = computed(() => displayVersion(env.dshVer));
+const latestDshDisplay = computed(() => displayVersion(env.latestDshVer));
+const latestAppDisplay = computed(() => displayVersion(env.latestAppVer));
+const appDisplay = computed(() => displayVersion(env.appVer));
 
 // 4. 主题（单例，自动监听）
 const { theme } = useTheme();
@@ -157,29 +148,29 @@ onMounted(async () => {
 
     <section>
       <h2>1. 环境版本</h2>
-      <p><button @click="checkNode()">node -v</button> {{ nodeVersion ?? nodeError ?? "—" }}</p>
-      <p><button @click="checkNpm()">npm -v</button> {{ npmVersion ?? npmError ?? "—" }}</p>
-      <p><button @click="checkDsh()">dsh -V</button> {{ dshVersion ?? dshError ?? "—" }}</p>
+      <p><button @click="env.getNodeVer()">node -v</button> {{ nodeDisplay }}</p>
+      <p><button @click="env.getNpmVer()">npm -v</button> {{ npmDisplay }}</p>
+      <p><button @click="env.getDshVer()">dsh -V</button> {{ dshDisplay }}</p>
     </section>
 
     <section>
       <h2>2. 最新版本</h2>
       <p>
         dsh 最新版本
-        <button @click="checkLatestDsh()">查询</button>
-        <label><input v-model="useMirror" type="checkbox" /> 使用 npm 镜像</label>
-        {{ latestDshVersion ?? latestDshError ?? "—" }}
+        <button @click="env.getLatestDshVer()">官方源</button>
+        <button @click="env.getLatestDshVerWithMirror()">镜像源</button>
+        {{ latestDshDisplay }}
       </p>
       <p>
         App 最新版本
-        <button @click="checkLatestApp()">查询</button>
-        {{ latestAppVersion ?? latestAppError ?? "—" }}
+        <button @click="env.getLatestAppVer()">查询</button>
+        {{ latestAppDisplay }}
       </p>
     </section>
 
     <section>
       <h2>3. App 版本</h2>
-      <p><button @click="checkApp()">查询</button> {{ appVersion ?? appError ?? "—" }}</p>
+      <p><button @click="env.getAppVer()">查询</button> {{ appDisplay }}</p>
     </section>
 
     <section>
