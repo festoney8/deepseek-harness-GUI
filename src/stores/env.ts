@@ -171,6 +171,19 @@ export const useEnvStore = defineStore("env", () => {
     await runGet(appVer, getAppVersion);
   }
 
+  /** 刷新所有版本 */
+  async function refreshAllVersions(): Promise<void> {
+    await Promise.all([
+      getNodeVer(),
+      getNpmVer(),
+      getDshVer(),
+      getLatestDshVer(),
+      getLatestDshVerWithMirror(),
+      // getLatestAppVer(),
+      // getAppVer(),
+    ]);
+  }
+
   return {
     nodeVer,
     npmVer,
@@ -186,5 +199,6 @@ export const useEnvStore = defineStore("env", () => {
     getLatestDshVerWithMirror,
     getLatestAppVer,
     getAppVer,
+    refreshAllVersions,
   };
 });
