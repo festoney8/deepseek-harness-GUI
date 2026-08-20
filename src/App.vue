@@ -6,6 +6,7 @@ import { useThemeStore } from "./stores/theme";
 import { useConnectRemote } from "./composables/useConnectRemote";
 import { useInstallDsh } from "./composables/useInstallDsh";
 import { hideToTray, openLogs } from "./utils/ipc";
+import { logger } from "./utils/log";
 
 function reportMessage(error: unknown): string {
   if (typeof error === "object" && error !== null && "message" in error) {
@@ -16,7 +17,7 @@ function reportMessage(error: unknown): string {
 
 function reportError(tag: string, error: unknown): void {
   const message = reportMessage(error);
-  console.error(`[${tag}]`, error);
+  logger.error(tag, error);
   alert(`[${tag}] ${message}`);
 }
 
@@ -40,13 +41,13 @@ const port = ref(3000);
 
 watch(
   () => store.phase,
-  (next, prev) => console.log(`[dsh:phase] ${prev} -> ${next}`),
+  (next, prev) => logger.info("dsh:phase", `${prev} -> ${next}`),
 );
 
 async function startDsh(): Promise<void> {
   try {
     const address = await store.start(Number(port.value));
-    console.log("[start_dsh] ok:", address);
+    logger.info("start_dsh", "ok:", address);
   } catch (error) {
     reportError("start_dsh", error);
   }
@@ -55,7 +56,7 @@ async function startDsh(): Promise<void> {
 async function stopDsh(): Promise<void> {
   try {
     await store.stop();
-    console.log("[stop_dsh] ok");
+    logger.info("stop_dsh", "ok");
   } catch (error) {
     reportError("stop_dsh", error);
   }
@@ -64,7 +65,7 @@ async function stopDsh(): Promise<void> {
 async function restartDsh(): Promise<void> {
   try {
     const address = await store.restart(Number(port.value));
-    console.log("[restart_dsh] ok:", address);
+    logger.info("restart_dsh", "ok:", address);
   } catch (error) {
     reportError("restart_dsh", error);
   }
@@ -84,7 +85,7 @@ const remoteAddress = ref<string | null>(null);
 async function connectRemoteTest(): Promise<void> {
   try {
     remoteAddress.value = await connect();
-    console.log("[connect_remote] ok:", remoteAddress.value);
+    logger.info("connect_remote", "ok:", remoteAddress.value);
   } catch (error) {
     remoteAddress.value = null;
     reportError("connect_remote", error);
@@ -100,7 +101,7 @@ const installNpmmirrorRunning = installNpmmirror.running;
 async function doInstallNpmjs(): Promise<void> {
   try {
     await installNpmjs.start();
-    console.log("[install:npmjs] spawned");
+    logger.info("install:npmjs", "spawned");
   } catch (error) {
     reportError("install:npmjs", error);
   }
@@ -109,7 +110,7 @@ async function doInstallNpmjs(): Promise<void> {
 async function doInstallNpmmirror(): Promise<void> {
   try {
     await installNpmmirror.start();
-    console.log("[install:npmmirror] spawned");
+    logger.info("install:npmmirror", "spawned");
   } catch (error) {
     reportError("install:npmmirror", error);
   }
@@ -119,7 +120,7 @@ async function doInstallNpmmirror(): Promise<void> {
 async function doOpenLogs(): Promise<void> {
   try {
     await openLogs();
-    console.log("[open_logs] ok");
+    logger.info("open_logs", "ok");
   } catch (error) {
     reportError("open_logs", error);
   }
@@ -128,7 +129,7 @@ async function doOpenLogs(): Promise<void> {
 async function doHideToTray(): Promise<void> {
   try {
     await hideToTray();
-    console.log("[hide_to_tray] ok");
+    logger.info("hide_to_tray", "ok");
   } catch (error) {
     reportError("hide_to_tray", error);
   }
@@ -137,7 +138,7 @@ async function doHideToTray(): Promise<void> {
 onMounted(async () => {
   try {
     await store.bindEvents();
-    console.log("[dsh] dsh_exited 监听已注册");
+    logger.info("dsh", "dsh_exited 监听已注册");
   } catch (error) {
     reportError("bind_events", error);
   }

@@ -1,5 +1,6 @@
 import { ref, toValue, type MaybeRef } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
+import { logger } from "../utils/log";
 
 const NPM_REGISTRY = "https://registry.npmjs.org";
 const NPM_MIRROR_REGISTRY = "https://registry.npmmirror.com";
@@ -24,14 +25,14 @@ export function useInstallDsh(mirror: MaybeRef<boolean>) {
       "@deepseek-ai/dsh",
       `--registry=${registry}`,
     ]);
-    command.stdout.on("data", (line) => console.log("[install:stdout]", line));
-    command.stderr.on("data", (line) => console.log("[install:stderr]", line));
+    command.stdout.on("data", (line) => logger.info("install:stdout", line));
+    command.stderr.on("data", (line) => logger.info("install:stderr", line));
     command.on("close", ({ code, signal }) => {
-      console.log("[install:close]", { code, signal });
+      logger.info("install:close", { code, signal });
       running.value = false;
     });
     command.on("error", (cause) => {
-      console.error("[install:error]", cause);
+      logger.error("install:error", cause);
       running.value = false;
     });
     try {

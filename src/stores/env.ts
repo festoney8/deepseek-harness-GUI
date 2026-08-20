@@ -2,6 +2,7 @@ import { ref, type Ref } from "vue";
 import { defineStore } from "pinia";
 import { getVersion } from "@tauri-apps/api/app";
 import { Command } from "@tauri-apps/plugin-shell";
+import { logger } from "../utils/log";
 import { fetchJson } from "../utils/http";
 
 const LATEST_DSH_NPMJS = "https://registry.npmjs.org/@deepseek-ai/dsh/latest";
@@ -69,7 +70,7 @@ async function getShellVersion(commandName: string, args: string[]): Promise<Ver
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
     if (looksLikeMissingCommand(message)) return { kind: "missing" };
-    console.warn(`${commandName} 版本检查失败:`, cause);
+    logger.warn(commandName, "版本检查失败:", cause);
     return { kind: "error", message };
   }
 }
@@ -85,7 +86,7 @@ async function fetchLatestVersion(url: string, field: string): Promise<VersionSt
     return { kind: "error", message: `响应缺少 ${field} 字段` };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    console.warn("fetchLatestVersion 查询最新版本失败:", cause);
+    logger.warn("fetchLatestVersion", "查询最新版本失败:", cause);
     return { kind: "error", message };
   }
 }
@@ -96,7 +97,7 @@ async function getAppVersion(): Promise<VersionState> {
     return { kind: "ok", version: await getVersion() };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    console.warn("getAppVersion 获取版本失败:", cause);
+    logger.warn("getAppVersion", "获取版本失败:", cause);
     return { kind: "error", message };
   }
 }

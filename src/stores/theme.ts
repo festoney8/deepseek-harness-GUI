@@ -2,6 +2,7 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { BaseDirectory, exists, readTextFile, watch, type UnwatchFn } from "@tauri-apps/plugin-fs";
 import { load } from "js-yaml";
+import { logger } from "../utils/log";
 
 export type ThemePreference = "light" | "dark" | "system";
 
@@ -46,7 +47,7 @@ export const useThemeStore = defineStore("theme", () => {
       const contents = await readTextFile(THEME_PATH, HOME_OPTIONS);
       theme.value = parseTheme(contents);
     } catch (cause) {
-      console.warn("useThemeStore 读取主题失败:", cause);
+      logger.warn("theme", "读取主题失败:", cause);
     }
   }
 
@@ -55,7 +56,7 @@ export const useThemeStore = defineStore("theme", () => {
     try {
       return await exists(THEME_PATH, HOME_OPTIONS);
     } catch (cause) {
-      console.warn("useThemeStore 检查配置文件失败:", cause);
+      logger.warn("theme", "检查配置文件失败:", cause);
       return false;
     }
   }
@@ -72,7 +73,7 @@ export const useThemeStore = defineStore("theme", () => {
           delayMs: WATCH_DELAY_MS,
         });
       } catch (cause) {
-        console.warn("useThemeStore 注册监听失败，稍后重试:", cause);
+        logger.warn("theme", "注册监听失败，稍后重试:", cause);
         await sleep(POLL_INTERVAL_MS);
       }
     }
