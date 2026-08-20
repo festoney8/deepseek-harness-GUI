@@ -4,17 +4,24 @@ import { BaseDirectory, exists, readTextFile, watch, type UnwatchFn } from "@tau
 import { load } from "js-yaml";
 import { logger } from "../utils/log";
 
+/** 主题偏好：亮色 / 暗色 / 跟随系统。 */
 export type ThemePreference = "light" | "dark" | "system";
 
+/** 主题配置文件路径（相对家目录）。 */
 const THEME_PATH = ".dsh/settings.yaml";
+/** 家目录读取选项。 */
 const HOME_OPTIONS = { baseDir: BaseDirectory.Home };
+/** 轮询间隔（毫秒）。 */
 const POLL_INTERVAL_MS = 3_000;
+/** 监听防抖延迟（毫秒）。 */
 const WATCH_DELAY_MS = 100;
 
+/** 主题设置文件结构。 */
 interface ThemeSettings {
   "ui-theme"?: { preference?: unknown };
 }
 
+/** 等待指定毫秒数。 */
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** 解析 ui-theme.preference；缺失、类型错误或值不受支持时回退 system（DESIGN.md §9.2）。 */
@@ -35,10 +42,12 @@ function parseTheme(contents: string): ThemePreference {
  * 监听与应用同生命周期，不存在停止场景，停止即应用退出（DESIGN.md §9）。
  */
 export const useThemeStore = defineStore("theme", () => {
+  /** 当前主题偏好。 */
   const theme = ref<ThemePreference>("system");
 
-  /** 是否已调用 start()；Pinia store 本身是单例，该标记只用于防止重复启动监听。 */
+  /** 是否已调用 start()；防止重复启动监听。 */
   const started = ref(false);
+  /** 文件监听注销函数。 */
   let unwatch: UnwatchFn | null = null;
 
   /** 读取并解析主题；读取或解析失败时保留最近一次有效主题。 */

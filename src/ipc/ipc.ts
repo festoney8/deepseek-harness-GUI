@@ -36,13 +36,18 @@ export async function invokeIpc<T>(cmd: string, args?: Record<string, unknown>):
   }
 }
 
+/** 启动 dsh，返回 WebUI 地址。 */
 export const startDsh = (port: number) => invokeIpc<string>("start_dsh", { port });
 
+/** 停止 dsh。 */
 export const stopDsh = () => invokeIpc<void>("stop_dsh");
 
+/** 探测并返回规范化远程地址。 */
 export const connectRemote = (protocol: string, host: string, port: number) =>
   invokeIpc<string>("connect_remote", { protocol, host, port });
 
+/** 打开本次日志目录。 */
 export const openLogs = () => invokeIpc<void>("open_logs");
 
+/** 隐藏到托盘。 */
 export const hideToTray = () => invokeIpc<void>("hide_to_tray");

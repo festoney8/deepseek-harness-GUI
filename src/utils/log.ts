@@ -15,6 +15,7 @@ function toText(value: unknown): string {
   }
 }
 
+/** 把 tag 与参数序列化为 "[tag] body" 日志行。 */
 function format(tag: string, args: unknown[]): string {
   const body = args.map(toText).join(" ");
   return body ? `[${tag}] ${body}` : `[${tag}]`;

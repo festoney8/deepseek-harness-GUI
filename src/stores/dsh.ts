@@ -3,6 +3,7 @@ import { defineStore } from "pinia";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { startDsh, stopDsh, type DshExitedPayload, type IpcError } from "../ipc/ipc";
 
+/** dsh 生命周期阶段。 */
 export type DshPhase = "stopped" | "starting" | "running" | "stopping";
 
 /**
@@ -10,17 +11,29 @@ export type DshPhase = "stopped" | "starting" | "running" | "stopping";
  * Rust 侧是权威状态机，前端只做镜像与错误码分支。
  */
 export const useDshStore = defineStore("dsh", () => {
+  /** dsh 生命周期阶段。 */
   const phase = ref<DshPhase>("stopped");
+  /** 当前 WebUI 地址，仅运行时有值。 */
   const address = ref<string | null>(null);
+  /** 最近一次 IPC 错误。 */
   const lastError = ref<IpcError | null>(null);
 
+  /** 是否运行中。 */
   const isRunning = computed(() => phase.value === "running");
+  /** 是否处于启动/停止过渡中。 */
   const isBusy = computed(() => phase.value === "starting" || phase.value === "stopping");
+  /** 当前是否可启动。 */
   const canStart = computed(() => phase.value === "stopped");
 
+  /** 幂等去重用的挂起注册 Promise。 */
   let bindPromise: Promise<UnlistenFn> | null = null;
+  /** dsh_exited 监听注销函数。 */
   let unlisten: UnlistenFn | null = null;
 
+  /**
+   * 启动 dsh 并返回 WebUI 地址；
+   * 若已有生命周期操作在进行则抛出 IpcError（operation_in_progress）。
+   */
   async function start(port: number): Promise<string> {
     const previousPhase = phase.value;
     if (previousPhase === "starting" || previousPhase === "stopping") {
@@ -56,6 +69,7 @@ export const useDshStore = defineStore("dsh", () => {
     }
   }
 
+  /** 停止 dsh 并清理进程相关状态。 */
   async function stop(): Promise<void> {
     const previousPhase = phase.value;
     if (previousPhase === "stopped") return;
@@ -121,6 +135,7 @@ export const useDshStore = defineStore("dsh", () => {
     return unlisten;
   }
 
+  /** 注销并清空 dsh_exited 监听引用。 */
   function dispose(): void {
     unlisten?.();
     unlisten = null;
