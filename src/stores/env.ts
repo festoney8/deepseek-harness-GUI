@@ -114,6 +114,7 @@ export const useEnvStore = defineStore("env", () => {
 
   // 网络最新版本（fetch）
   const latestDshVer = ref<VersionState>(idleVersionState());
+  const latestDshVerWithMirror = ref<VersionState>(idleVersionState());
   const latestAppVer = ref<VersionState>(idleVersionState());
 
   // App 自身版本（tauri app API）
@@ -143,7 +144,7 @@ export const useEnvStore = defineStore("env", () => {
   }
 
   async function getLatestDshVerWithMirror(): Promise<void> {
-    await runGet(latestDshVer, () => fetchLatestVersion(LATEST_DSH_NPMMIRROR, "version"));
+    await runGet(latestDshVerWithMirror, () => fetchLatestVersion(LATEST_DSH_NPMMIRROR, "version"));
   }
 
   async function getLatestAppVer(): Promise<void> {
@@ -159,6 +160,7 @@ export const useEnvStore = defineStore("env", () => {
     npmVer,
     dshVer,
     latestDshVer,
+    latestDshVerWithMirror,
     latestAppVer,
     appVer,
     getNodeVer,

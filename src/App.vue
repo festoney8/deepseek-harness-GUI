@@ -26,6 +26,7 @@ const nodeDisplay = computed(() => displayVersion(env.nodeVer));
 const npmDisplay = computed(() => displayVersion(env.npmVer));
 const dshDisplay = computed(() => displayVersion(env.dshVer));
 const latestDshDisplay = computed(() => displayVersion(env.latestDshVer));
+const latestDshMirrorDisplay = computed(() => displayVersion(env.latestDshVerWithMirror));
 const latestAppDisplay = computed(() => displayVersion(env.latestAppVer));
 const appDisplay = computed(() => displayVersion(env.appVer));
 
@@ -156,10 +157,14 @@ onMounted(async () => {
     <section>
       <h2>2. 最新版本</h2>
       <p>
-        dsh 最新版本
-        <button @click="env.getLatestDshVer()">官方源</button>
-        <button @click="env.getLatestDshVerWithMirror()">镜像源</button>
+        dsh 最新版本（官方源）
+        <button @click="env.getLatestDshVer()">查询</button>
         {{ latestDshDisplay }}
+      </p>
+      <p>
+        dsh 最新版本（镜像源）
+        <button @click="env.getLatestDshVerWithMirror()">查询</button>
+        {{ latestDshMirrorDisplay }}
       </p>
       <p>
         App 最新版本
