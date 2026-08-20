@@ -27,6 +27,7 @@ Frontend
   ├─ invoke("start_dsh")
   ├─ invoke("stop_dsh")
   ├─ invoke("connect_remote")
+  ├─ invoke("create_window_with_url")
   ├─ invoke("open_logs")
   ├─ invoke("hide_to_tray")
   ├─ fs.exists/readTextFile/watch("$HOME/.dsh/settings.yaml")
@@ -42,6 +43,7 @@ src-tauri/src/backend/mod.rs
   ├─ network.rs
   ├─ logs.rs
   ├─ tray.rs
+  ├─ webview.rs
   └─ error.rs
           │
           ▼
@@ -81,7 +83,9 @@ src-tauri/src/
 │   ├── harness.rs
 │   ├── network.rs
 │   ├── logs.rs
-│   └── tray.rs
+│   ├── tray.rs
+│   ├── webview.rs
+│   └── error.rs
 └── platform/
     ├── mod.rs
     ├── unix.rs
@@ -96,6 +100,7 @@ src-tauri/src/
 start_dsh(port) -> address
 stop_dsh() -> success
 connect_remote(protocol, host, port) -> address
+create_window_with_url(url) -> success
 open_logs() -> success
 hide_to_tray() -> success
 ```
@@ -106,6 +111,7 @@ Rust 侧概念签名：
 async fn start_dsh(port: u16) -> Result<String, IpcError>;
 async fn stop_dsh() -> Result<(), IpcError>;
 async fn connect_remote(protocol: String, host: String, port: u16) -> Result<String, IpcError>;
+async fn create_window_with_url(url: String) -> Result<(), IpcError>;
 async fn open_logs() -> Result<(), IpcError>;
 async fn hide_to_tray() -> Result<(), IpcError>;
 ```
@@ -167,6 +173,8 @@ dsh_spawn_failed
 dsh_start_timeout
 dsh_exited_early
 open_logs_failed
+invalid_window_url
+window_error
 ```
 
 ## 5. 前端短命令执行
@@ -952,6 +960,31 @@ connect_remote("https", "127.0.0.1", 3000)
 -> "https://127.0.0.1:3000"
 ```
 
+### 8.4 create_window_with_url 接口
+
+```text
+create_window_with_url(url: String) -> Result<(), IpcError>
+```
+
+该接口由 Rust 创建 `WebviewWindow`，使用 `WebviewUrl::External` 直接加载 URL，不使用 iframe 或前端 `window.open()`。
+
+输入与安全规则：
+
+- 只接受可解析且包含 host 的 `http` 或 `https` URL。
+- 拒绝 `javascript`、`data`、`file`、自定义协议和其他非 HTTP(S) scheme。
+- 拒绝 URL 中的用户名和密码。
+- URL 在 Rust 侧解析后，以 Tauri URL 的规范字符串作为窗口复用键；前端输入不参与窗口 label 生成。
+- 动态窗口默认不授予主窗口的 shell、fs、log 或其他本地插件 capability，也不启用远程页面的 Tauri IPC。
+- 如未来必须让受信任远程页面调用 Tauri API，必须按明确 origin 和最小 command 集合单独设计 capability，不能扩大默认权限。
+
+窗口复用与生命周期：
+
+- `UrlWindowState` 保存规范化 URL 到内部 label 的映射。
+- 创建锁覆盖查找、显示和创建过程，避免同一 URL 的并发请求创建多个窗口。
+- 已存在窗口执行 `unminimize`、`show` 和 `set_focus`，不重新创建或重新导航。
+- URL 窗口允许正常关闭；收到 `Destroyed` 事件后删除映射，下一次请求重新创建窗口。
+- 窗口创建成功后挂载统一下载处理函数，所有窗口的下载请求都由 `rfd::FileDialog` 选择保存位置。
+
 ## 9. 前端主题读取与监听
 
 ### 9.1 职责与文件位置
@@ -1108,7 +1141,15 @@ open_logs() -> Result<(), IpcError>
 - dsh 保持运行。
 - 前端调用 `hide_to_tray()` 时执行同样的隐藏行为。
 
-### 11.2 托盘菜单
+### 11.2 URL Webview 窗口
+
+- `create_window_with_url(url)` 创建直接加载外部 URL 的独立 Webview 窗口。
+- 同一规范化 URL 的窗口已存在时，只显示、取消最小化并聚焦已有窗口。
+- URL 窗口关闭后由 `Destroyed` 事件清除 URL 映射，下一次请求重新创建。
+- URL 窗口关闭不会触发隐藏到托盘，也不会停止 dsh。
+- 主窗口和 URL 窗口都使用同一个 `on_download` 处理函数，由 `rfd` 弹出保存位置对话框。
+
+### 11.3 托盘菜单
 
 托盘右键菜单提供：
 
@@ -1144,10 +1185,11 @@ open_logs() -> Result<(), IpcError>
 5. 注册 `tauri-plugin-shell`。
 6. 注册启用 `watch` feature 的 `tauri-plugin-fs`。
 7. 注册 `tauri-plugin-opener`。
-8. 初始化 dsh 状态和本次日志目录状态。
-9. 注册系统托盘及菜单事件。
-10. 注册 `ipc.rs` 中的全部自定义 commands。
-11. 进入 Tauri 事件循环。
+8. 初始化 dsh 状态、URL 窗口状态和本次日志目录状态。
+9. 创建主窗口并挂载统一下载处理函数。
+10. 注册系统托盘及菜单事件。
+11. 注册 `ipc.rs` 中的全部自定义 commands。
+12. 进入 Tauri 事件循环。
 
 PATH 修复失败只记录 error 日志，应用继续初始化。前端只能在 Tauri 初始化完成后调用 shell 和 fs 插件，因此 shell 插件进程和 dsh 子进程继承修复后的 PATH，主题文件路径由 fs/path API 按目标平台解析。
 
@@ -1177,6 +1219,13 @@ tauri-plugin-opener
 - capability 仅向可信本地前端授予 `$HOME/.dsh/settings.yaml` 的 `fs:allow-exists`、`fs:allow-read-text-file` 和 `fs:allow-watch`。
 - 不授予主题文件的写入、删除、目录遍历或宽泛 Home 目录访问权限。
 - 不提供自定义主题 IPC、Rust 主题状态或 Rust 主题事件。
+
+动态 URL 窗口由 Rust 创建：
+
+- 主窗口 capability 继续只匹配 `main`，不向 `url-window-*` 动态窗口继承本地插件权限。
+- 不授予远程页面 shell、fs、log、opener 或自定义 IPC 访问能力。
+- 不启用 `dangerousRemoteUrlIpcAccess`；创建窗口与下载处理均在 Rust 侧完成。
+- 若未来需要远程页面调用本地能力，必须新增独立、按 origin 和窗口 label 收窄的 capability。
 
 ## 14. 依赖职责
 
@@ -1222,6 +1271,9 @@ yaml                          解析 settings.yaml
 - dsh 始终作为单实例受控进程树。
 - `start_dsh` 成功表示本地 WebUI 已返回 HTTP `2xx`，不是仅表示进程创建成功。
 - `connect_remote` 成功表示对应规范化地址经过用户指定协议（http 或 https）探测可用。
+- `create_window_with_url` 只加载通过 Rust 校验的 HTTP(S) URL；同一规范化 URL 复用一个窗口。
+- 所有 Rust 创建的 Webview 窗口都挂载统一下载处理函数，下载目标由用户通过系统保存对话框选择。
+- 动态远程 Webview 不获得主窗口的本地插件 capability，也不开放远程 Tauri IPC。
 - 主题由可信本地前端通过 `tauri-plugin-fs` 读取和监听，缺失或无效主题值回退到 `system`。
 - 主题功能不使用自定义 IPC、Rust 状态缓存或自定义 Tauri 事件。
 - 正常退出必须清理 dsh。

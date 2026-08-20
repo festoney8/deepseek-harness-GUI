@@ -1,6 +1,6 @@
 use tauri::{AppHandle, State};
 
-use crate::backend::{self, BackendError, HarnessState, LogState};
+use crate::backend::{self, BackendError, HarnessState, LogState, UrlWindowState};
 
 /// 前后端 IPC 边界使用的稳定结构化错误
 #[derive(Debug, Clone, serde::Serialize)]
@@ -25,6 +25,15 @@ impl IpcError {
                 log::error!("ipc tray error: {error:?}");
                 ("tray_error", error.to_string())
             }
+            BackendError::Window(_) => {
+                log::error!("ipc URL window error: {error:?}");
+                ("window_error", String::from("窗口操作失败，请查看日志"))
+            }
+            BackendError::WindowStatePoisoned => {
+                log::error!("ipc URL window state error: {error:?}");
+                ("internal_error", String::from("内部错误，请查看日志"))
+            }
+            BackendError::InvalidWindowUrl => ("invalid_window_url", error.to_string()),
             BackendError::InvalidHost => ("invalid_host", error.to_string()),
             BackendError::InvalidProtocol => ("invalid_protocol", error.to_string()),
             BackendError::InvalidPort => ("invalid_port", error.to_string()),
@@ -92,4 +101,14 @@ pub(crate) async fn open_logs(app: AppHandle, state: State<'_, LogState>) -> Res
 #[tauri::command]
 pub(crate) async fn hide_to_tray(app: AppHandle) -> Result<(), IpcError> {
     backend::hide_to_tray(&app).map_err(IpcError::from_backend)
+}
+
+/// 创建或显示一个直接加载外部 URL 的 Webview 窗口
+#[tauri::command]
+pub(crate) async fn create_window_with_url(
+    url: String,
+    app: AppHandle,
+    state: State<'_, UrlWindowState>,
+) -> Result<(), IpcError> {
+    backend::create_window_with_url(&app, url, &state).map_err(IpcError::from_backend)
 }

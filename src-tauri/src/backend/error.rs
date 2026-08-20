@@ -45,9 +45,18 @@ pub(crate) enum BackendError {
     /// 系统无法创建本次启动的独立日志目录
     #[error("无法创建日志目录")]
     LogDirCreateFailed,
-    /// 系统托盘、菜单或窗口控制失败
+    /// 系统托盘、菜单或主窗口控制失败
     #[error("托盘或窗口操作失败: {0}")]
     Tray(#[from] tauri::Error),
+    /// 动态 URL 窗口控制或创建失败
+    #[error("URL 窗口操作失败: {0}")]
+    Window(tauri::Error),
+    /// 动态 URL 窗口状态锁已损坏
+    #[error("URL 窗口状态不可用")]
+    WindowStatePoisoned,
+    /// 动态 URL 无效或不符合外部页面加载策略
+    #[error("URL 无效")]
+    InvalidWindowUrl,
     /// 找不到主窗口或应用的默认托盘图标
     #[error("主窗口或默认图标不可用")]
     WindowResourceMissing,

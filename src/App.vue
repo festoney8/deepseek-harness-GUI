@@ -5,7 +5,7 @@ import { useEnvStore, displayVersion } from "./stores/env";
 import { useThemeStore } from "./stores/theme";
 import { useConnectRemote } from "./composables/useConnectRemote";
 import { useInstallDsh } from "./composables/useInstallDsh";
-import { hideToTray, openLogs } from "./ipc/ipc";
+import { hideToTray, openLogs, createWindowWithUrl } from "./ipc/ipc";
 import { logger } from "./utils/log";
 
 function reportMessage(error: unknown): string {
@@ -85,6 +85,7 @@ const remoteAddress = ref<string | null>(null);
 async function connectRemoteTest(): Promise<void> {
   try {
     remoteAddress.value = await connect();
+    await createWindowWithUrl(remoteAddress.value);
     logger.info("connect_remote", "ok:", remoteAddress.value);
   } catch (error) {
     remoteAddress.value = null;

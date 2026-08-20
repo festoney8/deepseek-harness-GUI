@@ -51,3 +51,6 @@ export const openLogs = () => invokeIpc<void>("open_logs");
 
 /** 隐藏到托盘 */
 export const hideToTray = () => invokeIpc<void>("hide_to_tray");
+
+/** 创建或显示一个直接加载外部 URL 的 Webview 窗口 */
+export const createWindowWithUrl = (url: string) => invokeIpc<void>("create_window_with_url", { url });
