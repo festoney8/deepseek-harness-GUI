@@ -2,7 +2,7 @@
 
 ## 0. 需求
 
-DSH（DeepSeek Harness）是一个使用命令 `npm install -g @deepseek-ai/dsh` 安装的应用，安装后，命令行中可使用使用命令 `dsh --profile web --port <PORT>` 启动一个 http web server，浏览器打开 127.0.0.1:PORT 即可访问 WEBUI。
+DSH（DeepSeek Harness）是一个使用命令 `npm install -g @deepseek-ai/dsh` 安装的应用，安装后，命令行中可使用使用命令 `dsh --profile web --port <PORT> --no-open` 启动一个 http web server，浏览器打开 127.0.0.1:PORT 即可访问 WEBUI。
 
 DSH 应用有大量的访问网络、读写文件、执行命令行的权限。
 
@@ -190,7 +190,7 @@ npm install -g --verbose @deepseek-ai/dsh --registry=https://registry.npmmirror.
 - 版本检查和 dsh 安装不进入 `ipc.rs`、`backend` 或 `platform`。
 - 前端使用 `Command.create()` 和参数数组，不拼接完整 shell 命令字符串。
 - 不显式调用 Windows `cmd.exe` 或 Unix shell，不支持管道、重定向、条件执行和 shell 变量展开。
-- `dsh --profile web --port <PORT>` 是长生命周期受控进程，始终通过 `start_dsh` 和 `stop_dsh` 管理，不允许前端通过 shell 插件启动。
+- `dsh --profile web --port <PORT> --no-open` 是长生命周期受控进程，始终通过 `start_dsh` 和 `stop_dsh` 管理，不允许前端通过 shell 插件启动。
 - shell 插件进程不复用 dsh 的 Job Object、Unix 进程组或生命周期状态机。
 
 ### 5.2 PATH 修复时机
@@ -582,7 +582,7 @@ pub(super) fn spawn_dsh(
 `spawn_dsh` 构造受控命令：
 
 ```text
-dsh --profile web --port <PORT>
+dsh --profile web --port <PORT> --no-open
 ```
 
 约束：
@@ -666,7 +666,7 @@ pub(super) fn spawn_dsh(
 
 ```text
 program = dsh
-args    = --profile web --port PORT
+args    = --profile web --port PORT --no-open
 env     = 继承应用启动时修复后的环境
 stdin   = null
 stdout  = piped
@@ -800,7 +800,7 @@ start_dsh(port: u16) -> Result<String, IpcError>
 3. 将状态变为 `Starting`。
 4. 检查 `127.0.0.1:PORT` 是否已经存在 TCP 服务。
 5. 端口已被占用时恢复 `Stopped`，返回 `port_occupied`。
-6. 通过平台受控进程接口启动 `dsh --profile web --port <PORT>`。
+6. 通过平台受控进程接口启动 `dsh --profile web --port <PORT> --no-open`。
 7. 捕获并持续读取 dsh stdout/stderr。
 8. 后台监控 dsh 是否提前退出。
 9. 后端轮询 `http://127.0.0.1:PORT/`。

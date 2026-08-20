@@ -129,7 +129,7 @@ pub(super) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
 
 fn spawn_dsh_command(program: &str, port: u16) -> Result<SpawnedProcess, PlatformError> {
     let mut command = Command::new(program);
-    command.args(["--profile", "web", "--port", &port.to_string()]);
+    command.args(["--profile", "web", "--port", &port.to_string(), "--no-open"]);
     spawn(command, ProcessKind::Dsh)
 }
 

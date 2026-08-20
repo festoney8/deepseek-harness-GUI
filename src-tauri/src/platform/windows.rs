@@ -131,7 +131,7 @@ pub(super) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
 }
 
 fn spawn_dsh_command(program: &str, port: u16) -> Result<SpawnedProcess, PlatformError> {
-    let command = format!("{program} --profile web --port {port}");
+    let command = format!("{program} --profile web --port {port} --no-open");
     let mut process = Command::new("cmd.exe");
     process.args(["/D", "/S", "/C", &command]);
     spawn(process, ProcessKind::Dsh)
