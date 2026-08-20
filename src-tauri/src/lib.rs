@@ -7,7 +7,10 @@ use std::sync::{
     Arc,
 };
 
-use tauri::Manager;
+use tauri::{
+    webview::DownloadEvent,
+    Manager, WebviewUrl, WebviewWindowBuilder,
+};
 
 /// 启动 Tauri 应用并完成后端初始化。
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -52,9 +55,64 @@ pub fn run() {
             let exit_state = Arc::new(backend::ExitState {
                 exiting: AtomicBool::new(false),
             });
+            // 主窗口必须先于托盘注册存在，托盘依赖 get_webview_window("main")。
+            build_main_window(app)?;
             backend::register_tray(app.handle(), harness_state, exit_state)?;
             Ok(())
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/// 从下载 URL 推断默认文件名（路径最后一段 percent-decode），失败时回退为 "download"。
+fn default_file_name(url: &tauri::Url) -> String {
+    url.path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .filter(|name| !name.is_empty())
+        .map(|name| {
+            percent_encoding::percent_decode_str(name)
+                .decode_utf8_lossy()
+                .into_owned()
+        })
+        .unwrap_or_else(|| "download".into())
+}
+
+/// 主窗口由 Rust 创建以挂载 on_download（config 定义的窗口无法挂载）。
+///
+/// on_download 用于拦截 webview 及其中 iframe 的下载操作，让用户选择保存位置。
+fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
+    WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+        .title("DeepSeek Harness")
+        .inner_size(1200.0, 800.0)
+        .min_inner_size(1200.0, 800.0)
+        .center()
+        .resizable(true)
+        .maximizable(true)
+        .zoom_hotkeys_enabled(true)
+        .disable_drag_drop_handler()
+        .on_download(|webview, event| match event {
+            DownloadEvent::Requested { url, destination } => {
+                match rfd::FileDialog::new()
+                    .set_parent(&webview.window())
+                    .set_file_name(default_file_name(&url))
+                    .save_file()
+                {
+                    Some(path) => {
+                        *destination = path;
+                        true
+                    }
+                    None => {
+                        log::debug!("download cancelled by user: {url}");
+                        false // 用户取消 → 取消下载
+                    }
+                }
+            }
+            DownloadEvent::Finished { url, path, success } => {
+                log::info!("download finished: url={url}, path={path:?}, success={success}");
+                true
+            }
+            _ => true,
+        })
+        .build()?;
+    Ok(())
 }
