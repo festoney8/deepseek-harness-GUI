@@ -5,7 +5,7 @@ import { useEnvStore, displayVersion } from "./stores/env";
 import { useThemeStore } from "./stores/theme";
 import { useConnectRemote } from "./composables/useConnectRemote";
 import { useInstallDsh } from "./composables/useInstallDsh";
-import { hideToTray, openLogs } from "./utils/ipc";
+import { hideToTray, openLogs } from "./ipc/ipc";
 import { logger } from "./utils/log";
 
 function reportMessage(error: unknown): string {

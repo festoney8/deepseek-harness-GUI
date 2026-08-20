@@ -1,5 +1,5 @@
 import { ref } from "vue";
-import { connectRemote, type IpcError } from "../utils/ipc";
+import { connectRemote, type IpcError } from "../ipc/ipc";
 
 export function useConnectRemote() {
   const protocol = ref<"http" | "https">("http");

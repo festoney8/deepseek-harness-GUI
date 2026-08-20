@@ -1,7 +1,7 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { startDsh, stopDsh, type DshExitedPayload, type IpcError } from "../utils/ipc";
+import { startDsh, stopDsh, type DshExitedPayload, type IpcError } from "../ipc/ipc";
 
 export type DshPhase = "stopped" | "starting" | "running" | "stopping";
 
