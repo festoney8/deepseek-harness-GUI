@@ -2,13 +2,13 @@ use std::{net::Ipv4Addr, time::Duration};
 
 use super::BackendError;
 
-/// 远程 HTTP/HTTPS 单协议探测的超时时间。
+/// 远程 HTTP/HTTPS 单协议探测的超时时间
 const REMOTE_PROBE_TIMEOUT: Duration = Duration::from_secs(10);
 
-/// 使用 TCP 连接结果判断目标端口当前是否可达。
+/// 使用 TCP 连接结果判断目标端口当前是否可达
 ///
 /// 连接失败和超时都表示端口不可达，而不是后端业务错误；只有零超时
-/// 属于调用参数错误。
+/// 属于调用参数错误
 pub(crate) async fn check_tcp(
     host: &str,
     port: u16,
@@ -25,11 +25,11 @@ pub(crate) async fn check_tcp(
     )
 }
 
-/// 按指定协议探测 `HOST:PORT` 的 HTTP 服务。
+/// 按指定协议探测 `HOST:PORT` 的 HTTP 服务
 ///
-/// 协议只接受小写 `http` 或 `https`，其他值属于参数错误。
+/// 协议只接受小写 `http` 或 `https`，其他值属于参数错误
 /// 探测失败（URL 解析失败、连接失败、超时、非 2xx 响应）统一表示为
-/// `Ok(false)`，语义由调用方决定；只有参数错误作为业务错误返回。
+/// `Ok(false)`，语义由调用方决定；只有参数错误作为业务错误返回
 pub(crate) async fn check_url(
     protocol: &str,
     host: &str,
@@ -62,7 +62,7 @@ pub(crate) async fn check_url(
     Ok(response.status().is_success())
 }
 
-/// 按用户指定协议探测远程服务并返回对应地址。
+/// 按用户指定协议探测远程服务并返回对应地址
 pub(crate) async fn connect_remote(
     protocol: String,
     host: String,
@@ -85,7 +85,7 @@ pub(crate) async fn connect_remote(
     }
 }
 
-/// 将输入主机校验并转换为连接地址使用的规范文本。
+/// 将输入主机校验并转换为连接地址使用的规范文本
 fn normalize_host(host: &str) -> Result<String, BackendError> {
     if host.eq_ignore_ascii_case("localhost") {
         return Ok(String::from("localhost"));

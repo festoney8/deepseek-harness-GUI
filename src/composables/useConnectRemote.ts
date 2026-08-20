@@ -2,7 +2,7 @@ import { ref } from "vue";
 import { connectRemote, type IpcError } from "../ipc/ipc";
 
 /**
- * 远程连接表单状态与 connect 动作的 composite。
+ * 远程连接表单状态与 connect 动作的 composite
  */
 export function useConnectRemote() {
   // 远程协议（http/https）
@@ -16,7 +16,7 @@ export function useConnectRemote() {
   // 最近一次连接失败的错误
   const error = ref<IpcError | null>(null);
 
-  /** 成功返回探测通过的地址，失败 rethrow IpcError 由调用方分支处理。 */
+  /** 成功返回探测通过的地址，失败 rethrow IpcError 由调用方分支处理 */
   async function connect(): Promise<string> {
     loading.value = true;
     error.value = null;

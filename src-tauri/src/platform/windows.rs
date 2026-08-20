@@ -34,7 +34,7 @@ use super::{PlatformError, ProcessExit, ProcessKind, SpawnedProcess};
 
 const JOB_TERMINATION_EXIT_CODE: u32 = 1;
 
-/// Windows 平台上可克隆的受控进程树句柄。
+/// Windows 平台上可克隆的受控进程树句柄
 #[derive(Debug, Clone)]
 pub(crate) struct ManagedProcess {
     inner: Arc<WindowsProcess>,
@@ -78,7 +78,7 @@ impl WaitFailure {
 }
 
 impl ManagedProcess {
-    /// 非阻塞读取已经缓存的进程退出结果。
+    /// 非阻塞读取已经缓存的进程退出结果
     pub(crate) fn try_wait(&self) -> Result<Option<ProcessExit>, PlatformError> {
         let exit = self.inner.exit.lock().map_err(|_| PlatformError::Wait {
             kind: self.inner.kind,
@@ -95,7 +95,7 @@ impl ManagedProcess {
         }
     }
 
-    /// 异步等待唯一监督任务缓存进程退出结果。
+    /// 异步等待唯一监督任务缓存进程退出结果
     pub(crate) async fn wait(&self) -> Result<ProcessExit, PlatformError> {
         loop {
             let notified = self.inner.exited.notified();
@@ -106,7 +106,7 @@ impl ManagedProcess {
         }
     }
 
-    /// 终止 Windows Job Object 中的完整进程树。
+    /// 终止 Windows Job Object 中的完整进程树
     pub(crate) async fn terminate_tree(
         &self,
         _grace_period: Duration,
@@ -125,7 +125,7 @@ impl ManagedProcess {
     }
 }
 
-/// 使用 Windows 命令入口创建受控 DSH 进程树。
+/// 使用 Windows 命令入口创建受控 DSH 进程树
 pub(super) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
     spawn_dsh_command("dsh", port)
 }

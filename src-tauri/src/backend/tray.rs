@@ -12,9 +12,9 @@ use tauri::{
 
 use super::{stop_dsh, BackendError, HarnessPhase, HarnessState};
 
-/// 防止托盘退出流程被重复触发的共享状态。
+/// 防止托盘退出流程被重复触发的共享状态
 pub(crate) struct ExitState {
-    /// 标记应用是否已经进入退出流程。
+    /// 标记应用是否已经进入退出流程
     pub exiting: AtomicBool,
 }
 
@@ -26,7 +26,7 @@ impl std::fmt::Debug for ExitState {
     }
 }
 
-/// 注册系统托盘菜单及窗口生命周期事件。
+/// 注册系统托盘菜单及窗口生命周期事件
 pub(crate) fn register_tray(
     app: &AppHandle,
     harness_state: Arc<HarnessState>,
@@ -94,13 +94,13 @@ pub(crate) fn register_tray(
     Ok(())
 }
 
-/// 隐藏主窗口并保持应用后台运行。
+/// 隐藏主窗口并保持应用后台运行
 pub(crate) fn hide_to_tray(app: &AppHandle) -> Result<(), BackendError> {
     main_window(app)?.hide()?;
     Ok(())
 }
 
-/// 显示主窗口并将其恢复到前台。
+/// 显示主窗口并将其恢复到前台
 pub(crate) fn show_main_window(app: &AppHandle) -> Result<(), BackendError> {
     let window = main_window(app)?;
     window.show()?;
@@ -108,10 +108,10 @@ pub(crate) fn show_main_window(app: &AppHandle) -> Result<(), BackendError> {
     Ok(())
 }
 
-/// 停止受控进程后退出 Tauri 应用。
+/// 停止受控进程后退出 Tauri 应用
 ///
 /// 重复调用会被 `ExitState` 幂等化；若 DSH 仍在运行，先执行内部停止并清理进程树，
-/// 无论清理结果如何都结束应用，失败只记录日志。
+/// 无论清理结果如何都结束应用，失败只记录日志
 pub(crate) async fn quit_app(
     app: AppHandle,
     harness_state: Arc<HarnessState>,
@@ -135,7 +135,7 @@ pub(crate) async fn quit_app(
     Ok(())
 }
 
-/// 返回主窗口，缺失时报告统一的窗口资源错误。
+/// 返回主窗口，缺失时报告统一的窗口资源错误
 fn main_window(app: &AppHandle) -> Result<WebviewWindow, BackendError> {
     app.get_webview_window("main")
         .ok_or(BackendError::WindowResourceMissing)

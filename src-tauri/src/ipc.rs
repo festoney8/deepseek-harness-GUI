@@ -2,21 +2,21 @@ use tauri::{AppHandle, State};
 
 use crate::backend::{self, BackendError, HarnessState, LogState};
 
-/// 前后端 IPC 边界使用的稳定结构化错误。
+/// 前后端 IPC 边界使用的稳定结构化错误
 #[derive(Debug, Clone, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IpcError {
-    /// 供前端分支处理的稳定错误码。
+    /// 供前端分支处理的稳定错误码
     pub code: String,
-    /// 可直接展示给用户的错误消息。
+    /// 可直接展示给用户的错误消息
     pub message: String,
 }
 
 impl IpcError {
-    /// 将内部业务错误转换为统一的 IPC 错误。
+    /// 将内部业务错误转换为统一的 IPC 错误
     fn from_backend(error: BackendError) -> Self {
         let (code, message) = match &error {
-            // 内部错误完整链写入日志，不向前端暴露底层细节。
+            // 内部错误完整链写入日志，不向前端暴露底层细节
             BackendError::InvalidTimeout | BackendError::Platform(_) => {
                 log::error!("ipc internal error: {error:?}");
                 ("internal_error", String::from("内部错误，请查看日志"))
@@ -48,7 +48,7 @@ impl IpcError {
     }
 }
 
-/// 启动本地 DSH 服务。
+/// 启动本地 DSH 服务
 #[tauri::command]
 pub(crate) async fn start_dsh(
     port: u16,
@@ -60,7 +60,7 @@ pub(crate) async fn start_dsh(
         .map_err(IpcError::from_backend)
 }
 
-/// 停止当前受控的 DSH 服务。
+/// 停止当前受控的 DSH 服务
 #[tauri::command]
 pub(crate) async fn stop_dsh(state: State<'_, HarnessState>) -> Result<(), IpcError> {
     backend::stop_dsh(&state)
@@ -68,7 +68,7 @@ pub(crate) async fn stop_dsh(state: State<'_, HarnessState>) -> Result<(), IpcEr
         .map_err(IpcError::from_backend)
 }
 
-/// 探测并连接远程 DSH 服务。
+/// 探测并连接远程 DSH 服务
 #[tauri::command]
 pub(crate) async fn connect_remote(
     protocol: String,
@@ -80,7 +80,7 @@ pub(crate) async fn connect_remote(
         .map_err(IpcError::from_backend)
 }
 
-/// 打开本次应用启动对应的日志目录。
+/// 打开本次应用启动对应的日志目录
 #[tauri::command]
 pub(crate) async fn open_logs(app: AppHandle, state: State<'_, LogState>) -> Result<(), IpcError> {
     backend::open_logs(&app, &state)
@@ -88,7 +88,7 @@ pub(crate) async fn open_logs(app: AppHandle, state: State<'_, LogState>) -> Res
         .map_err(IpcError::from_backend)
 }
 
-/// 隐藏主窗口到系统托盘。
+/// 隐藏主窗口到系统托盘
 #[tauri::command]
 pub(crate) async fn hide_to_tray(app: AppHandle) -> Result<(), IpcError> {
     backend::hide_to_tray(&app).map_err(IpcError::from_backend)

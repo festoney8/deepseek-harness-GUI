@@ -8,16 +8,16 @@ const NPM_REGISTRY = "https://registry.npmjs.org";
 const NPM_MIRROR_REGISTRY = "https://registry.npmmirror.com";
 
 /**
- * 通过 capability 逻辑命令安装 dsh，spawn 模式流式打印全部输出与报错。
- * mirror 为 true 时使用 npmmirror 源；支持传入 Ref 以便页面在运行前切换源。
+ * 通过 capability 逻辑命令安装 dsh，spawn 模式流式打印全部输出与报错
+ * mirror 为 true 时使用 npmmirror 源；支持传入 Ref 以便页面在运行前切换源
  */
 export function useInstallDsh(mirror: MaybeRef<boolean>) {
   // 安装是否运行中
   const running = ref(false);
 
   /**
-   * 开启 dsh 安装：以 spawn 方式运行固定 npm install 命令，镜像与否由 mirror 决定。
-   * 已在运行时直接返回。
+   * 开启 dsh 安装：以 spawn 方式运行固定 npm install 命令，镜像与否由 mirror 决定
+   * 已在运行时直接返回
    */
   async function start() {
     if (running.value) return;

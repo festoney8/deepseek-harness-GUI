@@ -10,39 +10,39 @@ use tokio::sync::{Mutex as AsyncMutex, Notify};
 
 use super::{PlatformError, ProcessExit, ProcessKind, SpawnedProcess};
 
-/// Unix 平台上可克隆的受控进程组句柄。
+/// Unix 平台上可克隆的受控进程组句柄
 #[derive(Debug, Clone)]
 pub(crate) struct ManagedProcess {
-    /// 共享持有 Unix 平台进程组控制资源。
+    /// 共享持有 Unix 平台进程组控制资源
     inner: Arc<UnixProcess>,
 }
 
-/// 封装 Unix 进程组标识及共享退出状态。
+/// 封装 Unix 进程组标识及共享退出状态
 #[derive(Debug)]
 struct UnixProcess {
-    /// 创建进程时固定的业务用途。
+    /// 创建进程时固定的业务用途
     kind: ProcessKind,
-    /// 由唯一监督任务负责回收的直接子进程 PID。
+    /// 由唯一监督任务负责回收的直接子进程 PID
     leader_pid: LeaderPid,
-    /// 接收进程树终止信号的独立进程组 PGID。
+    /// 接收进程树终止信号的独立进程组 PGID
     process_group_id: ProcessGroupId,
-    /// 由唯一监督任务写入且可供多个调用者重复读取的退出结果。
+    /// 由唯一监督任务写入且可供多个调用者重复读取的退出结果
     exit: Mutex<Option<Result<ProcessExit, WaitFailure>>>,
-    /// 退出结果写入后通知全部异步等待者。
+    /// 退出结果写入后通知全部异步等待者
     exited: Notify,
-    /// 保证并发终止请求只执行一次实际信号流程。
+    /// 保证并发终止请求只执行一次实际信号流程
     termination: AsyncMutex<()>,
 }
 
-/// 直接子进程 PID，避免与进程组 ID 混用。
+/// 直接子进程 PID，避免与进程组 ID 混用
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct LeaderPid(libc::pid_t);
 
-/// 受控进程组 PGID，避免与直接子进程 PID 混用。
+/// 受控进程组 PGID，避免与直接子进程 PID 混用
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct ProcessGroupId(libc::pid_t);
 
-/// 可缓存和复制的等待失败信息。
+/// 可缓存和复制的等待失败信息
 #[derive(Debug, Clone)]
 struct WaitFailure {
     kind: io::ErrorKind,
@@ -63,7 +63,7 @@ impl WaitFailure {
 }
 
 impl ManagedProcess {
-    /// 非阻塞读取已经缓存的进程退出结果。
+    /// 非阻塞读取已经缓存的进程退出结果
     pub(crate) fn try_wait(&self) -> Result<Option<ProcessExit>, PlatformError> {
         let exit = self.inner.exit.lock().map_err(|_| PlatformError::Wait {
             kind: self.inner.kind,
@@ -80,7 +80,7 @@ impl ManagedProcess {
         }
     }
 
-    /// 异步等待唯一监督任务缓存进程退出结果。
+    /// 异步等待唯一监督任务缓存进程退出结果
     pub(crate) async fn wait(&self) -> Result<ProcessExit, PlatformError> {
         loop {
             let notified = self.inner.exited.notified();
@@ -91,7 +91,7 @@ impl ManagedProcess {
         }
     }
 
-    /// 先向进程组发送 SIGTERM，并在宽限期后使用 SIGKILL。
+    /// 先向进程组发送 SIGTERM，并在宽限期后使用 SIGKILL
     pub(crate) async fn terminate_tree(
         &self,
         grace_period: Duration,
@@ -122,7 +122,7 @@ impl ManagedProcess {
     }
 }
 
-/// 创建独立进程组中的受控 DSH 进程树。
+/// 创建独立进程组中的受控 DSH 进程树
 pub(super) fn spawn_dsh(port: u16) -> Result<SpawnedProcess, PlatformError> {
     spawn_dsh_command("dsh", port)
 }
@@ -229,7 +229,7 @@ fn signal_process_group(
     kind: ProcessKind,
 ) -> Result<(), PlatformError> {
     // SAFETY: PGID 在成功 spawn 后由正 PID 构造；负 PGID 是 kill(2) 指定进程组的接口，
-    // 调用不转移任何资源所有权。ESRCH 表示目标组已消失，按终止契约视为成功。
+    // 调用不转移任何资源所有权。ESRCH 表示目标组已消失，按终止契约视为成功
     let result = unsafe { libc::kill(-process_group_id.0, signal) };
     map_signal_result(result, kind)
 }

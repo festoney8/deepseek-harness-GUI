@@ -3,36 +3,36 @@ import { defineStore } from "pinia";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { startDsh, stopDsh, type DshExitedPayload, type IpcError } from "../ipc/ipc";
 
-/** dsh 生命周期阶段。 */
+/** dsh 生命周期阶段 */
 export type DshPhase = "stopped" | "starting" | "running" | "stopping";
 
 /**
- * 镜像后端 HarnessPhase 的 dsh 生命周期状态（DESIGN.md §7.1）。
- * Rust 侧是权威状态机，前端只做镜像与错误码分支。
+ * 镜像后端 HarnessPhase 的 dsh 生命周期状态（DESIGN.md §7.1）
+ * Rust 侧是权威状态机，前端只做镜像与错误码分支
  */
 export const useDshStore = defineStore("dsh", () => {
-  /** dsh 生命周期阶段。 */
+  /** dsh 生命周期阶段 */
   const phase = ref<DshPhase>("stopped");
-  /** 当前 WebUI 地址，仅运行时有值。 */
+  /** 当前 WebUI 地址，仅运行时有值 */
   const address = ref<string | null>(null);
-  /** 最近一次 IPC 错误。 */
+  /** 最近一次 IPC 错误 */
   const lastError = ref<IpcError | null>(null);
 
-  /** 是否运行中。 */
+  /** 是否运行中 */
   const isRunning = computed(() => phase.value === "running");
-  /** 是否处于启动/停止过渡中。 */
+  /** 是否处于启动/停止过渡中 */
   const isBusy = computed(() => phase.value === "starting" || phase.value === "stopping");
-  /** 当前是否可启动。 */
+  /** 当前是否可启动 */
   const canStart = computed(() => phase.value === "stopped");
 
-  /** 幂等去重用的挂起注册 Promise。 */
+  /** 幂等去重用的挂起注册 Promise */
   let bindPromise: Promise<UnlistenFn> | null = null;
-  /** dsh_exited 监听注销函数。 */
+  /** dsh_exited 监听注销函数 */
   let unlisten: UnlistenFn | null = null;
 
   /**
    * 启动 dsh 并返回 WebUI 地址；
-   * 若已有生命周期操作在进行则抛出 IpcError（operation_in_progress）。
+   * 若已有生命周期操作在进行则抛出 IpcError（operation_in_progress）
    */
   async function start(port: number): Promise<string> {
     const previousPhase = phase.value;
@@ -69,7 +69,7 @@ export const useDshStore = defineStore("dsh", () => {
     }
   }
 
-  /** 停止 dsh 并清理进程相关状态。 */
+  /** 停止 dsh 并清理进程相关状态 */
   async function stop(): Promise<void> {
     const previousPhase = phase.value;
     if (previousPhase === "stopped") return;
@@ -102,7 +102,7 @@ export const useDshStore = defineStore("dsh", () => {
 
   /**
    * 重启 dsh：先停止当前实例（已处于 Stopped 或无进程时视为停止完成），
-   * 再以同一端口启动。返回新的 WebUI 地址。
+   * 再以同一端口启动。返回新的 WebUI 地址
    */
   async function restart(port: number): Promise<string> {
     try {
@@ -118,8 +118,8 @@ export const useDshStore = defineStore("dsh", () => {
 
   /**
    * 注册 dsh_exited 监听。幂等；并发调用共享同一个挂起的注册 promise，
-   * 确保只注册一次。返回 unlisten，供 dispose 或应用卸载时清理。
-   * 只在 App.vue 挂载时调用一次，避免组件生命周期造成事件丢失。
+   * 确保只注册一次。返回 unlisten，供 dispose 或应用卸载时清理
+   * 只在 App.vue 挂载时调用一次，避免组件生命周期造成事件丢失
    */
   async function bindEvents(): Promise<UnlistenFn> {
     if (unlisten) return unlisten;
@@ -135,7 +135,7 @@ export const useDshStore = defineStore("dsh", () => {
     return unlisten;
   }
 
-  /** 注销并清空 dsh_exited 监听引用。 */
+  /** 注销并清空 dsh_exited 监听引用 */
   function dispose(): void {
     unlisten?.();
     unlisten = null;
