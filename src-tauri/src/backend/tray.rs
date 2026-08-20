@@ -6,7 +6,7 @@ use std::sync::{
 use log::error;
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Manager, WindowEvent, WebviewWindow,
 };
 
@@ -46,6 +46,19 @@ pub(crate) fn register_tray(
         .tooltip("DeepSeek Harness GUI")
         .menu(&menu)
         .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            if let TrayIconEvent::Click {
+                button: MouseButton::Left,
+                button_state: MouseButtonState::Up,
+                ..
+            } = event
+            {
+                let app = tray.app_handle();
+                if let Err(error) = show_main_window(app) {
+                    error!("tray icon click show failed: {error:?}");
+                }
+            }
+        })
         .on_menu_event(move |app, event| match event.id.as_ref() {
             "show" => {
                 if let Err(error) = show_main_window(app) {
