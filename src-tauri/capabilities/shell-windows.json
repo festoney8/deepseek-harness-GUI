@@ -34,13 +34,31 @@
         {
           "name": "npm-install-dsh-npmjs",
           "cmd": "npm.cmd",
-          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh", "--registry=https://registry.npmjs.org"],
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@latest", "--registry=https://registry.npmjs.org"],
+          "sidecar": false
+        },
+        {
+          "name": "npm-install-dsh-npmjs-next",
+          "cmd": "npm.cmd",
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@next", "--registry=https://registry.npmjs.org"],
           "sidecar": false
         },
         {
           "name": "npm-install-dsh-npmmirror",
           "cmd": "npm.cmd",
-          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh", "--registry=https://registry.npmmirror.com"],
+          "args": [
+            "install",
+            "-g",
+            "--verbose",
+            "@deepseek-ai/dsh@latest",
+            "--registry=https://registry.npmmirror.com"
+          ],
+          "sidecar": false
+        },
+        {
+          "name": "npm-install-dsh-npmmirror-next",
+          "cmd": "npm.cmd",
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@next", "--registry=https://registry.npmmirror.com"],
           "sidecar": false
         }
       ]
