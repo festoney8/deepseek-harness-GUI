@@ -13,8 +13,8 @@ export type DshPhase = "stopped" | "starting" | "running" | "stopping";
 export const useDshStore = defineStore("dsh", () => {
   /** dsh 生命周期阶段 */
   const phase = ref<DshPhase>("stopped");
-  /** 当前 WebUI 地址，仅运行时有值 */
-  const address = ref<string | null>(null);
+  /** 当前 WebUI 端口，仅运行时有值 */
+  const currPort = ref<number | null>(null);
   /** 最近一次 IPC 错误 */
   const lastError = ref<IpcError | null>(null);
 
@@ -31,10 +31,10 @@ export const useDshStore = defineStore("dsh", () => {
   let unlisten: UnlistenFn | null = null;
 
   /**
-   * 启动 dsh 并返回 WebUI 地址；
+   * 启动 dsh 并返回当前使用的端口号；
    * 若已有生命周期操作在进行则抛出 IpcError（operation_in_progress）
    */
-  async function start(port: number): Promise<string> {
+  async function start(port: number): Promise<number> {
     const previousPhase = phase.value;
     if (previousPhase === "starting" || previousPhase === "stopping") {
       const error: IpcError = {
@@ -47,10 +47,10 @@ export const useDshStore = defineStore("dsh", () => {
     phase.value = "starting";
     lastError.value = null;
     try {
-      const result = await startDsh(port);
+      await startDsh(port);
       phase.value = "running";
-      address.value = result;
-      return result;
+      currPort.value = port;
+      return port;
     } catch (error) {
       const ipcError = error as IpcError;
       if (ipcError.code === "dsh_already_running") {
@@ -62,7 +62,7 @@ export const useDshStore = defineStore("dsh", () => {
         phase.value = previousPhase;
       } else {
         phase.value = "stopped";
-        address.value = null;
+        currPort.value = null;
       }
       lastError.value = ipcError;
       throw error;
@@ -86,12 +86,12 @@ export const useDshStore = defineStore("dsh", () => {
     try {
       await stopDsh();
       phase.value = "stopped";
-      address.value = null;
+      currPort.value = null;
     } catch (error) {
       const ipcError = error as IpcError;
       if (ipcError.code === "process_not_running") {
         phase.value = "stopped";
-        address.value = null;
+        currPort.value = null;
       } else {
         phase.value = previousPhase;
       }
@@ -102,9 +102,9 @@ export const useDshStore = defineStore("dsh", () => {
 
   /**
    * 重启 dsh：先停止当前实例（已处于 Stopped 或无进程时视为停止完成），
-   * 再以同一端口启动。返回新的 WebUI 地址
+   * 再以同一端口启动。返回当前使用的端口号
    */
-  async function restart(port: number): Promise<string> {
+  async function restart(port: number): Promise<number> {
     try {
       await stop();
     } catch (error) {
@@ -125,7 +125,7 @@ export const useDshStore = defineStore("dsh", () => {
     if (unlisten) return unlisten;
     bindPromise ??= listen<DshExitedPayload>("dsh_exited", () => {
       phase.value = "stopped";
-      address.value = null;
+      currPort.value = null;
     });
     try {
       unlisten = await bindPromise;
@@ -143,7 +143,7 @@ export const useDshStore = defineStore("dsh", () => {
 
   return {
     phase,
-    address,
+    currPort,
     lastError,
     isRunning,
     isBusy,
