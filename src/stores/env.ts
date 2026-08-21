@@ -5,12 +5,16 @@ import { Command } from "@tauri-apps/plugin-shell";
 import { logger } from "../utils/log";
 import { fetchJson } from "../utils/http";
 
+/** App（GitHub release）最新版本查询地址 */
+const LATEST_APP_RELEASE = "https://api.github.com/repos/festoney8/deepseek-harness-GUI/releases/latest";
 /** 官方源（npmjs）dsh 最新版本查询地址 */
 const LATEST_DSH_NPMJS = "https://registry.npmjs.org/@deepseek-ai/dsh/latest";
 /** 镜像源（npmmirror）dsh 最新版本查询地址 */
 const LATEST_DSH_NPMMIRROR = "https://registry.npmmirror.com/@deepseek-ai/dsh/latest";
-/** App（GitHub release）最新版本查询地址 */
-const LATEST_APP_RELEASE = "https://api.github.com/repos/festoney8/deepseek-harness-GUI/releases/latest";
+/** 官方源（npmjs）dsh 下个版本（next）查询地址 */
+const NEXT_DSH_NPMJS = "https://registry.npmjs.org/@deepseek-ai/dsh/next";
+/** 镜像源（npmmirror）dsh 下个版本（next）查询地址 */
+const NEXT_DSH_NPMMIRROR = "https://registry.npmmirror.com/@deepseek-ai/dsh/next";
 
 /**
  * 版本号状态模型。所有版本号槽位共用同一判别联合，区分五种情况：
@@ -123,9 +127,13 @@ export const useEnvStore = defineStore("env", () => {
   const latestDshVer = ref<VersionState>(idleVersionState());
   /** 镜像源 dsh 最新版本 */
   const latestDshVerWithMirror = ref<VersionState>(idleVersionState());
+  /** 官方源 dsh 下个版本（next） */
+  const nextDshVer = ref<VersionState>(idleVersionState());
+  /** 镜像源 dsh 下个版本（next） */
+  const nextDshVerWithMirror = ref<VersionState>(idleVersionState());
+
   /** App（GitHub release）最新版本 */
   const latestAppVer = ref<VersionState>(idleVersionState());
-
   /** App 自身版本 */
   const appVer = ref<VersionState>(idleVersionState());
 
@@ -161,6 +169,16 @@ export const useEnvStore = defineStore("env", () => {
     await runGet(latestDshVerWithMirror, () => fetchLatestVersion(LATEST_DSH_NPMMIRROR, "version"));
   }
 
+  /** 刷新官方源 dsh 下个版本（next） */
+  async function getNextDshVer(): Promise<void> {
+    await runGet(nextDshVer, () => fetchLatestVersion(NEXT_DSH_NPMJS, "version"));
+  }
+
+  /** 刷新镜像源 dsh 下个版本（next） */
+  async function getNextDshVerWithMirror(): Promise<void> {
+    await runGet(nextDshVerWithMirror, () => fetchLatestVersion(NEXT_DSH_NPMMIRROR, "version"));
+  }
+
   /** 刷新 App（GitHub release）最新版本 */
   async function getLatestAppVer(): Promise<void> {
     await runGet(latestAppVer, () => fetchLatestVersion(LATEST_APP_RELEASE, "tag_name"));
@@ -179,6 +197,8 @@ export const useEnvStore = defineStore("env", () => {
       getDshVer(),
       getLatestDshVer(),
       getLatestDshVerWithMirror(),
+      getNextDshVer(),
+      getNextDshVerWithMirror(),
       // getLatestAppVer(),
       // getAppVer(),
     ]);
@@ -190,6 +210,8 @@ export const useEnvStore = defineStore("env", () => {
     dshVer,
     latestDshVer,
     latestDshVerWithMirror,
+    nextDshVer,
+    nextDshVerWithMirror,
     latestAppVer,
     appVer,
     getNodeVer,
@@ -197,6 +219,8 @@ export const useEnvStore = defineStore("env", () => {
     getDshVer,
     getLatestDshVer,
     getLatestDshVerWithMirror,
+    getNextDshVer,
+    getNextDshVerWithMirror,
     getLatestAppVer,
     getAppVer,
     refreshAllVersions,
