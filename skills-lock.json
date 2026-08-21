@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "daisyui": {
+      "source": "saadeghi/daisyui",
+      "sourceType": "github",
+      "skillPath": "skills/daisyui/SKILL.md",
+      "computedHash": "c762724db0ab971c3dae08e3be1ecf049de461af431de28510066e7bda210581"
+    },
     "rust-best-practices": {
       "source": "apollographql/skills",
       "sourceType": "github",

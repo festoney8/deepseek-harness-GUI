@@ -199,8 +199,8 @@ export const useEnvStore = defineStore("env", () => {
       getLatestDshVerWithMirror(),
       getNextDshVer(),
       getNextDshVerWithMirror(),
-      // getLatestAppVer(),
-      // getAppVer(),
+      getLatestAppVer(),
+      getAppVer(),
     ]);
   }
 
