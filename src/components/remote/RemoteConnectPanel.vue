@@ -17,7 +17,7 @@
             :class="!validHost ? 'input-error border-2 border-error focus:border-error' : ''"
           />
         </fieldset>
-        <div class="grid grid-cols-[minmax(0,1.8fr)_minmax(0,1.2fr)] gap-4">
+        <div class="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1.6fr)] gap-4">
           <fieldset class="fieldset grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2">
             <label class="fieldset-legend justify-center text-base" for="remote-port">端口</label>
             <input
@@ -34,7 +34,7 @@
               :class="!validRemotePort ? 'input-error border-2 border-error focus:border-error' : ''"
             />
           </fieldset>
-          <fieldset class="fieldset grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-2">
+          <fieldset class="fieldset grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2">
             <label class="fieldset-legend justify-center text-base" for="remote-protocol">协议</label>
             <select
               id="remote-protocol"
