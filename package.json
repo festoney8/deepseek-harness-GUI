@@ -35,6 +35,7 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
     "prettier": "3.9.6",
+    "sass-embedded": "^1.103.1",
     "tailwindcss": "^4.3.3",
     "typescript": "~5.6.3",
     "typescript-eslint": "^8.67.0",

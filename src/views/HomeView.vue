@@ -1,5 +1,6 @@
 <template>
   <div
+    id="background"
     class="grid min-h-screen grid-rows-[minmax(min-content,1fr)_minmax(min-content,2fr)] overflow-x-auto bg-base-200 text-base-content"
   >
     <AppHeader />
@@ -30,3 +31,23 @@ import { isDshInstallRunning } from "../composables/useInstallDsh";
 
 const installing = isDshInstallRunning;
 </script>
+
+<style lang="scss" scoped>
+#background {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(186, 229, 253, 0.42) 0%, rgba(186, 230, 253, 0.25) 25%, transparent 55%),
+    radial-gradient(circle at 85% 10%, rgba(224, 242, 254, 0.9) 0%, rgba(224, 242, 254, 0.35) 30%, transparent 60%),
+    radial-gradient(circle at 70% 75%, rgba(191, 219, 254, 0.26) 0%, transparent 55%),
+    linear-gradient(135deg, #ffffff 0%, #f8fcff 35%, #eff8ff 65%, #eaf5ff 100%);
+}
+[data-theme="night"] {
+  #background {
+    background:
+      radial-gradient(circle at 10% 15%, rgba(30, 64, 175, 0.28) 0%, rgba(30, 64, 175, 0.12) 25%, transparent 55%),
+      radial-gradient(circle at 90% 10%, rgba(79, 70, 229, 0.22) 0%, rgba(79, 70, 229, 0.08) 30%, transparent 60%),
+      radial-gradient(circle at 75% 80%, rgba(14, 116, 144, 0.18) 0%, transparent 55%),
+      radial-gradient(circle at 25% 90%, rgba(67, 56, 202, 0.14) 0%, transparent 50%),
+      linear-gradient(135deg, #020617 0%, #0b1120 30%, #111827 60%, #0f172a 100%);
+  }
+}
+</style>
