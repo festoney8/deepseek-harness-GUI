@@ -1,15 +1,15 @@
 <template>
-  <div class="min-h-screen overflow-x-auto bg-base-200 text-base-content">
+  <div class="flex h-screen min-h-screen flex-col overflow-x-auto bg-base-200 text-base-content">
     <AppHeader />
     <main
-      class="mx-auto grid min-w-[1120px] max-w-[1440px] grid-cols-[minmax(20rem,1fr)_minmax(22rem,1.1fr)_minmax(22rem,1.1fr)] gap-5 px-6 pb-8 sm:px-8"
+      class="mx-auto grid h-2/3 min-h-0 min-w-280 max-w-360 flex-none grid-cols-[minmax(20rem,1fr)_minmax(22rem,1.1fr)_minmax(22rem,1.1fr)] items-stretch gap-5 overflow-y-auto px-6 pb-8 sm:px-8"
     >
       <EnvironmentPanel />
-      <div class="grid content-start gap-5">
+      <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-5">
         <DshInstallActions />
         <OtherActionsCard />
       </div>
-      <div class="grid content-start gap-5">
+      <div class="grid h-full min-h-0 grid-rows-[auto_minmax(0,1fr)] gap-5">
         <RemoteConnectPanel />
         <LocalDshPanel :installing="installing" />
       </div>

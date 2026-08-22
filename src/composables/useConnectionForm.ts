@@ -1,3 +1,4 @@
+import { useLocalStorage } from "@vueuse/core";
 import { computed, ref } from "vue";
 
 const REMOTE_STORAGE_KEY = "deepseek-harness.remote-connection";
@@ -11,27 +12,19 @@ interface RemoteSettings {
   port: string;
 }
 
-function readRemoteSettings(): RemoteSettings {
-  try {
-    const raw = localStorage.getItem(REMOTE_STORAGE_KEY);
-    if (!raw) return { protocol: "http", host: "127.0.0.1", port: "3080" };
-    const value = JSON.parse(raw) as Partial<RemoteSettings>;
-    return {
-      protocol: value.protocol === "https" ? "https" : "http",
-      host: typeof value.host === "string" ? value.host : "127.0.0.1",
-      port: typeof value.port === "string" ? value.port : "3080",
-    };
-  } catch {
-    return { protocol: "http", host: "127.0.0.1", port: "3080" };
-  }
-}
+const DEFAULT_REMOTE_SETTINGS: RemoteSettings = {
+  protocol: "http",
+  host: "192.168.1.1",
+  port: "3080",
+};
+const DEFAULT_LOCAL_PORT = "3080";
 
-function readLocalPort(): string {
-  try {
-    return localStorage.getItem(LOCAL_STORAGE_KEY) ?? "3080";
-  } catch {
-    return "3080";
-  }
+function normalizeRemoteSettings(value: Partial<RemoteSettings> | null): RemoteSettings {
+  return {
+    protocol: value?.protocol === "https" ? "https" : "http",
+    host: typeof value?.host === "string" ? value.host : DEFAULT_REMOTE_SETTINGS.host,
+    port: typeof value?.port === "string" ? value.port : DEFAULT_REMOTE_SETTINGS.port,
+  };
 }
 
 function isValidPort(value: string): boolean {
@@ -49,11 +42,15 @@ function isValidHost(value: string): boolean {
 }
 
 export function useConnectionForm() {
-  const initialRemote = readRemoteSettings();
+  const storedRemote = useLocalStorage<RemoteSettings>(REMOTE_STORAGE_KEY, DEFAULT_REMOTE_SETTINGS, {
+    mergeDefaults: true,
+  });
+  const storedLocalPort = useLocalStorage(LOCAL_STORAGE_KEY, DEFAULT_LOCAL_PORT);
+  const initialRemote = normalizeRemoteSettings(storedRemote.value);
   const protocol = ref<ConnectionProtocol>(initialRemote.protocol);
   const host = ref(initialRemote.host);
   const remotePort = ref(initialRemote.port);
-  const localPort = ref(readLocalPort());
+  const localPort = ref(storedLocalPort.value);
   const remoteAttempted = ref(false);
   const localAttempted = ref(false);
 
@@ -68,14 +65,15 @@ export function useConnectionForm() {
   const localPortNumber = computed(() => Number(localPort.value));
 
   function saveRemote(): void {
-    localStorage.setItem(
-      REMOTE_STORAGE_KEY,
-      JSON.stringify({ protocol: protocol.value, host: normalizedHost.value, port: remotePort.value }),
-    );
+    storedRemote.value = {
+      protocol: protocol.value,
+      host: normalizedHost.value,
+      port: remotePort.value,
+    };
   }
 
   function saveLocal(): void {
-    localStorage.setItem(LOCAL_STORAGE_KEY, localPort.value);
+    storedLocalPort.value = localPort.value;
   }
 
   function markRemoteAttempted(): void {

@@ -1,5 +1,5 @@
 <template>
-  <section class="card card-border h-fit self-start bg-base-100 shadow-sm">
+  <section class="card card-border h-full min-h-0 bg-base-100 shadow-sm">
     <div class="card-body gap-1">
       <div class="flex items-center justify-between gap-3">
         <h2 class="card-title">环境检查</h2>

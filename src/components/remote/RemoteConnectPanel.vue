@@ -3,14 +3,14 @@
     <div class="card-body gap-4">
       <h2 class="card-title">远程连接</h2>
       <form class="grid gap-3" @submit.prevent="connect">
-        <fieldset class="fieldset grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2">
+        <fieldset class="fieldset grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2">
           <label class="fieldset-legend justify-center text-base" for="remote-host">主机</label>
           <input
             id="remote-host"
             v-model="host"
-            class="input validator w-full focus:outline-none! focus:ring-0!"
+            class="input validator w-full font-bold text-base focus:outline-none! focus:ring-0!"
             type="text"
-            placeholder="127.0.0.1"
+            placeholder="192.168.1.1"
             autocomplete="off"
             required
             :pattern="HOST_PATTERN"
@@ -18,12 +18,12 @@
           />
         </fieldset>
         <div class="grid grid-cols-[minmax(0,1.8fr)_minmax(0,1.2fr)] gap-4">
-          <fieldset class="fieldset grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2">
+          <fieldset class="fieldset grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2">
             <label class="fieldset-legend justify-center text-base" for="remote-port">端口</label>
             <input
               id="remote-port"
               v-model="remotePort"
-              class="input validator w-full focus:outline-none! focus:ring-0!"
+              class="input validator w-full text-base font-bold focus:outline-none! focus:ring-0!"
               type="text"
               inputmode="numeric"
               autocomplete="off"
@@ -34,12 +34,12 @@
               :class="!validRemotePort ? 'input-error border-2 border-error focus:border-error' : ''"
             />
           </fieldset>
-          <fieldset class="fieldset grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2">
+          <fieldset class="fieldset grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-2">
             <label class="fieldset-legend justify-center text-base" for="remote-protocol">协议</label>
             <select
               id="remote-protocol"
               v-model="protocol"
-              class="select validator w-full focus:outline-none! focus:ring-0! focus:shadow-none! focus-within:outline-none! focus-within:shadow-none! open:outline-none! open:shadow-none!"
+              class="select validator w-full font-bold text-base focus:outline-none! focus:ring-0! focus:shadow-none! focus-within:outline-none! focus-within:shadow-none! open:outline-none! open:shadow-none!"
               required
             >
               <option value="http">http</option>

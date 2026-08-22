@@ -69,6 +69,7 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
         .title("DeepSeek Harness")
         .inner_size(1200.0, 800.0)
         .min_inner_size(1200.0, 800.0)
+        .decorations(false)
         .center()
         .resizable(true)
         .maximizable(true)

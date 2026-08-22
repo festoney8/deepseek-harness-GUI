@@ -6,21 +6,21 @@
         <legend class="fieldset-legend text-base">稳定版 (latest)</legend>
         <div class="grid gap-3 sm:grid-cols-2">
           <button
-            class="btn btn-primary btn-block"
+            class="btn btn-primary btn-block btn-outline"
             type="button"
             :disabled="latestOfficialDisabled"
             @click="installOfficialLatest"
           >
-            <span v-if="officialLatest.running" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+            <span v-if="officialLatestRunning" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
             {{ latestOfficialLabel }}
           </button>
           <button
-            class="btn btn-primary btn-block"
+            class="btn btn-primary btn-block btn-outline"
             type="button"
             :disabled="latestMirrorDisabled"
             @click="installMirrorLatest"
           >
-            <span v-if="mirrorLatest.running" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+            <span v-if="mirrorLatestRunning" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
             {{ latestMirrorLabel }}
           </button>
         </div>
@@ -29,21 +29,21 @@
         <legend class="fieldset-legend text-base">测试版 (next)</legend>
         <div class="grid gap-3 sm:grid-cols-2">
           <button
-            class="btn btn-primary btn-block"
+            class="btn btn-primary btn-block btn-outline"
             type="button"
             :disabled="nextOfficialDisabled"
             @click="installOfficialNext"
           >
-            <span v-if="officialNext.running" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+            <span v-if="officialNextRunning" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
             {{ nextOfficialLabel }}
           </button>
           <button
-            class="btn btn-primary btn-block"
+            class="btn btn-primary btn-block btn-outline"
             type="button"
             :disabled="nextMirrorDisabled"
             @click="installMirrorNext"
           >
-            <span v-if="mirrorNext.running" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
+            <span v-if="mirrorNextRunning" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
             {{ nextMirrorLabel }}
           </button>
         </div>
@@ -66,20 +66,29 @@ const officialLatest = useInstallDsh(false, "latest");
 const officialNext = useInstallDsh(false, "next");
 const mirrorLatest = useInstallDsh(true, "latest");
 const mirrorNext = useInstallDsh(true, "next");
+const officialLatestRunning = officialLatest.running;
+const officialNextRunning = officialNext.running;
+const mirrorLatestRunning = mirrorLatest.running;
+const mirrorNextRunning = mirrorNext.running;
 
 function normalizeVersion(version: string): string {
   return version.replace(/^v/, "");
 }
 
-function isDifferent(remote: VersionState): boolean {
+function isSameVersion(remote: VersionState): boolean {
   return (
     env.dshVer.kind === "ok" &&
     remote.kind === "ok" &&
-    normalizeVersion(env.dshVer.version) !== normalizeVersion(remote.version)
+    normalizeVersion(env.dshVer.version) === normalizeVersion(remote.version)
   );
 }
 
-function operationLabel(source: "official" | "mirror"): string {
+function isDifferent(remote: VersionState): boolean {
+  return env.dshVer.kind === "ok" && remote.kind === "ok" && !isSameVersion(remote);
+}
+
+function operationLabel(source: "official" | "mirror", remote: VersionState): string {
+  if (isSameVersion(remote)) return "无需更新";
   const action = env.dshVer.kind === "missing" || env.dshVer.kind === "error" ? "安装" : "更新";
   const sourceName = source === "official" ? "官方源" : "镜像源";
   return `${action}（${sourceName}）`;
@@ -101,14 +110,23 @@ const anyInstallRunning = computed(
 const commonLocked = computed(
   () => anyInstallRunning.value || env.nodeVer.kind !== "ok" || env.npmVer.kind !== "ok" || dsh.phase !== "stopped",
 );
-const latestOfficialLabel = computed(() => operationLabel("official"));
-const nextOfficialLabel = computed(() => operationLabel("official"));
-const latestMirrorLabel = computed(() => operationLabel("mirror"));
-const nextMirrorLabel = computed(() => operationLabel("mirror"));
-const latestOfficialDisabled = computed(() => commonLocked.value || !versionAvailable(env.latestDshVer));
-const nextOfficialDisabled = computed(() => commonLocked.value || !versionAvailable(env.nextDshVer));
-const latestMirrorDisabled = computed(() => commonLocked.value || !versionAvailable(env.latestDshVerWithMirror));
-const nextMirrorDisabled = computed(() => commonLocked.value || !versionAvailable(env.nextDshVerWithMirror));
+const latestOfficialLabel = computed(() => operationLabel("official", env.latestDshVer));
+const nextOfficialLabel = computed(() => operationLabel("official", env.nextDshVer));
+const latestMirrorLabel = computed(() => operationLabel("mirror", env.latestDshVerWithMirror));
+const nextMirrorLabel = computed(() => operationLabel("mirror", env.nextDshVerWithMirror));
+const latestOfficialDisabled = computed(
+  () => commonLocked.value || isSameVersion(env.latestDshVer) || !versionAvailable(env.latestDshVer),
+);
+const nextOfficialDisabled = computed(
+  () => commonLocked.value || isSameVersion(env.nextDshVer) || !versionAvailable(env.nextDshVer),
+);
+const latestMirrorDisabled = computed(
+  () =>
+    commonLocked.value || isSameVersion(env.latestDshVerWithMirror) || !versionAvailable(env.latestDshVerWithMirror),
+);
+const nextMirrorDisabled = computed(
+  () => commonLocked.value || isSameVersion(env.nextDshVerWithMirror) || !versionAvailable(env.nextDshVerWithMirror),
+);
 
 async function runInstall(operation: ReturnType<typeof useInstallDsh>, tag: "latest" | "next"): Promise<void> {
   try {

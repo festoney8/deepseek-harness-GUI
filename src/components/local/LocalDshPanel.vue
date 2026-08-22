@@ -2,24 +2,24 @@
   <section class="card card-border bg-base-100 shadow-sm">
     <div class="card-body gap-4">
       <h2 class="card-title">本地启动</h2>
-      <form class="grid gap-3" @submit.prevent="startLocal">
+      <form class="grid gap-4" @submit.prevent="startLocal">
         <div class="grid grid-cols-[minmax(0,1.8fr)_minmax(0,1.2fr)] gap-4">
-          <fieldset class="fieldset grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2">
+          <fieldset class="fieldset grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2">
             <label class="fieldset-legend justify-center text-base" for="local-host">主机</label>
             <input
               id="local-host"
-              class="input w-full focus:outline-none! focus:ring-0!"
+              class="input w-full text-base font-bold focus:outline-none! focus:ring-0!"
               type="text"
               value="127.0.0.1"
               disabled
             />
           </fieldset>
-          <fieldset class="fieldset grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2">
+          <fieldset class="fieldset grid grid-cols-[2.5rem_minmax(0,1fr)] items-center gap-2">
             <label class="fieldset-legend justify-center text-base" for="local-port">端口</label>
             <input
               id="local-port"
               v-model="localPort"
-              class="input validator w-full focus:outline-none! focus:ring-0!"
+              class="input validator w-full text-base font-bold focus:outline-none! focus:ring-0!"
               type="text"
               inputmode="numeric"
               autocomplete="off"

@@ -1,5 +1,5 @@
 <template>
-  <header class="hero bg-transparent py-8 sm:py-10">
+  <header class="hero h-1/3 min-h-0 shrink-0 bg-transparent py-8 sm:py-10">
     <div class="hero-content flex-col gap-4 text-center sm:flex-row sm:gap-6">
       <img :src="logo" alt="DeepSeek Harness GUI logo" class="size-24 object-contain sm:size-28" />
       <div>
