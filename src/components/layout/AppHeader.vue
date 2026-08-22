@@ -1,16 +1,22 @@
 <template>
-  <header class="hero min-h-0 bg-transparent py-8 sm:py-10">
+  <header class="hero min-h-0 h-full bg-transparent">
     <div class="hero-content flex-col gap-4 text-center sm:flex-row sm:gap-6">
-      <img :src="logo" alt="DeepSeek Harness GUI logo" class="size-24 object-contain sm:size-28" />
+      <img :src="logo" alt="logo" class="size-40 object-contain" />
       <div>
-        <h1 class="text-4xl font-bold tracking-tight text-base-content sm:text-5xl">DeepSeek Harness GUI</h1>
-        <div class="mt-3 flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-start">
-          <button type="button" class="btn btn-ghost btn-sm" @click="openExternal(PROJECT_URL)">项目 GitHub</button>
-          <span class="text-base-content/40" aria-hidden="true">|</span>
-          <span class="text-base-content/70">版本：{{ appVersion }}</span>
-          <button v-if="hasUpdate" type="button" class="btn btn-link btn-sm" @click="openExternal(RELEASES_URL)">
-            有更新
-          </button>
+        <h1 class="text-4xl font-bold tracking-tight text-[#325d9d] sm:text-5xl">DeepSeek Harness GUI</h1>
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-start">
+          <a class="text-base link link-hover font-bold text-[#325d9d]" @click="openExternal(PROJECT_URL)"
+            >项目 GitHub</a
+          >
+          <span class="h-5 w-px bg-blue-200 dark:bg-blue-900 mx-2.5" aria-hidden="true"></span>
+          <div class="text-base font-bold text-[#325d9d]">当前 v{{ appVersion }}</div>
+          <span class="h-5 w-px bg-blue-200 dark:bg-blue-900 mx-2.5" aria-hidden="true"></span>
+          <a
+            v-if="hasUpdate"
+            class="text-base link link-hover link-accent font-bold"
+            @click="openExternal(RELEASES_URL)"
+            >有更新 {{ latestAppVersion }}</a
+          >
         </div>
       </div>
     </div>
@@ -34,6 +40,7 @@ function normalizedVersion(version: string): string {
 }
 
 const appVersion = computed(() => displayVersion(env.appVer));
+const latestAppVersion = computed(() => displayVersion(env.latestAppVer));
 const hasUpdate = computed(
   () =>
     env.latestAppVer.kind === "ok" &&

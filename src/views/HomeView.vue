@@ -34,11 +34,7 @@ const installing = isDshInstallRunning;
 
 <style lang="scss" scoped>
 #background {
-  background:
-    radial-gradient(circle at 15% 20%, rgba(186, 229, 253, 0.42) 0%, rgba(186, 230, 253, 0.25) 25%, transparent 55%),
-    radial-gradient(circle at 85% 10%, rgba(224, 242, 254, 0.9) 0%, rgba(224, 242, 254, 0.35) 30%, transparent 60%),
-    radial-gradient(circle at 70% 75%, rgba(191, 219, 254, 0.26) 0%, transparent 55%),
-    linear-gradient(135deg, #ffffff 0%, #f8fcff 35%, #eff8ff 65%, #eaf5ff 100%);
+  background: radial-gradient(circle at top, #e8f1ff 0, #fcfcff 42%, #faf7ff 100%);
 }
 [data-theme="night"] {
   #background {
