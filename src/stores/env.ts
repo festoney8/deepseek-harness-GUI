@@ -17,54 +17,38 @@ const NEXT_DSH_NPMJS = "https://registry.npmjs.org/@deepseek-ai/dsh/next";
 const NEXT_DSH_NPMMIRROR = "https://registry.npmmirror.com/@deepseek-ai/dsh/next";
 
 /**
- * 版本号状态模型。所有版本号槽位共用同一判别联合，区分五种情况：
+ * 版本号状态模型。所有版本号槽位共用同一判别联合，区分四种情况：
  * - idle     尚未发起获取
  * - checking 获取中
  * - ok       正常版本号
- * - missing  不存在（程序未安装 / 命令不可用 / 输出为空）
- * - error    获取失败（网络、权限、启动等）
+ * - error    获取失败（程序未安装、网络、权限、启动等）
  */
 export type VersionState =
-  | { kind: "idle" }
-  | { kind: "checking" }
-  | { kind: "ok"; version: string }
-  | { kind: "missing" }
-  | { kind: "error"; message: string };
+  { kind: "idle" } | { kind: "checking" } | { kind: "ok"; version: string } | { kind: "error"; message: string };
 
 /** 初始状态：尚未获取 */
 export function idleVersionState(): VersionState {
   return { kind: "idle" };
 }
 
-/** 把状态归一化为可直接渲染的展示文案 */
+/** 把状态归一化为可直接渲染的中文展示文案；正常状态显示版本号 */
 export function displayVersion(state: VersionState): string {
   switch (state.kind) {
     case "idle":
-      return "—";
+      return "未检查";
     case "checking":
-      return "获取中…";
+      return "检查中";
     case "ok":
       return state.version;
-    case "missing":
-      return "未安装";
     case "error":
-      return state.message;
+      return "检查失败";
   }
-}
-
-/** shell 插件 rejection 中代表“命令不存在”的常见文案 */
-const NOT_FOUND_PATTERNS =
-  /ObjectNotFound|CommandNotFoundException|ENOENT|command not found|no such file or directory|is not recognized|不是内部或外部命令/i;
-
-/** 判断错误文案是否表示“命令不存在” */
-function looksLikeMissingCommand(message: string): boolean {
-  return NOT_FOUND_PATTERNS.test(message);
 }
 
 /**
  * 通过 capability 逻辑命令执行版本检查（node -v / npm -v / dsh -V）
- * 退出码 0 且输出非空 → ok；输出为空 → missing；非 0 退出 → error；
- * 插件 rejection 中提示命令不存在 → missing，其余 → error
+ * 退出码 0 且输出非空 → ok；输出为空 → error；非 0 退出 → error；
+ * 插件 rejection（包括命令不存在）→ error；底层错误原因仅写入日志/状态，不直接展示
  */
 async function getShellVersion(commandName: string, args: string[]): Promise<VersionState> {
   try {
@@ -74,10 +58,9 @@ async function getShellVersion(commandName: string, args: string[]): Promise<Ver
       return { kind: "error", message: detail };
     }
     const version = result.stdout.trim();
-    return version ? { kind: "ok", version } : { kind: "missing" };
+    return version ? { kind: "ok", version } : { kind: "error", message: "版本输出为空" };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    if (looksLikeMissingCommand(message)) return { kind: "missing" };
     logger.warn(commandName, "版本检查失败:", cause);
     return { kind: "error", message };
   }

@@ -1,7 +1,7 @@
 <template>
   <section class="card card-border bg-base-100 shadow-sm">
     <div class="card-body gap-4">
-      <h2 class="card-title">安装/更新 DSH</h2>
+      <h2 class="card-title">安装 / 更新 DSH</h2>
       <fieldset class="fieldset gap-2">
         <legend class="fieldset-legend text-base">稳定版 (latest)</legend>
         <div class="grid gap-3 sm:grid-cols-2">
@@ -89,14 +89,14 @@ function isDifferent(remote: VersionState): boolean {
 
 function operationLabel(source: "official" | "mirror", remote: VersionState): string {
   if (isSameVersion(remote)) return "无需更新";
-  const action = env.dshVer.kind === "missing" || env.dshVer.kind === "error" ? "安装" : "更新";
+  const action = env.dshVer.kind === "error" ? "安装" : "更新";
   const sourceName = source === "official" ? "官方源" : "镜像源";
   return `${action}（${sourceName}）`;
 }
 
 function versionAvailable(remote: VersionState): boolean {
   if (remote.kind !== "ok") return false;
-  if (env.dshVer.kind === "missing" || env.dshVer.kind === "error") return true;
+  if (env.dshVer.kind === "error") return true;
   return isDifferent(remote);
 }
 

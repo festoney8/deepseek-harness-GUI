@@ -254,10 +254,10 @@ const dshResult = await Command.create("dsh-version").execute();
 
 结果规则：
 
-- `code === 0` 表示对应命令可执行。
-- `code !== 0` 表示命令已启动但执行失败，前端可以展示 `stderr`。
-- Promise rejection 表示权限拒绝、程序未找到或进程创建失败等插件调用错误。
-- 前端根据退出码判断结果，不解析版本输出文本来判断命令是否存在。
+- `code === 0` 表示对应命令可执行，且前端将非空输出归一为 `ok` 状态。
+- `code !== 0` 表示命令已启动但执行失败，前端将结果归一为 `error` 状态；`stderr` 只用于日志或内部诊断，不直接展示。
+- Promise rejection 表示权限拒绝、程序未找到或进程创建失败等插件调用错误，前端同样归一为 `error` 状态。
+- 前端根据退出码和输出是否为空判断结果，不解析版本输出文本来判断命令是否存在；所有非成功状态统一显示“检查失败”。
 
 ### 5.5 `spawn`：dsh 安装
 
@@ -295,8 +295,8 @@ await command.spawn();
 1. 使用 `node-version.execute()` 执行 `node -v`。
 2. 使用 `npm-version.execute()` 执行 `npm -v`。
 3. 使用 `dsh-version.execute()` 执行 `dsh -V`。
-4. Node 或 npm 不存在时，前端提示用户前往官网安装。
-5. dsh 不存在时，前端显示安装按钮。
+4. Node、npm 或 dsh 检查失败时，环境面板统一显示“检查失败”，不显示底层错误原因。
+5. 当 dsh 状态为 `error` 且远端版本可用时，前端显示对应的安装按钮；Node/npm 状态不是 `ok` 时，安装按钮保持禁用。
 6. 安装按钮使用 `npm-install-dsh-npmjs` 或 `npm-install-dsh-npmmirror` 的 `spawn()` 执行安装并实时展示输出。
 7. 安装成功后再次使用 `dsh-version.execute()` 验证。
 8. `dsh-version` 退出码为 `0` 后认为 dsh 可以运行。
