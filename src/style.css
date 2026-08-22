@@ -2,5 +2,5 @@
 @plugin "daisyui" {
   themes:
     winter --default,
-    dark --prefersdark;
+    night --prefersdark;
 }

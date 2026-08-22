@@ -1,4 +1,4 @@
-import { ref, toValue, type MaybeRef } from "vue";
+import { computed, ref, toValue, type MaybeRef } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
 import { logger } from "../utils/log";
 
@@ -9,6 +9,9 @@ const NPM_MIRROR_REGISTRY = "https://registry.npmmirror.com";
 
 /** dsh 安装可选的发布标签（dist-tag）：latest 为正式版，next 为预发布 */
 export type DshInstallTag = "latest" | "next";
+
+const activeInstallCount = ref(0);
+export const isDshInstallRunning = computed(() => activeInstallCount.value > 0);
 
 /**
  * 通过 capability 逻辑命令安装 dsh，spawn 模式流式打印全部输出与报错
@@ -24,9 +27,10 @@ export function useInstallDsh(mirror: MaybeRef<boolean>, installTag: MaybeRef<Ds
    * 安装标签由 installTag 决定（对应 npmjs / npmmirror 各自的 latest / next 能力命令）。
    * 已在运行时直接返回
    */
-  async function start() {
+  async function start(): Promise<void> {
     if (running.value) return;
     running.value = true;
+    activeInstallCount.value += 1;
     const useMirror = toValue(mirror);
     const tag = toValue(installTag);
     const registry = useMirror ? NPM_MIRROR_REGISTRY : NPM_REGISTRY;
@@ -45,22 +49,34 @@ export function useInstallDsh(mirror: MaybeRef<boolean>, installTag: MaybeRef<Ds
       `@deepseek-ai/dsh@${tag}`,
       `--registry=${registry}`,
     ]);
-    command.stdout.on("data", (line) => logger.info("install:stdout", line));
-    command.stderr.on("data", (line) => logger.info("install:stderr", line));
-    command.on("close", ({ code, signal }) => {
-      logger.info("install:close", { code, signal });
-      running.value = false;
+
+    return new Promise<void>((resolve, reject) => {
+      let settled = false;
+      const settle = (error?: Error) => {
+        if (settled) return;
+        settled = true;
+        running.value = false;
+        activeInstallCount.value = Math.max(0, activeInstallCount.value - 1);
+        if (error) reject(error);
+        else resolve();
+      };
+
+      command.stdout.on("data", (line) => logger.info("install:stdout", line));
+      command.stderr.on("data", (line) => logger.info("install:stderr", line));
+      command.on("close", ({ code, signal }) => {
+        logger.info("install:close", { code, signal });
+        if (code === 0) settle();
+        else settle(new Error(`DSH 安装失败：退出码 ${code ?? "未知"}`));
+      });
+      command.on("error", (cause) => {
+        logger.error("install:error", cause);
+        settle(new Error(String(cause)));
+      });
+      void command.spawn().catch((cause) => {
+        logger.error("install:spawn", cause);
+        settle(new Error(String(cause)));
+      });
     });
-    command.on("error", (cause) => {
-      logger.error("install:error", cause);
-      running.value = false;
-    });
-    try {
-      await command.spawn();
-    } catch (cause) {
-      running.value = false;
-      throw cause;
-    }
   }
 
   return { running, start };
