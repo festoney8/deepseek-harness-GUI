@@ -42,11 +42,16 @@
             {{ dsh.isBusy ? "启动中…" : "本地运行 DSH" }}
           </button>
         </div>
-        <div v-else class="grid gap-2 sm:grid-cols-3">
+        <div v-else class="grid gap-2 mt-2 sm:grid-cols-3">
           <button class="btn btn-primary btn-outline" type="button" :disabled="dsh.isBusy" @click="openLocal">
             打开页面
           </button>
-          <button class="btn btn-outline" type="button" :disabled="dsh.isBusy || installing" @click="restartLocal">
+          <button
+            class="btn btn-secondary btn-outline"
+            type="button"
+            :disabled="dsh.isBusy || installing"
+            @click="restartLocal"
+          >
             <span
               v-if="dsh.phase === 'starting' || dsh.phase === 'stopping'"
               class="loading loading-spinner loading-sm"
@@ -56,7 +61,7 @@
           </button>
           <button class="btn btn-error btn-outline" type="button" :disabled="dsh.isBusy" @click="stopLocal">
             <span v-if="dsh.phase === 'stopping'" class="loading loading-spinner loading-sm" aria-hidden="true"></span>
-            终止
+            停止
           </button>
         </div>
       </form>

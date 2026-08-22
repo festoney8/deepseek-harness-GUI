@@ -1,5 +1,5 @@
 <template>
-  <div class="toast toast-end toast-bottom z-50 w-[min(24rem,calc(100vw-2rem))]">
+  <div class="toast toast-center toast-bottom z-50">
     <AppToast v-for="toast in toasts" :key="toast.id" :toast="toast" @dismiss="dismiss(toast.id)" />
   </div>
 </template>
