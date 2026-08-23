@@ -6,15 +6,28 @@
       :class="state.kind === 'error' || accent ? 'badge-accent badge-soft' : 'badge-ghost'"
       :title="displayedValue"
     >
-      {{ displayedValue }}
+      <div>{{ displayedValue }}</div>
+      <a
+        v-if="state.kind === 'error' && errorHref"
+        class="link link-hover link-primary text-base font-medium"
+        :title="errorHref"
+        @click="openDownload"
+        >去下载</a
+      >
     </span>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { openUrl } from "@tauri-apps/plugin-opener";
 import { displayVersion, type VersionState } from "../../stores/env";
 
-const props = defineProps<{ label: string; state: VersionState; accent?: boolean }>();
+const props = defineProps<{ label: string; state: VersionState; accent?: boolean; errorHref?: string }>();
 const displayedValue = computed(() => displayVersion(props.state));
+
+async function openDownload(): Promise<void> {
+  if (!props.errorHref) return;
+  openUrl(props.errorHref).catch(() => {});
+}
 </script>

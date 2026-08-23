@@ -23,6 +23,7 @@
             :label="row.label"
             :state="row.state"
             :accent="row.accent"
+            :error-href="row.errorHref"
           />
         </fieldset>
       </div>
@@ -38,6 +39,9 @@ import VersionRow from "./VersionRow.vue";
 
 const env = useEnvStore();
 const refreshing = ref(false);
+
+/** node/npm 检查失败时提供的官方下载地址 */
+const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
 
 function normalizeVersion(version: string): string {
   return version.replace(/^v/, "");
@@ -55,8 +59,8 @@ const groups = computed(() => [
   {
     title: "本地环境",
     rows: [
-      { label: "本地 node", state: env.nodeVer, accent: false },
-      { label: "本地 npm", state: env.npmVer, accent: false },
+      { label: "本地 node", state: env.nodeVer, accent: false, errorHref: NODE_DOWNLOAD_URL },
+      { label: "本地 npm", state: env.npmVer, accent: false, errorHref: NODE_DOWNLOAD_URL },
       { label: "本地 DSH", state: env.dshVer, accent: false },
     ],
   },

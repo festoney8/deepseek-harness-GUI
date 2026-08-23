@@ -8,7 +8,12 @@
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
-    "prepare": "husky"
+    "prepare": "husky",
+    "build:installer": "tauri build --bundles nsis",
+    "build:portable": "tauri build --no-bundle && node scripts/package-portable.mjs",
+    "build:deb": "tauri build --bundles deb",
+    "build:appimage": "tauri build --bundles appimage",
+    "build:dmg": "tauri build --bundles dmg"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

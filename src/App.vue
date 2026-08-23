@@ -25,6 +25,20 @@ useTheme();
 
 let stopUnexpectedExitWatch: (() => void) | undefined;
 
+document.addEventListener("keydown", (e) => {
+  const key = e.key.toLowerCase();
+  if (key === "f5" || ((e.ctrlKey || e.metaKey) && key === "r")) {
+    e.preventDefault();
+  }
+});
+document.addEventListener(
+  "contextmenu",
+  (e) => {
+    e.preventDefault();
+  },
+  false,
+);
+
 onMounted(async () => {
   stopUnexpectedExitWatch = watch(
     () => dsh.unexpectedExit,
