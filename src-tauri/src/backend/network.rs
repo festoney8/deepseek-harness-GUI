@@ -54,7 +54,10 @@ pub(crate) async fn check_url(
     let client = reqwest::Client::builder()
         .timeout(timeout)
         .build()
-        .map_err(|_| BackendError::ServiceUnavailable)?;
+        .map_err(|error| {
+            log::error!("http client build failed: {error}");
+            BackendError::ServiceUnavailable
+        })?;
     let Ok(response) = client.get(parsed_url).send().await else {
         return Ok(false);
     };

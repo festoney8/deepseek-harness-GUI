@@ -8,7 +8,7 @@ mod webview;
 pub(crate) use error::BackendError;
 pub(crate) use harness::{create_harness_state, start_dsh, stop_dsh, HarnessPhase, HarnessState};
 pub(crate) use logs::{
-    cleanup_old_logs, create_logger, create_session_log_dir, open_logs, LogState,
+    attach_panic_hook, cleanup_old_logs, create_logger, create_session_log_dir, open_logs, LogState,
 };
 pub(crate) use network::{check_tcp, check_url, connect_remote};
 pub(crate) use tray::{hide_to_tray, register_tray, show_main_window, ExitState};

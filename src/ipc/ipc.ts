@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { logger } from "../utils/log";
 
 /** Rust 侧 IpcError 的镜像类型，字段与 ipc.rs 中 camelCase 序列化对齐 */
 export interface IpcError {
@@ -34,12 +35,24 @@ function toIpcError(payload: unknown): IpcError {
   return { code: "internal_error", message: "内部错误，请查看日志" };
 }
 
+/** 前端 store 有专门处理分支的预期错误码，失败时按 warn 记录 */
+const EXPECTED_IPC_CODES = new Set(["operation_in_progress", "process_not_running", "dsh_already_running"]);
+
 /** 执行自定义 IPC 命令并归一化错误；所有业务命令都经由该入口 */
 export async function invokeIpc<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   try {
     return await invoke<T>(cmd, args);
   } catch (error) {
-    throw toIpcError(error);
+    const ipcError = toIpcError(error);
+    if (EXPECTED_IPC_CODES.has(ipcError.code)) {
+      logger.warn("ipc", `${cmd} 预期内失败:`, ipcError.code, ipcError.message);
+    } else {
+      logger.error("ipc", `${cmd} 调用失败:`, ipcError.code, ipcError.message);
+    }
+    if (ipcError.code === "internal_error") {
+      logger.error("ipc", `${cmd} 原始错误 payload:`, error);
+    }
+    throw ipcError;
   }
 }
 

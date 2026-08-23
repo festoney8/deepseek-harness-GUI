@@ -3,7 +3,7 @@ use std::sync::{
     Arc,
 };
 
-use log::error;
+use log::{error, info};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -97,6 +97,7 @@ pub(crate) fn register_tray(
 /// 隐藏主窗口并保持应用后台运行
 pub(crate) fn hide_to_tray(app: &AppHandle) -> Result<(), BackendError> {
     main_window(app)?.hide()?;
+    info!("main window hidden to tray");
     Ok(())
 }
 
@@ -121,6 +122,7 @@ pub(crate) async fn quit_app(
     if exit_state.exiting.swap(true, Ordering::SeqCst) {
         return Ok(());
     }
+    info!("app quit requested");
 
     let has_dsh = {
         let lifecycle = harness_state.lifecycle.read().await;

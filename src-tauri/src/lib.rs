@@ -19,6 +19,7 @@ pub fn run() {
     tauri::Builder::default()
         // 单例插件必须注册为第一个插件;再次启动时唤起已有实例的主窗口
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            log::info!("second instance launched, showing main window");
             if let Err(error) = backend::show_main_window(app) {
                 log::error!("single instance show failed: {error:?}");
             }
@@ -47,6 +48,12 @@ pub fn run() {
             // 日志插件只注册一次，文件 target 指向会话目录
             app.handle()
                 .plugin(backend::create_logger(&session_dir).build())?;
+            backend::attach_panic_hook();
+            log::info!(
+                "app started: version={}, session log dir={}",
+                app.package_info().version,
+                session_dir.display()
+            );
             // 日志插件就绪后补记 PATH 修复失败
             if let Err(error) = path_fix {
                 log::error!("PATH fix failed: {error}");

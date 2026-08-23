@@ -91,6 +91,7 @@ async fn start_dsh_inner(
         .try_lock()
         .map_err(|_| BackendError::OperationInProgress)?;
     let generation = begin_start(&state.lifecycle).await?;
+    info!("starting dsh: port={port}, generation={generation}");
 
     if check_tcp("127.0.0.1", port, PROBE_IO_TIMEOUT).await? {
         reset_if_current(&state.lifecycle, generation).await;
@@ -169,6 +170,7 @@ pub(crate) async fn stop_dsh(state: &HarnessState) -> Result<(), BackendError> {
         (lifecycle.generation, process)
     };
 
+    info!("stopping dsh: generation={generation}");
     let exit = process.terminate_tree(STOP_GRACE_PERIOD).await?;
     info!("dsh process tree stopped: exit={exit:?}");
     reset_if_current(&state.lifecycle, generation).await;
@@ -222,7 +224,9 @@ async fn monitor_exit(
         info!("dsh exited: generation={generation}, exit={exit:?}");
         if was_running {
             let payload = serde_json::json!({ "exitCode": exit.exit_code });
-            let _ = app.emit("dsh_exited", payload);
+            if let Err(error) = app.emit("dsh_exited", payload) {
+                warn!("emit dsh_exited failed: {error}");
+            }
         }
     }
     Ok(())

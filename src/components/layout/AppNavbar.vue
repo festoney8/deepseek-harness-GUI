@@ -99,6 +99,7 @@ import { useTabsStore, type BrowserTab } from "../../stores/tabs";
 import { useTheme, type ThemePreference } from "../../composables/useTheme";
 import { hideToTray } from "../../ipc/ipc";
 import { getErrorMessage, useToast } from "../../composables/useToast";
+import { logger } from "../../utils/log";
 
 const tabsStore = useTabsStore();
 const toast = useToast();
@@ -119,8 +120,9 @@ let unlistenResized: (() => void) | undefined;
 async function refreshMaximizeState(): Promise<void> {
   try {
     isMaximized.value = await appWindow.isMaximized();
-  } catch {
+  } catch (error) {
     // 仅影响图标展示,查询失败时保留上次状态即可
+    logger.warn("window", "查询窗口最大化状态失败（仅影响图标显示）:", error);
   }
 }
 
@@ -154,6 +156,7 @@ async function minimize(): Promise<void> {
   try {
     await appWindow.minimize();
   } catch (error) {
+    logger.error("window", "窗口最小化失败:", error);
     toast.error(getErrorMessage(error));
   }
 }
@@ -162,6 +165,7 @@ async function toggleMaximize(): Promise<void> {
   try {
     await appWindow.toggleMaximize();
   } catch (error) {
+    logger.error("window", "窗口最大化/还原失败:", error);
     toast.error(getErrorMessage(error));
   }
 }

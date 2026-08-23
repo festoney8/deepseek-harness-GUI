@@ -51,6 +51,19 @@ impl IpcError {
             BackendError::WindowResourceMissing => ("window_resource_missing", error.to_string()),
         };
 
+        // 深层没有日志的浅层拒绝在这里统一留痕；已在深层记录的错误不重复输出
+        if matches!(
+            error,
+            BackendError::PortOccupied
+                | BackendError::OperationInProgress
+                | BackendError::DshAlreadyRunning
+                | BackendError::ProcessNotRunning
+                | BackendError::ChildWebviewNotFound
+                | BackendError::InvalidWebviewUrl
+        ) {
+            log::warn!("ipc rejected: code={code}");
+        }
+
         IpcError {
             code: code.to_string(),
             message,

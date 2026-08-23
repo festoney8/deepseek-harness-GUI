@@ -121,6 +121,7 @@ pub(crate) fn create_webview_with_url(
         if app.get_webview(&tab.label).is_some() {
             let labels = tab_labels(state)?;
             activate_webview(app, &labels, &tab.label)?;
+            log::debug!("webview tab exists, activated: label={}", tab.label);
             return Ok(tab_info(&tab));
         }
         remove_tab(state, &origin_key)?;
@@ -153,6 +154,7 @@ pub(crate) fn create_webview_with_url(
 
     let labels = tab_labels(state)?;
     activate_webview(app, &labels, &tab.label)?;
+    log::info!("webview tab created: label={}, url={}", tab.label, tab.url);
     Ok(tab_info(&tab))
 }
 
@@ -167,6 +169,7 @@ pub(crate) fn activate_webview_tab(
     if !labels.iter().any(|item| item == &label) {
         return Err(BackendError::ChildWebviewNotFound);
     }
+    log::debug!("webview tab activated: label={label}");
     activate_webview(app, &labels, &label)
 }
 
@@ -183,6 +186,7 @@ pub(crate) fn close_webview_tab(
         .ok_or(BackendError::ChildWebviewNotFound)?;
     webview.close().map_err(BackendError::Window)?;
     remove_tab(state, &key)?;
+    log::info!("webview tab closed: label={label}");
     Ok(())
 }
 
@@ -416,6 +420,7 @@ fn prune_stale_tabs(app: &AppHandle, state: &WebviewState) -> Result<(), Backend
     registry
         .tabs
         .retain(|_, tab| !stale_labels.contains(&tab.label));
+    log::warn!("pruned stale webview tabs: {stale_labels:?}");
     Ok(())
 }
 

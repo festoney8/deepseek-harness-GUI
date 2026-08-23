@@ -58,6 +58,7 @@ import { useDshStore } from "../../stores/dsh";
 import { useEnvStore, type VersionState } from "../../stores/env";
 import { getErrorMessage, useToast } from "../../composables/useToast";
 import { useInstallDsh } from "../../composables/useInstallDsh";
+import { logger } from "../../utils/log";
 
 const env = useEnvStore();
 const dsh = useDshStore();
@@ -132,6 +133,7 @@ async function runInstall(operation: ReturnType<typeof useInstallDsh>, tag: "lat
   try {
     await operation.start();
     await env.getDshVer();
+    logger.info("install", `dsh ${tag === "latest" ? "稳定版" : "测试版"} 安装/更新完成`);
     toast.success(`${tag === "latest" ? "稳定版" : "测试版"}安装/更新完成`);
   } catch (error) {
     toast.error(getErrorMessage(error));

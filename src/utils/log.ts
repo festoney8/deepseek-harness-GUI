@@ -25,8 +25,20 @@ function format(tag: string, args: unknown[]): string {
  * 前端统一日志入口，写入与 Rust/dsh 相同的会话日志目录（DESIGN.md §10，
  * 经 tauri-plugin-log 落入 Stdout + Folder target）
  */
+const writers = { info: pluginInfo, warn: pluginWarn, error: pluginError } as const;
+
+type Level = keyof typeof writers;
+
+/** 写入一行日志；日志插件自身失败时回退到控制台（唯一允许 console 的例外） */
+function write(level: Level, tag: string, args: unknown[]): void {
+  const line = format(tag, args);
+  writers[level](line).catch((cause) => {
+    console.error(`[log] 写入日志失败（${level}）:`, line, cause);
+  });
+}
+
 export const logger = {
-  info: (tag: string, ...args: unknown[]) => void pluginInfo(format(tag, args)),
-  warn: (tag: string, ...args: unknown[]) => void pluginWarn(format(tag, args)),
-  error: (tag: string, ...args: unknown[]) => void pluginError(format(tag, args)),
+  info: (tag: string, ...args: unknown[]) => write("info", tag, args),
+  warn: (tag: string, ...args: unknown[]) => write("warn", tag, args),
+  error: (tag: string, ...args: unknown[]) => write("error", tag, args),
 };

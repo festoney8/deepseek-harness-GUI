@@ -121,55 +121,65 @@ export const useEnvStore = defineStore("env", () => {
   const appVer = ref<VersionState>(idleVersionState());
 
   /** 执行异步版本获取并把结果写入对应槽位；获取中不重复触发 */
-  async function runGet(slot: Ref<VersionState>, action: () => Promise<VersionState>): Promise<void> {
+  async function runGet(slot: Ref<VersionState>, action: () => Promise<VersionState>, name: string): Promise<void> {
     if (slot.value.kind === "checking") return;
     slot.value = { kind: "checking" };
-    slot.value = await action();
+    try {
+      slot.value = await action();
+    } catch (error) {
+      logger.error("env", `${name} 版本检查流程异常:`, error);
+      const message = error instanceof Error ? error.message : String(error);
+      slot.value = { kind: "error", message };
+    }
   }
 
   /** 刷新本地 node 版本 */
   async function getNodeVer(): Promise<void> {
-    await runGet(nodeVer, () => getShellVersion("node-version", ["-v"]));
+    await runGet(nodeVer, () => getShellVersion("node-version", ["-v"]), "nodeVer");
   }
 
   /** 刷新本地 npm 版本 */
   async function getNpmVer(): Promise<void> {
-    await runGet(npmVer, () => getShellVersion("npm-version", ["-v"]));
+    await runGet(npmVer, () => getShellVersion("npm-version", ["-v"]), "npmVer");
   }
 
   /** 刷新本地 dsh 版本 */
   async function getDshVer(): Promise<void> {
-    await runGet(dshVer, () => getShellVersion("dsh-version", ["-V"]));
+    await runGet(dshVer, () => getShellVersion("dsh-version", ["-V"]), "dshVer");
   }
 
   /** 刷新官方源 dsh 最新版本 */
   async function getLatestDshVer(): Promise<void> {
-    await runGet(latestDshVer, () => fetchLatestVersion(LATEST_DSH_NPMJS, "version"));
+    await runGet(latestDshVer, () => fetchLatestVersion(LATEST_DSH_NPMJS, "version"), "latestDshVer");
   }
 
   /** 刷新镜像源 dsh 最新版本 */
   async function getLatestDshVerWithMirror(): Promise<void> {
-    await runGet(latestDshVerWithMirror, () => fetchLatestVersion(LATEST_DSH_NPMMIRROR, "version"));
+    await runGet(
+      latestDshVerWithMirror,
+      () => fetchLatestVersion(LATEST_DSH_NPMMIRROR, "version"),
+      "latestDshVerWithMirror",
+    );
   }
 
   /** 刷新官方源 dsh 下个版本（next） */
   async function getNextDshVer(): Promise<void> {
-    await runGet(nextDshVer, () => fetchLatestVersion(NEXT_DSH_NPMJS, "version"));
+    await runGet(nextDshVer, () => fetchLatestVersion(NEXT_DSH_NPMJS, "version"), "nextDshVer");
   }
 
   /** 刷新镜像源 dsh 下个版本（next） */
   async function getNextDshVerWithMirror(): Promise<void> {
-    await runGet(nextDshVerWithMirror, () => fetchLatestVersion(NEXT_DSH_NPMMIRROR, "version"));
+    await runGet(nextDshVerWithMirror, () => fetchLatestVersion(NEXT_DSH_NPMMIRROR, "version"), "nextDshVerWithMirror");
   }
 
   /** 刷新 App（GitHub release）最新版本 */
   async function getLatestAppVer(): Promise<void> {
-    await runGet(latestAppVer, () => fetchLatestVersion(LATEST_APP_RELEASE, "tag_name"));
+    await runGet(latestAppVer, () => fetchLatestVersion(LATEST_APP_RELEASE, "tag_name"), "latestAppVer");
   }
 
   /** 刷新 App 自身版本 */
   async function getAppVer(): Promise<void> {
-    await runGet(appVer, getAppVersion);
+    await runGet(appVer, getAppVersion, "appVer");
   }
 
   /** 刷新所有版本 */

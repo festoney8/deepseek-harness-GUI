@@ -21,6 +21,7 @@ import { openLogs } from "../../ipc/ipc";
 import PluginInstallModal from "../plugins/PluginInstallModal.vue";
 import PluginMarketModal from "../plugins/PluginMarketModal.vue";
 import { getErrorMessage, useToast } from "../../composables/useToast";
+import { logger } from "../../utils/log";
 
 const toast = useToast();
 const pluginMarketModal = ref<InstanceType<typeof PluginMarketModal> | null>(null);
@@ -30,6 +31,7 @@ async function openNodeDownload(): Promise<void> {
   try {
     await openUrl("https://nodejs.org/en/download");
   } catch (error) {
+    logger.warn("openUrl", "打开外部链接失败:", "https://nodejs.org/en/download", error);
     toast.error(getErrorMessage(error));
   }
 }

@@ -2,6 +2,7 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { startDsh, stopDsh, type DshExitedPayload, type IpcError } from "../ipc/ipc";
+import { logger } from "../utils/log";
 
 /** dsh 生命周期阶段 */
 export type DshPhase = "stopped" | "starting" | "running" | "stopping";
@@ -56,6 +57,7 @@ export const useDshStore = defineStore("dsh", () => {
       currPort.value = port;
       address.value = startedAddress;
       unexpectedExit.value = false;
+      logger.info("dsh", `dsh 已启动: 端口 ${port} 地址 ${startedAddress}`);
       return startedAddress;
     } catch (error) {
       const ipcError = error as IpcError;
@@ -95,6 +97,7 @@ export const useDshStore = defineStore("dsh", () => {
       phase.value = "stopped";
       currPort.value = null;
       address.value = null;
+      logger.info("dsh", "dsh 已停止");
     } catch (error) {
       const ipcError = error as IpcError;
       if (ipcError.code === "process_not_running") {
@@ -132,7 +135,8 @@ export const useDshStore = defineStore("dsh", () => {
    */
   async function bindEvents(): Promise<UnlistenFn> {
     if (unlisten) return unlisten;
-    bindPromise ??= listen<DshExitedPayload>("dsh_exited", () => {
+    bindPromise ??= listen<DshExitedPayload>("dsh_exited", (event) => {
+      logger.error("dsh", "dsh 进程意外退出，exitCode:", event.payload.exitCode);
       phase.value = "stopped";
       currPort.value = null;
       address.value = null;

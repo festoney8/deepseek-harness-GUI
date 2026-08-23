@@ -1,5 +1,6 @@
 import { useLocalStorage } from "@vueuse/core";
 import { computed, ref } from "vue";
+import { logger } from "../utils/log";
 
 const REMOTE_STORAGE_KEY = "deepseek-harness.remote-connection";
 const LOCAL_STORAGE_KEY = "deepseek-harness.local-port";
@@ -20,6 +21,13 @@ const DEFAULT_REMOTE_SETTINGS: RemoteSettings = {
 const DEFAULT_LOCAL_PORT = "3080";
 
 function normalizeRemoteSettings(value: Partial<RemoteSettings> | null): RemoteSettings {
+  const hasInvalidField =
+    (value?.protocol !== undefined && value.protocol !== "http" && value.protocol !== "https") ||
+    (value?.host !== undefined && typeof value.host !== "string") ||
+    (value?.port !== undefined && typeof value.port !== "string");
+  if (hasInvalidField) {
+    logger.warn("settings", "存储的远程连接设置异常，已回退默认值:", value);
+  }
   return {
     protocol: value?.protocol === "https" ? "https" : "http",
     host: typeof value?.host === "string" ? value.host : DEFAULT_REMOTE_SETTINGS.host,

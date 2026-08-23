@@ -6,6 +6,7 @@ use std::{
     time::Duration,
 };
 
+use log::{error, warn};
 use tokio::sync::{Mutex as AsyncMutex, Notify};
 
 use super::{PlatformError, ProcessExit, ProcessKind, SpawnedProcess};
@@ -110,6 +111,8 @@ impl ManagedProcess {
             Ok(exit) => exit,
             Err(_) => {
                 if self.try_wait()?.is_none() {
+                    let pgid = self.inner.process_group_id.0;
+                    warn!("process group {pgid} did not exit within grace, sending SIGKILL");
                     signal_process_group(
                         self.inner.process_group_id,
                         libc::SIGKILL,
@@ -205,7 +208,10 @@ fn rollback_spawn(
             });
             source
         }
-        Err(rollback_source) => rollback_source,
+        Err(rollback_source) => {
+            warn!("rollback kill failed: {rollback_source} (original: {source})");
+            rollback_source
+        }
     };
     PlatformError::Spawn { kind, source }
 }
@@ -217,8 +223,9 @@ async fn reap_child(mut child: tokio::process::Child, process: Arc<UnixProcess>)
     });
     let cached = result.map_err(WaitFailure::from_io);
 
-    if let Ok(mut exit) = process.exit.lock() {
-        *exit = Some(cached);
+    match process.exit.lock() {
+        Ok(mut exit) => *exit = Some(cached),
+        Err(_) => error!("exit state lock poisoned, exit status not cached"),
     }
     process.exited.notify_waiters();
 }

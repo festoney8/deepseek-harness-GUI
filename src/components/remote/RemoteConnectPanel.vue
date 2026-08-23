@@ -62,6 +62,7 @@ import { connectRemote } from "../../ipc/ipc";
 import { useTabsStore } from "../../stores/tabs";
 import { getErrorMessage, useToast } from "../../composables/useToast";
 import { useConnectionForm } from "../../composables/useConnectionForm";
+import { logger } from "../../utils/log";
 
 const form = useConnectionForm();
 const { protocol, host, remotePort, validHost, validRemotePort, validRemote, normalizedHost, remotePortNumber } = form;
@@ -77,6 +78,10 @@ async function connect(): Promise<void> {
   connecting.value = true;
   try {
     const address = await connectRemote(protocol.value, normalizedHost.value, remotePortNumber.value);
+    logger.info(
+      "remote",
+      `远程连接成功: ${protocol.value}://${normalizedHost.value}:${remotePortNumber.value} → ${address}`,
+    );
     await tabs.openDshUrl(address);
     toast.success("远程连接成功");
   } catch (error) {

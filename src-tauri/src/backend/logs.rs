@@ -20,6 +20,17 @@ pub(crate) fn create_logger(session_dir: &Path) -> tauri_plugin_log::Builder {
     ])
 }
 
+/// 将 panic 以 error 级写入会话日志，并保留默认 hook 的原有行为
+///
+/// release 的 windows 子系统没有控制台，默认 hook 输出的 stderr 不可见
+pub(crate) fn attach_panic_hook() {
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        error!("panic: {info}");
+        previous_hook(info);
+    }));
+}
+
 /// 保存本次应用启动对应的日志目录
 pub(crate) struct LogState {
     /// 本次启动日志目录的绝对路径

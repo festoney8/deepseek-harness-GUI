@@ -12,6 +12,7 @@ use std::{
     time::Duration,
 };
 
+use log::{error, warn};
 use tokio::sync::{Mutex as AsyncMutex, Notify};
 use windows_sys::Win32::{
     Foundation::{HANDLE, INVALID_HANDLE_VALUE},
@@ -154,18 +155,18 @@ fn spawn(mut command: Command, kind: ProcessKind) -> Result<SpawnedProcess, Plat
     })?;
 
     let Some(process_handle) = child.raw_handle() else {
-        let _ = child.start_kill();
+        rollback_kill(&mut child, process_id);
         return Err(PlatformError::Spawn {
             kind,
             source: io::Error::other("子进程没有可用 Windows handle"),
         });
     };
     if let Err(error) = assign_to_job(job.raw(), process_handle, kind) {
-        let _ = child.start_kill();
+        rollback_kill(&mut child, process_id);
         return Err(error);
     }
     if let Err(error) = resume_suspended_process(process_id, kind) {
-        let _ = child.start_kill();
+        rollback_kill(&mut child, process_id);
         return Err(error);
     }
 
@@ -194,14 +195,22 @@ fn spawn(mut command: Command, kind: ProcessKind) -> Result<SpawnedProcess, Plat
     })
 }
 
+/// spawn 中途失败时回滚击杀子进程；击杀失败仅记录日志，不阻断原始错误返回
+fn rollback_kill(child: &mut tokio::process::Child, process_id: u32) {
+    if let Err(kill_error) = child.start_kill() {
+        warn!("rollback kill failed: pid={process_id}, error={kill_error}");
+    }
+}
+
 async fn reap_child(mut child: tokio::process::Child, process: Arc<WindowsProcess>) {
     let result = child.wait().await.map(|status| ProcessExit {
         exit_code: status.code(),
     });
     let cached = result.map_err(WaitFailure::from_io);
 
-    if let Ok(mut exit) = process.exit.lock() {
-        *exit = Some(cached);
+    match process.exit.lock() {
+        Ok(mut exit) => *exit = Some(cached),
+        Err(_) => error!("exit state lock poisoned, exit status not cached"),
     }
     process.exited.notify_waiters();
 }
@@ -313,6 +322,8 @@ fn terminate_job(job: HANDLE, kind: ProcessKind) -> Result<(), PlatformError> {
         if source.raw_os_error() != Some(6) {
             return Err(PlatformError::Control { kind, source });
         }
+        // ERROR_INVALID_HANDLE：Job 已随进程退出关闭，按终止契约视为成功
+        warn!("terminate job: handle already invalid, treated as success");
     }
     Ok(())
 }
