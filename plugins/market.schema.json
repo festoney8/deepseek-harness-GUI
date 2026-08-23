@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/dsh-plugin-list.schema.json",
+  "title": "DSH Plugin List",
+  "description": "A list of DSH plugin-related websites and resources",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to the JSON Schema for this file"
+    },
+    "plugins": {
+      "type": "array",
+      "title": "Plugins",
+      "description": "List of DSH plugin resources",
+      "items": {
+        "type": "object",
+        "title": "Plugin Resource",
+        "description": "A single DSH plugin resource with a title and URL",
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "The display name of the plugin resource",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "title": "URL",
+            "description": "The web address of the plugin resource",
+            "format": "uri",
+            "pattern": "^https?://"
+          }
+        },
+        "required": ["title", "url"],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    }
+  },
+  "required": ["plugins"],
+  "additionalProperties": true
+}

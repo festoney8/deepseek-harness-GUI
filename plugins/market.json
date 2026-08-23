@@ -1,0 +1,37 @@
+{
+  "$schema": "./market.schema.json",
+  "plugins": [
+    {
+      "title": "Awesome DSH plugin",
+      "url": "https://awesome-dsh-plugin.com/zh/"
+    },
+    {
+      "title": "DSH market",
+      "url": "https://dshmarket.com/zh/browse/"
+    },
+    {
+      "title": "DSH find",
+      "url": "https://dshfind.com/zh/plugins"
+    },
+    {
+      "title": "DSH Plugin Market",
+      "url": "https://www.dsh-plugin.shop/"
+    },
+    {
+      "title": "dshai",
+      "url": "https://dshai.org/zh/plugins"
+    },
+    {
+      "title": "DSH do",
+      "url": "https://dsh.do/"
+    },
+    {
+      "title": "DSH Market",
+      "url": "https://dshplugin.io/zh#top"
+    },
+    {
+      "title": "GitHub #dsh-plugin",
+      "url": "https://github.com/topics/dsh-plugin/"
+    }
+  ]
+}

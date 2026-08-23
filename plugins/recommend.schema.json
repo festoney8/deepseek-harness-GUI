@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DSH Plugin List Schema",
+  "type": "object",
+  "required": ["plugins"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to the JSON Schema for this file"
+    },
+    "plugins": {
+      "type": "array",
+      "description": "DSH plugin list",
+      "items": {
+        "type": "object",
+        "required": ["title", "description", "command", "github"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "plugin title"
+          },
+          "description": {
+            "type": "string",
+            "description": "plugin description"
+          },
+          "command": {
+            "type": "string",
+            "description": "plugin install command",
+            "pattern": "^dsh plugin --profile web add "
+          },
+          "github": {
+            "type": "string",
+            "description": "GitHub repo url",
+            "format": "uri",
+            "pattern": "^https://github\\.com/"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

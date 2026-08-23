@@ -1,0 +1,59 @@
+{
+  "$schema": "./recommend.schema.json",
+  "plugins": [
+    {
+      "title": "dsh-market",
+      "description": "开在 DeepSeek Harness 里的插件市场：设置 → 插件市场，浏览、搜索、一键安装 300+ 社区插件目录，带分类筛选、星数、排序和跟随界面语言的双语描述，还有专门的主题标签页可即时换肤。",
+      "command": "dsh plugin --profile web add dshmarket",
+      "github": "https://github.com/dsh-market/dsh-market"
+    },
+    {
+      "title": "DSH-better-sidebar",
+      "description": "开放式侧边栏底座：第三方插件可注册自己的侧边栏页面，内置文件渲染编辑、终端、Git 与子代理面板，按需分块加载。",
+      "command": "dsh plugin --profile web add dsh-better-sidebar",
+      "github": "https://github.com/omdsh-dev/DSH-better-sidebar"
+    },
+    {
+      "title": "dsh-context",
+      "description": "看清模型上下文窗口的组成与演化：Context 面板 + /context 命令，系统提示、工具 schema、注入与压缩一目了然。",
+      "command": "dsh plugin --profile web add dsh-context",
+      "github": "https://github.com/bowenliang123/dsh-context"
+    },
+    {
+      "title": "dsh-find-plugin",
+      "description": "在会话内直接搜索发现 DSH 插件：实时检索 GitHub dsh-plugin 主题并按 star 排序。",
+      "command": "dsh plugin --profile web add dsh-find-plugin",
+      "github": "https://github.com/awesome-dsh-plugin/dsh-find-plugin"
+    },
+    {
+      "title": "dsh-agent-teams",
+      "description": "把 Claude Code 的 AgentTeams 搬进 DSH：一句自然语言拉起一个多智能体团队，队长拆任务、成员之间直接收发消息，Web GUI 右上角实时看团队活动。",
+      "command": "dsh plugin --profile web add @nanmicoder/dsh-agent-teams",
+      "github": "https://github.com/NanmiCoder/dsh-agent-teams"
+    },
+    {
+      "title": "dsh-session-context-menu",
+      "description": "更好的右键：DeepSeek Harness 应用封装端的完整原生风格上下文菜单",
+      "command": "dsh plugin --profile web add github:baihejiangnan/dsh-session-context-menu",
+      "github": "https://github.com/baihejiangnan/dsh-session-context-menu"
+    },
+    {
+      "title": "dsh-web-startup-auth",
+      "description": "DSH（DeepSeek Harness）远程 Web 启动 + 用户名/密码认证插件。",
+      "command": "dsh plugin --profile web add dsh-web-startup-auth@latest",
+      "github": "https://github.com/GDWhisper/dsh-web-startup-auth"
+    },
+    {
+      "title": "",
+      "description": "",
+      "command": "dsh plugin --profile web add ",
+      "github": ""
+    },
+    {
+      "title": "",
+      "description": "",
+      "command": "dsh plugin --profile web add ",
+      "github": ""
+    }
+  ]
+}
