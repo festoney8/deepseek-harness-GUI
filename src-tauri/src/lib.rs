@@ -17,6 +17,12 @@ pub fn run() {
     });
 
     tauri::Builder::default()
+        // 单例插件必须注册为第一个插件;再次启动时唤起已有实例的主窗口
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Err(error) = backend::show_main_window(app) {
+                log::error!("single instance show failed: {error:?}");
+            }
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .manage(backend::create_harness_state())

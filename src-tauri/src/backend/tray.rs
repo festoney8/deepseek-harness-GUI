@@ -104,6 +104,7 @@ pub(crate) fn hide_to_tray(app: &AppHandle) -> Result<(), BackendError> {
 pub(crate) fn show_main_window(app: &AppHandle) -> Result<(), BackendError> {
     let window = main_window(app)?;
     window.show()?;
+    window.unminimize()?;
     window.set_focus()?;
     Ok(())
 }
