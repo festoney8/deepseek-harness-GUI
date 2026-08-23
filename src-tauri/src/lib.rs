@@ -74,7 +74,7 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("DeepSeek Harness")
         .inner_size(1200.0, 800.0)
-        .min_inner_size(800.0, 600.0)
+        .min_inner_size(1200.0, 800.0)
         .decorations(false)
         .center()
         .resizable(true)

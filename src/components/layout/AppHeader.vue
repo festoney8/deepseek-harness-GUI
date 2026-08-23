@@ -3,17 +3,13 @@
     <div class="hero-content flex-col gap-4 text-center sm:flex-row sm:gap-6">
       <img :src="logo" alt="logo" class="size-40 object-contain" />
       <div>
-        <h1 class="text-4xl font-bold tracking-tight text-[#325d9d] dark:text-white sm:text-5xl">
-          DeepSeek Harness GUI
-        </h1>
+        <h1 id="app-title" class="text-4xl font-bold tracking-tight sm:text-5xl">DeepSeek Harness GUI</h1>
         <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-start">
-          <a
-            class="text-base link link-hover font-bold text-[#325d9d] dark:text-white"
-            @click="openExternal(PROJECT_URL)"
+          <a id="github-link" class="text-base link link-hover font-bold" @click="openExternal(PROJECT_URL)"
             >项目 GitHub</a
           >
           <span class="h-5 w-px bg-blue-200 dark:bg-blue-900 mx-2.5" aria-hidden="true"></span>
-          <div class="text-base font-bold text-[#325d9d] dark:text-white">当前 v{{ appVersion }}</div>
+          <div id="current-version" class="text-base font-bold">当前 v{{ appVersion }}</div>
           <span class="h-5 w-px bg-blue-200 dark:bg-blue-900 mx-2.5" aria-hidden="true"></span>
           <a
             class="text-base link link-hover font-bold"
@@ -60,3 +56,18 @@ async function openExternal(url: string): Promise<void> {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+#app-title,
+#github-link,
+#current-version {
+  color: #325d9d;
+}
+[data-theme="night"] {
+  #app-title,
+  #github-link,
+  #current-version {
+    color: #fdf6e3;
+  }
+}
+</style>

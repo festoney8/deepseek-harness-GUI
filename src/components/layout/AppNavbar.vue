@@ -1,6 +1,6 @@
 <template>
   <header
-    class="flex h-9 min-h-9 select-none items-center border-b border-base-300 bg-base-100 pl-2 shadow-sm"
+    class="flex h-9 min-h-9 select-none items-center border-b border-base-300 bg-base-100 pl-2"
     data-tauri-drag-region
   >
     <div class="flex h-full min-w-0 flex-1 items-end overflow-x-auto overflow-y-hidden" data-tauri-drag-region>
@@ -43,7 +43,7 @@
 
     <div class="flex h-full shrink-0 items-stretch">
       <button
-        class="btn btn-ghost h-full min-h-0 w-12 rounded-none p-0 hover:bg-base-300"
+        class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-base-300"
         type="button"
         :aria-label="`APP主题：${themeLabel}`"
         :title="`APP主题：${themeLabel}`"
@@ -54,7 +54,7 @@
         <IconSystem v-else class="size-4" aria-hidden="true" />
       </button>
       <button
-        class="btn btn-ghost h-full min-h-0 w-12 rounded-none p-0 hover:bg-base-300"
+        class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-base-300"
         type="button"
         aria-label="最小化"
         @click="minimize"
@@ -62,7 +62,7 @@
         <IconMinimize class="size-4" aria-hidden="true" />
       </button>
       <button
-        class="btn btn-ghost h-full min-h-0 w-12 rounded-none p-0 hover:bg-base-300"
+        class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-base-300"
         type="button"
         :aria-label="isMaximized ? '还原' : '最大化'"
         @click="toggleMaximize"
@@ -71,7 +71,7 @@
         <IconMaximize v-else class="size-4" aria-hidden="true" />
       </button>
       <button
-        class="btn btn-ghost h-full min-h-0 w-12 rounded-none p-0 hover:bg-error hover:text-error-content"
+        class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-error hover:text-error-content"
         type="button"
         aria-label="隐藏到托盘"
         @click="hideWindow"
@@ -89,7 +89,7 @@ import CloseIcon from "~icons/material-symbols/close";
 import IconMinimize from "~icons/mingcute/minimize-fill";
 import IconMaximize from "~icons/mdi/maximize";
 import IconRestore from "~icons/pixel/window-restore";
-import IconSun from "~icons/solar/sun-2-outline";
+import IconSun from "~icons/gravity-ui/sun";
 import IconMoon from "~icons/solar/moon-line-duotone";
 import IconSystem from "~icons/material-symbols/light-mode-auto";
 import IconClose from "~icons/mingcute/close-line";
