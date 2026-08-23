@@ -19,7 +19,7 @@ export function useToast() {
   function show(kind: ToastKind, message: string): number {
     const id = nextId++;
     toasts.value = [...toasts.value.slice(-2), { id, kind, message }];
-    window.setTimeout(() => dismiss(id), kind !== "error" ? 5000 : 10000);
+    window.setTimeout(() => dismiss(id), kind !== "error" ? 3000 : 8000);
     return id;
   }
 

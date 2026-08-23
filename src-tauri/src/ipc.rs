@@ -1,6 +1,6 @@
 use tauri::{AppHandle, State};
 
-use crate::backend::{self, BackendError, HarnessState, LogState, UrlWindowState, WebviewTab};
+use crate::backend::{self, BackendError, HarnessState, LogState, WebviewState, WebviewTab};
 
 /// 前后端 IPC 边界使用的稳定结构化错误
 #[derive(Debug, Clone, serde::Serialize)]
@@ -34,7 +34,7 @@ impl IpcError {
                 ("internal_error", String::from("内部错误，请查看日志"))
             }
             BackendError::ChildWebviewNotFound => ("webview_tab_not_found", error.to_string()),
-            BackendError::InvalidWindowUrl => ("invalid_window_url", error.to_string()),
+            BackendError::InvalidWebviewUrl => ("invalid_window_url", error.to_string()),
             BackendError::InvalidHost => ("invalid_host", error.to_string()),
             BackendError::InvalidProtocol => ("invalid_protocol", error.to_string()),
             BackendError::InvalidPort => ("invalid_port", error.to_string()),
@@ -106,12 +106,12 @@ pub(crate) async fn hide_to_tray(app: AppHandle) -> Result<(), IpcError> {
 
 /// 创建或显示一个直接加载外部 URL 的 child WebView
 #[tauri::command]
-pub(crate) async fn create_window_with_url(
+pub(crate) async fn create_webview_with_url(
     url: String,
     app: AppHandle,
-    state: State<'_, UrlWindowState>,
+    state: State<'_, WebviewState>,
 ) -> Result<WebviewTab, IpcError> {
-    backend::create_window_with_url(&app, url, &state).map_err(IpcError::from_backend)
+    backend::create_webview_with_url(&app, url, &state).map_err(IpcError::from_backend)
 }
 
 /// 激活一个 child WebView 标签
@@ -119,9 +119,9 @@ pub(crate) async fn create_window_with_url(
 pub(crate) async fn activate_webview_tab(
     label: String,
     app: AppHandle,
-    state: State<'_, UrlWindowState>,
+    state: State<'_, WebviewState>,
 ) -> Result<(), IpcError> {
-    backend::activate_window_tab(&app, label, &state).map_err(IpcError::from_backend)
+    backend::activate_webview_tab(&app, label, &state).map_err(IpcError::from_backend)
 }
 
 /// 关闭一个 child WebView 标签
@@ -129,16 +129,16 @@ pub(crate) async fn activate_webview_tab(
 pub(crate) async fn close_webview_tab(
     label: String,
     app: AppHandle,
-    state: State<'_, UrlWindowState>,
+    state: State<'_, WebviewState>,
 ) -> Result<(), IpcError> {
-    backend::close_window_tab(&app, label, &state).map_err(IpcError::from_backend)
+    backend::close_webview_tab(&app, label, &state).map_err(IpcError::from_backend)
 }
 
 /// 隐藏所有 DSH child WebView
 #[tauri::command]
 pub(crate) async fn hide_all_webview_tabs(
     app: AppHandle,
-    state: State<'_, UrlWindowState>,
+    state: State<'_, WebviewState>,
 ) -> Result<(), IpcError> {
-    backend::hide_all_window_tabs(&app, &state).map_err(IpcError::from_backend)
+    backend::hide_all_webview_tabs(&app, &state).map_err(IpcError::from_backend)
 }

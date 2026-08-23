@@ -16,7 +16,6 @@ export interface WebviewTab {
   label: string;
   url: string;
   displayName: string;
-  reused: boolean;
 }
 
 /**
@@ -61,7 +60,7 @@ export const openLogs = () => invokeIpc<void>("open_logs");
 export const hideToTray = () => invokeIpc<void>("hide_to_tray");
 
 /** 创建或激活一个 DSH child WebView 标签 */
-export const createWindowWithUrl = (url: string) => invokeIpc<WebviewTab>("create_window_with_url", { url });
+export const createWindowWithUrl = (url: string) => invokeIpc<WebviewTab>("create_webview_with_url", { url });
 
 /** 激活一个 DSH child WebView 标签 */
 export const activateWebviewTab = (label: string) => invokeIpc<void>("activate_webview_tab", { label });

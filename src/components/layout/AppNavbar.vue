@@ -2,13 +2,8 @@
   <header
     class="flex h-9 min-h-9 select-none items-center border-b border-base-300 bg-base-100 pl-2 shadow-sm"
     data-tauri-drag-region
-    @dblclick.self="toggleMaximize"
   >
-    <div
-      class="flex h-full min-w-0 flex-1 items-end overflow-x-auto overflow-y-hidden"
-      data-tauri-drag-region
-      @dblclick.self="toggleMaximize"
-    >
+    <div class="flex h-full min-w-0 flex-1 items-end overflow-x-auto overflow-y-hidden" data-tauri-drag-region>
       <div role="tablist" class="tabs tabs-lift tabs-sm min-w-max">
         <button
           v-for="tab in tabsStore.tabs"
@@ -31,21 +26,22 @@
           <span class="max-w-52 truncate" :class="{ 'font-bold': tabsStore.activeTabId === tab.id }">
             {{ tab.displayName }}
           </span>
-          <span
+          <button
             v-if="tab.closable"
             class="btn btn-xs btn-circle btn-ghost shrink-0"
             :class="{ 'opacity-50': tabsStore.activeTabId !== tab.id }"
-            role="button"
+            type="button"
             aria-label="关闭标签页"
             @click.stop="closeTab(tab)"
           >
             <CloseIcon class="size-4" aria-hidden="true" />
-          </span>
+          </button>
+          <span v-else class="btn btn-xs btn-circle invisible shrink-0" aria-hidden="true"></span>
         </button>
       </div>
     </div>
 
-    <div class="flex h-full shrink-0 items-stretch" @dblclick.stop>
+    <div class="flex h-full shrink-0 items-stretch">
       <button
         class="btn btn-ghost h-full min-h-0 w-12 rounded-none p-0 hover:bg-base-300"
         type="button"

@@ -20,7 +20,7 @@ const HOME_TAB: BrowserTab = {
   id: "home",
   label: "main",
   url: "",
-  displayName: "DeepSeek Harness GUI 　",
+  displayName: "DeepSeek Harness GUI",
   closable: false,
 };
 

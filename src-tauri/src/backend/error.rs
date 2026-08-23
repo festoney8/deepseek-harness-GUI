@@ -59,7 +59,7 @@ pub(crate) enum BackendError {
     ChildWebviewNotFound,
     /// 动态 URL 无效或不符合外部页面加载策略
     #[error("URL 无效")]
-    InvalidWindowUrl,
+    InvalidWebviewUrl,
     /// 找不到主窗口或应用的默认托盘图标
     #[error("主窗口或默认图标不可用")]
     WindowResourceMissing,

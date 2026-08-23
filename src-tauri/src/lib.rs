@@ -21,15 +21,14 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .manage(backend::create_harness_state())
-        .manage(backend::create_url_window_state())
-        .manage(Arc::clone(&exit_state))
+        .manage(backend::create_webview_state())
         .invoke_handler(tauri::generate_handler![
             ipc::start_dsh,
             ipc::stop_dsh,
             ipc::connect_remote,
             ipc::open_logs,
             ipc::hide_to_tray,
-            ipc::create_window_with_url,
+            ipc::create_webview_with_url,
             ipc::activate_webview_tab,
             ipc::close_webview_tab,
             ipc::hide_all_webview_tabs,
@@ -60,7 +59,7 @@ pub fn run() {
             let exit_state = Arc::clone(&exit_state);
             // 主窗口必须先于托盘注册存在，托盘依赖 get_window("main")
             build_main_window(app)?;
-            let webview_state = app.state::<backend::UrlWindowState>().inner().clone();
+            let webview_state = app.state::<backend::WebviewState>().inner().clone();
             backend::register_resize_handler(app.handle(), webview_state)?;
             backend::register_tray(app.handle(), harness_state, exit_state)?;
             Ok(())
@@ -81,7 +80,6 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
         .center()
         .resizable(true)
         .maximizable(true)
-        // .zoom_hotkeys_enabled(true)
         .disable_drag_drop_handler()
         .on_download(backend::handle_download)
         .build()?;

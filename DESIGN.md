@@ -27,7 +27,7 @@ Frontend
   ├─ invoke("start_dsh")
   ├─ invoke("stop_dsh")
   ├─ invoke("connect_remote")
-  ├─ invoke("create_window_with_url")
+  ├─ invoke("create_webview_with_url")
   ├─ invoke("open_logs")
   ├─ invoke("hide_to_tray")
   ├─ fs.exists/readTextFile/watch("$HOME/.dsh/settings.yaml")
@@ -100,7 +100,7 @@ src-tauri/src/
 start_dsh(port) -> address
 stop_dsh() -> success
 connect_remote(protocol, host, port) -> address
-create_window_with_url(url) -> success
+create_webview_with_url(url) -> success
 open_logs() -> success
 hide_to_tray() -> success
 ```
@@ -111,7 +111,7 @@ Rust 侧概念签名：
 async fn start_dsh(port: u16) -> Result<String, IpcError>;
 async fn stop_dsh() -> Result<(), IpcError>;
 async fn connect_remote(protocol: String, host: String, port: u16) -> Result<String, IpcError>;
-async fn create_window_with_url(url: String) -> Result<(), IpcError>;
+async fn create_webview_with_url(url: String) -> Result<(), IpcError>;
 async fn open_logs() -> Result<(), IpcError>;
 async fn hide_to_tray() -> Result<(), IpcError>;
 ```
@@ -960,10 +960,10 @@ connect_remote("https", "127.0.0.1", 3000)
 -> "https://127.0.0.1:3000"
 ```
 
-### 8.4 create_window_with_url 接口
+### 8.4 create_webview_with_url 接口
 
 ```text
-create_window_with_url(url: String) -> Result<(), IpcError>
+create_webview_with_url(url: String) -> Result<(), IpcError>
 ```
 
 该接口由 Rust 创建 `WebviewWindow`，使用 `WebviewUrl::External` 直接加载 URL，不使用 iframe 或前端 `window.open()`。
@@ -979,7 +979,7 @@ create_window_with_url(url: String) -> Result<(), IpcError>
 
 窗口复用与生命周期：
 
-- `UrlWindowState` 保存规范化 URL 到内部 label 的映射。
+- `WebviewState` 保存规范化 URL 到内部 label 的映射。
 - 创建锁覆盖查找、显示和创建过程，避免同一 URL 的并发请求创建多个窗口。
 - 已存在窗口执行 `unminimize`、`show` 和 `set_focus`，不重新创建或重新导航。
 - URL 窗口允许正常关闭；收到 `Destroyed` 事件后删除映射，下一次请求重新创建窗口。
@@ -1143,7 +1143,7 @@ open_logs() -> Result<(), IpcError>
 
 ### 11.2 URL Webview 窗口
 
-- `create_window_with_url(url)` 创建直接加载外部 URL 的独立 Webview 窗口。
+- `create_webview_with_url(url)` 创建直接加载外部 URL 的独立 Webview 窗口。
 - 同一规范化 URL 的窗口已存在时，只显示、取消最小化并聚焦已有窗口。
 - URL 窗口关闭后由 `Destroyed` 事件清除 URL 映射，下一次请求重新创建。
 - URL 窗口关闭不会触发隐藏到托盘，也不会停止 dsh。
@@ -1271,7 +1271,7 @@ yaml                          解析 settings.yaml
 - dsh 始终作为单实例受控进程树。
 - `start_dsh` 成功表示本地 WebUI 已返回 HTTP `2xx`，不是仅表示进程创建成功。
 - `connect_remote` 成功表示对应规范化地址经过用户指定协议（http 或 https）探测可用。
-- `create_window_with_url` 只加载通过 Rust 校验的 HTTP(S) URL；同一规范化 URL 复用一个窗口。
+- `create_webview_with_url` 只加载通过 Rust 校验的 HTTP(S) URL；同一规范化 URL 复用一个窗口。
 - 所有 Rust 创建的 Webview 窗口都挂载统一下载处理函数，下载目标由用户通过系统保存对话框选择。
 - 动态远程 Webview 不获得主窗口的本地插件 capability，也不开放远程 Tauri IPC。
 - 主题由可信本地前端通过 `tauri-plugin-fs` 读取和监听，缺失或无效主题值回退到 `system`。
