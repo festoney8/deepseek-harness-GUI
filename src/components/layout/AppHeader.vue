@@ -1,10 +1,10 @@
 <template>
   <header class="hero min-h-0 h-full bg-transparent">
     <div class="hero-content flex-col gap-4 text-center sm:flex-row sm:gap-6">
-      <img :src="logo" alt="logo" class="size-40 object-contain" />
+      <img :src="logo" alt="logo" class="size-40 object-contain drop-shadow-xl" />
       <div>
         <h1 id="app-title" class="text-4xl font-bold tracking-tight sm:text-5xl">DeepSeek Harness GUI</h1>
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-start">
+        <div class="mt-6 ml-1 flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-start">
           <a id="github-link" class="text-base link link-hover font-bold" @click="openExternal(PROJECT_URL)"
             >项目 GitHub</a
           >

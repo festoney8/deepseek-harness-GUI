@@ -3,25 +3,28 @@
     <div class="card-body gap-5">
       <h2 class="card-title">其他操作</h2>
       <div class="grid gap-3 sm:grid-cols-2">
-        <button type="button" class="btn btn-outline" @click="noop">插件市场</button>
-        <button type="button" class="btn btn-outline" @click="noop">安装插件</button>
+        <button type="button" class="btn btn-outline" @click="pluginMarketModal?.open()">插件市场</button>
+        <button type="button" class="btn btn-outline" @click="pluginInstallModal?.open()">安装插件</button>
         <button type="button" class="btn btn-outline" @click="openNodeDownload">安装 Node.js</button>
         <button type="button" class="btn btn-outline" @click="openLogsPanel">查看日志</button>
       </div>
     </div>
+    <PluginMarketModal ref="pluginMarketModal" />
+    <PluginInstallModal ref="pluginInstallModal" />
   </section>
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { openLogs } from "../../ipc/ipc";
+import PluginInstallModal from "../plugins/PluginInstallModal.vue";
+import PluginMarketModal from "../plugins/PluginMarketModal.vue";
 import { getErrorMessage, useToast } from "../../composables/useToast";
 
 const toast = useToast();
-
-function noop(): void {
-  // 占位操作暂不执行任何动作。
-}
+const pluginMarketModal = ref<InstanceType<typeof PluginMarketModal> | null>(null);
+const pluginInstallModal = ref<InstanceType<typeof PluginInstallModal> | null>(null);
 
 async function openNodeDownload(): Promise<void> {
   try {

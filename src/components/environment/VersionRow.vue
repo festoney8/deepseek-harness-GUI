@@ -6,7 +6,6 @@
       :class="state.kind === 'error' || accent ? 'badge-accent badge-soft' : 'badge-ghost'"
       :title="displayedValue"
     >
-      <div>{{ displayedValue }}</div>
       <a
         v-if="state.kind === 'error' && errorHref"
         class="link link-hover link-primary text-base font-medium"
@@ -14,6 +13,7 @@
         @click="openDownload"
         >去下载</a
       >
+      <div v-else>{{ displayedValue }}</div>
     </span>
   </div>
 </template>

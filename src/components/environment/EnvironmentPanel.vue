@@ -59,7 +59,7 @@ const groups = computed(() => [
   {
     title: "本地环境",
     rows: [
-      { label: "本地 node", state: env.nodeVer, accent: false, errorHref: NODE_DOWNLOAD_URL },
+      { label: "本地 node (推荐v24+)", state: env.nodeVer, accent: false, errorHref: NODE_DOWNLOAD_URL },
       { label: "本地 npm", state: env.npmVer, accent: false, errorHref: NODE_DOWNLOAD_URL },
       { label: "本地 DSH", state: env.dshVer, accent: false },
     ],
