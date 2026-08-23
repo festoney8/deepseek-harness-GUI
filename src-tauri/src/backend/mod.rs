@@ -13,5 +13,6 @@ pub(crate) use logs::{
 pub(crate) use network::{check_tcp, check_url, connect_remote};
 pub(crate) use tray::{hide_to_tray, register_tray, ExitState};
 pub(crate) use webview::{
-    create_url_window_state, create_window_with_url, handle_download, UrlWindowState,
+    activate_window_tab, close_window_tab, create_url_window_state, create_window_with_url,
+    handle_download, hide_all_window_tabs, register_resize_handler, UrlWindowState, WebviewTab,
 };

@@ -54,6 +54,9 @@ pub(crate) enum BackendError {
     /// 动态 URL 窗口状态锁已损坏
     #[error("URL 窗口状态不可用")]
     WindowStatePoisoned,
+    /// 请求的 child WebView 不存在
+    #[error("child WebView 不存在")]
+    ChildWebviewNotFound,
     /// 动态 URL 无效或不符合外部页面加载策略
     #[error("URL 无效")]
     InvalidWindowUrl,

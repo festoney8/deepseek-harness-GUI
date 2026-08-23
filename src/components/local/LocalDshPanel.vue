@@ -71,7 +71,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { createWindowWithUrl } from "../../ipc/ipc";
+import { useTabsStore } from "../../stores/tabs";
 import { useDshStore } from "../../stores/dsh";
 import { useEnvStore } from "../../stores/env";
 import { getErrorMessage, useToast } from "../../composables/useToast";
@@ -81,6 +81,7 @@ const props = defineProps<{ installing?: boolean }>();
 const form = useConnectionForm();
 const { localPort, validLocalPort, localPortNumber } = form;
 const dsh = useDshStore();
+const tabs = useTabsStore();
 const env = useEnvStore();
 const toast = useToast();
 const installing = computed(() => props.installing ?? false);
@@ -90,7 +91,7 @@ const dshVersionReady = computed(() => env.dshVer.kind === "ok");
 async function openLocal(): Promise<void> {
   if (!dsh.address) return;
   try {
-    await createWindowWithUrl(dsh.address);
+    await tabs.openDshUrl(dsh.address);
   } catch (error) {
     toast.error(getErrorMessage(error));
   }
@@ -102,7 +103,7 @@ async function startLocal(): Promise<void> {
   form.saveLocal();
   try {
     const address = await dsh.start(localPortNumber.value);
-    await createWindowWithUrl(address);
+    await tabs.openDshUrl(address);
     toast.success("DSH 已启动");
   } catch (error) {
     toast.error(getErrorMessage(error));
@@ -114,7 +115,7 @@ async function restartLocal(): Promise<void> {
   form.saveLocal();
   try {
     const address = await dsh.restart(localPortNumber.value);
-    await createWindowWithUrl(address);
+    await tabs.openDshUrl(address);
     toast.success("DSH 已重启");
   } catch (error) {
     toast.error(getErrorMessage(error));

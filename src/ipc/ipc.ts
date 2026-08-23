@@ -11,6 +11,14 @@ export interface DshExitedPayload {
   exitCode: number | null;
 }
 
+/** Rust 侧 child WebView 标签信息 */
+export interface WebviewTab {
+  label: string;
+  url: string;
+  displayName: string;
+  reused: boolean;
+}
+
 /**
  * 将 invoke rejection 归一化为 IpcError。Rust 侧序列化错误会以
  * `{ code, message }` 对象到达；其他非结构化值统一映射为 internal_error
@@ -52,5 +60,14 @@ export const openLogs = () => invokeIpc<void>("open_logs");
 /** 隐藏到托盘 */
 export const hideToTray = () => invokeIpc<void>("hide_to_tray");
 
-/** 创建或显示一个直接加载外部 URL 的 Webview 窗口 */
-export const createWindowWithUrl = (url: string) => invokeIpc<void>("create_window_with_url", { url });
+/** 创建或激活一个 DSH child WebView 标签 */
+export const createWindowWithUrl = (url: string) => invokeIpc<WebviewTab>("create_window_with_url", { url });
+
+/** 激活一个 DSH child WebView 标签 */
+export const activateWebviewTab = (label: string) => invokeIpc<void>("activate_webview_tab", { label });
+
+/** 关闭一个 DSH child WebView 标签 */
+export const closeWebviewTab = (label: string) => invokeIpc<void>("close_webview_tab", { label });
+
+/** 隐藏所有 DSH child WebView，显示首页 */
+export const hideAllWebviewTabs = () => invokeIpc<void>("hide_all_webview_tabs");

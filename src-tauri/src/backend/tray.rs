@@ -7,7 +7,7 @@ use log::error;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Manager, WindowEvent, WebviewWindow,
+    AppHandle, Manager, Window, WindowEvent,
 };
 
 use super::{stop_dsh, BackendError, HarnessPhase, HarnessState};
@@ -80,7 +80,7 @@ pub(crate) fn register_tray(
         .build(app)?;
 
     let close_app = app.clone();
-    if let Some(window) = app.get_webview_window("main") {
+    if let Some(window) = app.get_window("main") {
         window.on_window_event(move |event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 api.prevent_close();
@@ -136,7 +136,7 @@ pub(crate) async fn quit_app(
 }
 
 /// 返回主窗口，缺失时报告统一的窗口资源错误
-fn main_window(app: &AppHandle) -> Result<WebviewWindow, BackendError> {
-    app.get_webview_window("main")
+fn main_window(app: &AppHandle) -> Result<Window, BackendError> {
+    app.get_window("main")
         .ok_or(BackendError::WindowResourceMissing)
 }

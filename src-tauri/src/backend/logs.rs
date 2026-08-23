@@ -84,11 +84,13 @@ pub(crate) fn create_session_log_dir(app_log_dir: &Path) -> Result<PathBuf, Back
 /// 使用系统文件管理器打开本次启动日志目录
 pub(crate) async fn open_logs(app: &AppHandle, state: &LogState) -> Result<(), BackendError> {
     let path = state.session_dir.to_string_lossy().into_owned();
-    app.opener().open_path(path, None::<&str>).map_err(|source| {
-        error!(
-            "failed to open session log dir {:?}: {source:?}",
-            state.session_dir
-        );
-        BackendError::OpenLogsFailed
-    })
+    app.opener()
+        .open_path(path, None::<&str>)
+        .map_err(|source| {
+            error!(
+                "failed to open session log dir {:?}: {source:?}",
+                state.session_dir
+            );
+            BackendError::OpenLogsFailed
+        })
 }

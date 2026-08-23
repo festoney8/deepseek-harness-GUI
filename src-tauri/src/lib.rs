@@ -12,12 +12,17 @@ pub fn run() {
     // 修复 GUI 应用 PATH，必须在任何子进程启动之前
     let path_fix = fix_path_env::fix();
 
+    let exit_state = Arc::new(backend::ExitState {
+        exiting: AtomicBool::new(false),
+    });
+
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
         .manage(backend::create_harness_state())
         .manage(backend::create_url_window_state())
+        .manage(Arc::clone(&exit_state))
         .invoke_handler(tauri::generate_handler![
             ipc::start_dsh,
             ipc::stop_dsh,
@@ -25,8 +30,11 @@ pub fn run() {
             ipc::open_logs,
             ipc::hide_to_tray,
             ipc::create_window_with_url,
+            ipc::activate_webview_tab,
+            ipc::close_webview_tab,
+            ipc::hide_all_webview_tabs,
         ])
-        .setup(|app| {
+        .setup(move |app| {
             // 解析平台标准日志目录，并创建本次启动的独立会话目录
             let app_log_dir = app.path().app_log_dir()?;
             // 启动时清理 7 天之前的会话日志目录
@@ -49,11 +57,11 @@ pub fn run() {
                     lifecycle: state.lifecycle.clone(),
                 })
             };
-            let exit_state = Arc::new(backend::ExitState {
-                exiting: AtomicBool::new(false),
-            });
-            // 主窗口必须先于托盘注册存在，托盘依赖 get_webview_window("main")
+            let exit_state = Arc::clone(&exit_state);
+            // 主窗口必须先于托盘注册存在，托盘依赖 get_window("main")
             build_main_window(app)?;
+            let webview_state = app.state::<backend::UrlWindowState>().inner().clone();
+            backend::register_resize_handler(app.handle(), webview_state)?;
             backend::register_tray(app.handle(), harness_state, exit_state)?;
             Ok(())
         })
@@ -68,12 +76,12 @@ fn build_main_window(app: &tauri::App) -> tauri::Result<()> {
     WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
         .title("DeepSeek Harness")
         .inner_size(1200.0, 800.0)
-        .min_inner_size(1200.0, 800.0)
+        .min_inner_size(800.0, 600.0)
         .decorations(false)
         .center()
         .resizable(true)
         .maximizable(true)
-        .zoom_hotkeys_enabled(true)
+        // .zoom_hotkeys_enabled(true)
         .disable_drag_drop_handler()
         .on_download(backend::handle_download)
         .build()?;

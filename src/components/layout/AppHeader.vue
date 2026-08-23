@@ -3,19 +3,23 @@
     <div class="hero-content flex-col gap-4 text-center sm:flex-row sm:gap-6">
       <img :src="logo" alt="logo" class="size-40 object-contain" />
       <div>
-        <h1 class="text-4xl font-bold tracking-tight text-[#325d9d] sm:text-5xl">DeepSeek Harness GUI</h1>
+        <h1 class="text-4xl font-bold tracking-tight text-[#325d9d] dark:text-white sm:text-5xl">
+          DeepSeek Harness GUI
+        </h1>
         <div class="mt-6 flex flex-wrap items-center justify-center gap-2 text-sm sm:justify-start">
-          <a class="text-base link link-hover font-bold text-[#325d9d]" @click="openExternal(PROJECT_URL)"
+          <a
+            class="text-base link link-hover font-bold text-[#325d9d] dark:text-white"
+            @click="openExternal(PROJECT_URL)"
             >项目 GitHub</a
           >
           <span class="h-5 w-px bg-blue-200 dark:bg-blue-900 mx-2.5" aria-hidden="true"></span>
-          <div class="text-base font-bold text-[#325d9d]">当前 v{{ appVersion }}</div>
+          <div class="text-base font-bold text-[#325d9d] dark:text-white">当前 v{{ appVersion }}</div>
           <span class="h-5 w-px bg-blue-200 dark:bg-blue-900 mx-2.5" aria-hidden="true"></span>
           <a
-            v-if="hasUpdate"
-            class="text-base link link-hover link-accent font-bold"
+            class="text-base link link-hover font-bold"
+            :class="{ 'link-accent': hasUpdate }"
             @click="openExternal(RELEASES_URL)"
-            >有更新 {{ latestAppVersion }}</a
+            >最新 {{ latestAppVersion }}</a
           >
         </div>
       </div>

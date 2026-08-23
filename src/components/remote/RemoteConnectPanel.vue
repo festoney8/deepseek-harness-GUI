@@ -58,13 +58,15 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { connectRemote, createWindowWithUrl } from "../../ipc/ipc";
+import { connectRemote } from "../../ipc/ipc";
+import { useTabsStore } from "../../stores/tabs";
 import { getErrorMessage, useToast } from "../../composables/useToast";
 import { useConnectionForm } from "../../composables/useConnectionForm";
 
 const form = useConnectionForm();
 const { protocol, host, remotePort, validHost, validRemotePort, validRemote, normalizedHost, remotePortNumber } = form;
 const toast = useToast();
+const tabs = useTabsStore();
 const connecting = ref(false);
 const HOST_PATTERN = "(?:localhost|(?:[0-9]{1,3}\\.){3}[0-9]{1,3})";
 
@@ -75,7 +77,7 @@ async function connect(): Promise<void> {
   connecting.value = true;
   try {
     const address = await connectRemote(protocol.value, normalizedHost.value, remotePortNumber.value);
-    await createWindowWithUrl(address);
+    await tabs.openDshUrl(address);
     toast.success("远程连接成功");
   } catch (error) {
     toast.error(getErrorMessage(error));

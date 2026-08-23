@@ -1,11 +1,17 @@
 <template>
-  <HomeView />
+  <div class="flex h-screen min-h-0 flex-col overflow-hidden bg-base-200 text-base-content">
+    <AppNavbar />
+    <main class="min-h-0 flex-1 overflow-auto">
+      <HomeView />
+    </main>
+  </div>
   <ToastViewport />
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, watch } from "vue";
 import HomeView from "./views/HomeView.vue";
+import AppNavbar from "./components/layout/AppNavbar.vue";
 import ToastViewport from "./components/feedback/ToastViewport.vue";
 import { useDshStore } from "./stores/dsh";
 import { useEnvStore } from "./stores/env";
