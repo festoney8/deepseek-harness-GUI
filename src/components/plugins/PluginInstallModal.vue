@@ -9,7 +9,6 @@
       </form>
       <p class="py-4 text-base-content/70">安装插件内容待实现</p>
     </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
     <ToastViewport />
   </dialog>
 </template>
