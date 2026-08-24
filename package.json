@@ -11,8 +11,6 @@
     "prepare": "husky",
     "build:installer": "tauri build --bundles nsis",
     "build:portable": "tauri build --no-bundle && node scripts/package-portable.mjs",
-    "build:deb": "tauri build --bundles deb",
-    "build:appimage": "tauri build --bundles appimage",
     "build:dmg": "tauri build --bundles dmg"
   },
   "dependencies": {
