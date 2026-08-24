@@ -26,6 +26,7 @@ pub fn run() {
                 log::error!("single instance show failed: {error:?}");
             }
         }))
+        .plugin(tauri_plugin_os::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .manage(backend::create_harness_state())

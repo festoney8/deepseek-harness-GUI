@@ -3,6 +3,29 @@
     class="flex h-9 min-h-9 select-none items-center border-b border-base-300 bg-base-100 pl-2"
     data-tauri-drag-region
   >
+    <div v-if="isMacOS" class="flex h-full shrink-0 items-center gap-3 pl-2.5 pr-4" data-tauri-drag-region>
+      <button
+        class="mac-traffic-light mac-close btn btn-xs zoom-55 btn-circle border-0 p-0"
+        type="button"
+        aria-label="关闭"
+        title="关闭"
+        @click="hideWindow"
+      ></button>
+      <button
+        class="mac-traffic-light mac-minimize btn btn-xs zoom-55 btn-circle border-0 p-0"
+        type="button"
+        aria-label="最小化"
+        title="最小化"
+        @click="minimize"
+      ></button>
+      <button
+        class="mac-traffic-light mac-maximize btn btn-xs zoom-55 btn-circle border-0 p-0"
+        type="button"
+        :aria-label="isMaximized ? '还原' : '全屏'"
+        :title="isMaximized ? '还原' : '全屏'"
+        @click="toggleMaximize"
+      ></button>
+    </div>
     <div class="flex h-full min-w-0 flex-1 items-end overflow-x-auto overflow-y-hidden" data-tauri-drag-region>
       <div role="tablist" class="tabs tabs-lift tabs-sm min-w-max">
         <button
@@ -53,37 +76,40 @@
         <IconMoon v-else-if="preference === 'dark'" class="size-4" aria-hidden="true" />
         <IconSystem v-else class="size-4" aria-hidden="true" />
       </button>
-      <button
-        class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-base-300"
-        type="button"
-        aria-label="最小化"
-        @click="minimize"
-      >
-        <IconMinimize class="size-4" aria-hidden="true" />
-      </button>
-      <button
-        class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-base-300"
-        type="button"
-        :aria-label="isMaximized ? '还原' : '最大化'"
-        @click="toggleMaximize"
-      >
-        <IconRestore v-if="isMaximized" class="size-4" aria-hidden="true" />
-        <IconMaximize v-else class="size-4" aria-hidden="true" />
-      </button>
-      <button
-        class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-error hover:text-error-content"
-        type="button"
-        aria-label="隐藏到托盘"
-        @click="hideWindow"
-      >
-        <IconClose class="size-4" aria-hidden="true" />
-      </button>
+      <template v-if="isWindows">
+        <button
+          class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-base-300"
+          type="button"
+          aria-label="最小化"
+          @click="minimize"
+        >
+          <IconMinimize class="size-4" aria-hidden="true" />
+        </button>
+        <button
+          class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-base-300"
+          type="button"
+          :aria-label="isMaximized ? '还原' : '最大化'"
+          @click="toggleMaximize"
+        >
+          <IconRestore v-if="isMaximized" class="size-4" aria-hidden="true" />
+          <IconMaximize v-else class="size-4" aria-hidden="true" />
+        </button>
+        <button
+          class="btn btn-ghost h-full min-h-0 w-10 rounded-none p-0 hover:bg-error hover:text-error-content"
+          type="button"
+          aria-label="隐藏到托盘"
+          @click="hideWindow"
+        >
+          <IconClose class="size-4" aria-hidden="true" />
+        </button>
+      </template>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from "vue";
+import { platform } from "@tauri-apps/plugin-os";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import CloseIcon from "~icons/material-symbols/close";
 import IconMinimize from "~icons/mingcute/minimize-fill";
@@ -113,6 +139,10 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   system: "系统模式",
 };
 const themeLabel = computed(() => THEME_LABELS[preference.value] ?? "系统模式");
+
+const p = platform();
+const isMacOS = p === "macos";
+const isWindows = p === "windows";
 
 const isMaximized = ref(false);
 let unlistenResized: (() => void) | undefined;
@@ -178,3 +208,22 @@ async function hideWindow(): Promise<void> {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.mac-traffic-light {
+  color: #1f2937;
+  border-color: transparent;
+  &.mac-close {
+    background-color: #ff5f57 !important;
+  }
+  &.mac-minimize {
+    background-color: #febc2e !important;
+  }
+  &.mac-maximize {
+    background-color: #28c840 !important;
+  }
+  &:hover {
+    transform: scale(1.2);
+  }
+}
+</style>

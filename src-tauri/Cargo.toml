@@ -45,6 +45,7 @@ fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
 tauri-plugin-shell = "2"
 rfd = "0.15"
 percent-encoding = "2"
+tauri-plugin-os = "2.3.2"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = [
