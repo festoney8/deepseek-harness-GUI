@@ -25,6 +25,12 @@
           "cmd": "dsh.cmd",
           "args": ["-V"],
           "sidecar": false
+        },
+        {
+          "name": "dsh-plugin-list",
+          "cmd": "dsh.cmd",
+          "args": ["plugin", "--profile", "web", "list", "--json"],
+          "sidecar": false
         }
       ]
     },
