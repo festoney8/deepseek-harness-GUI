@@ -1,7 +1,7 @@
 <template>
   <dialog ref="dialogEl" class="modal">
     <div class="modal-box relative w-11/12 max-w-5xl">
-      <h3 class="mb-4 text-2xl font-bold">推荐插件</h3>
+      <h3 class="mb-6 text-2xl font-bold">推荐插件（安装后需重启 DSH）</h3>
       <form method="dialog" class="absolute right-2 top-2">
         <button class="btn btn-circle btn-ghost" type="submit" aria-label="关闭">
           <CloseIcon class="size-6" aria-hidden="true" />
@@ -44,9 +44,9 @@
                 <span>仓库</span>
               </button>
               <button
-                class="btn btn-outline btn-sm"
+                class="btn btn-outline btn-sm btn-primary"
                 type="button"
-                :disabled="isInstalling(plugin.package)"
+                :disabled="isInstalling(plugin.package) || isInstalled(plugin)"
                 @click="installPlugin(plugin)"
               >
                 <InstallIcon class="size-5" aria-hidden="true" />
@@ -139,7 +139,7 @@ function actionLabel(plugin: RecommendedPlugin): string {
   const installingMode = installingModes.value[plugin.package];
   if (installingMode === "install") return "安装中";
   if (installingMode === "update") return "更新中";
-  return isInstalled(plugin) ? "更新" : "安装";
+  return "安装";
 }
 
 async function visitGithub(plugin: RecommendedPlugin): Promise<void> {
