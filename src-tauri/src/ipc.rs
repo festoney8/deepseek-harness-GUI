@@ -1,74 +1,157 @@
-//! webview ↔ Rust 通讯接口清单。
-//!
-//! Commands（前端 invoke → Rust，均为薄包装转发 Supervisor）：
-//! - get_state() -> Snapshot            全量快照（前端 initRuntime 初始化基准拉取）
-//! - check_env()                        检测 node/npm 版本
-//! - check_version()                    远端（官方源+镜像源）与本地 dsh 版本查询
-//! - install_dsh(mirror: bool)          安装/更新 dsh（false 官方源，true 镜像源）
-//! - start_server(host, port)           启动 harness：本地地址在指定端口启动 dsh，其他地址视为远程服务直接连接
-//! - open_log_dir()                     用默认文件管理器打开本次运行日志目录
-//! - exit_app()                         终止 harness 进程树后退出应用
-//! - hide_to_tray()                     隐藏主窗口（关窗进托盘流程的窗口隐藏动作）
-//!
-//! Events（Rust emit → 前端 listen）：
-//! - runtime-state: Snapshot            状态变更推送
-//! - close-requested: ()                窗口关闭拦截通知
+use tauri::{AppHandle, State};
 
-use tauri::{AppHandle, Manager};
-use tauri_plugin_opener::OpenerExt;
+use crate::backend::{self, BackendError, HarnessState, LogState, WebviewState, WebviewTab};
 
-use crate::protocol::Snapshot;
-use crate::runtime::{shutdown, Supervisor};
-
-/// 全量快照：前端 initRuntime 的初始化基准拉取（事件为增量推送，必须有基准值）。
-#[tauri::command]
-pub fn get_state(sup: tauri::State<'_, Supervisor>) -> Snapshot {
-    sup.snapshot()
+/// 前后端 IPC 边界使用的稳定结构化错误
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct IpcError {
+    /// 供前端分支处理的稳定错误码
+    pub code: String,
+    /// 可直接展示给用户的错误消息
+    pub message: String,
 }
 
-/// 检测 node/npm 版本，刷新快照的 node/npm 格子。
-#[tauri::command]
-pub fn check_env(sup: tauri::State<'_, Supervisor>) {
-    sup.check_env();
-}
+impl IpcError {
+    /// 将内部业务错误转换为统一的 IPC 错误
+    fn from_backend(error: BackendError) -> Self {
+        let (code, message) = match &error {
+            // 内部错误完整链写入日志，不向前端暴露底层细节
+            BackendError::InvalidTimeout | BackendError::Platform(_) => {
+                log::error!("ipc internal error: {error:?}");
+                ("internal_error", String::from("内部错误，请查看日志"))
+            }
+            BackendError::Tray(_) => {
+                log::error!("ipc tray error: {error:?}");
+                ("tray_error", error.to_string())
+            }
+            BackendError::Window(_) => {
+                log::error!("ipc URL window error: {error:?}");
+                ("window_error", String::from("窗口操作失败，请查看日志"))
+            }
+            BackendError::WindowStatePoisoned => {
+                log::error!("ipc URL window state error: {error:?}");
+                ("internal_error", String::from("内部错误，请查看日志"))
+            }
+            BackendError::ChildWebviewNotFound => ("webview_tab_not_found", error.to_string()),
+            BackendError::InvalidWebviewUrl => ("invalid_window_url", error.to_string()),
+            BackendError::InvalidHost => ("invalid_host", error.to_string()),
+            BackendError::InvalidProtocol => ("invalid_protocol", error.to_string()),
+            BackendError::InvalidPort => ("invalid_port", error.to_string()),
+            BackendError::ServiceUnavailable => ("service_unavailable", error.to_string()),
+            BackendError::PortOccupied => ("port_occupied", error.to_string()),
+            BackendError::OperationInProgress => ("operation_in_progress", error.to_string()),
+            BackendError::DshAlreadyRunning => ("dsh_already_running", error.to_string()),
+            BackendError::ProcessNotRunning => ("process_not_running", error.to_string()),
+            BackendError::DshSpawnFailed => ("dsh_spawn_failed", error.to_string()),
+            BackendError::DshStartTimeout => ("dsh_start_timeout", error.to_string()),
+            BackendError::DshExitedEarly => ("dsh_exited_early", error.to_string()),
+            BackendError::OpenLogsFailed => ("open_logs_failed", error.to_string()),
+            BackendError::LogDirCreateFailed => ("log_dir_create_failed", error.to_string()),
+            BackendError::WindowResourceMissing => ("window_resource_missing", error.to_string()),
+        };
 
-/// 查询远端（官方源+镜像源）与本地 dsh 版本，刷新版本格子。
-#[tauri::command]
-pub fn check_version(sup: tauri::State<'_, Supervisor>) {
-    sup.check_version();
-}
+        // 深层没有日志的浅层拒绝在这里统一留痕；已在深层记录的错误不重复输出
+        if matches!(
+            error,
+            BackendError::PortOccupied
+                | BackendError::OperationInProgress
+                | BackendError::DshAlreadyRunning
+                | BackendError::ProcessNotRunning
+                | BackendError::ChildWebviewNotFound
+                | BackendError::InvalidWebviewUrl
+        ) {
+            log::warn!("ipc rejected: code={code}");
+        }
 
-/// 安装/更新 dsh：mirror 为 true 时使用镜像 registry。
-#[tauri::command]
-pub fn install_dsh(sup: tauri::State<'_, Supervisor>, mirror: bool) {
-    sup.install(mirror);
-}
-
-/// 启动 harness：host 为本地地址时在指定端口启动 dsh 并轮询就绪；
-/// 否则视为远程已部署服务，探测可达后直接连接（不启动进程）。
-#[tauri::command]
-pub fn start_server(sup: tauri::State<'_, Supervisor>, host: String, port: u16) {
-    sup.start(host, port);
-}
-
-/// 用系统默认文件管理器打开本次运行的日志目录（harness.log + gui.log）。
-#[tauri::command]
-pub fn open_log_dir(app: AppHandle, sup: tauri::State<'_, Supervisor>) {
-    if let Some(dir) = sup.log_dir() {
-        let _ = app.opener().open_path(dir.display().to_string(), None::<&str>);
+        IpcError {
+            code: code.to_string(),
+            message,
+        }
     }
 }
 
-/// 终止 harness 进程树后退出应用（唯一关闭入口）。
+/// 启动本地 DSH 服务
 #[tauri::command]
-pub fn exit_app(app: AppHandle) {
-    shutdown(&app);
+pub(crate) async fn start_dsh(
+    port: u16,
+    app: AppHandle,
+    state: State<'_, HarnessState>,
+) -> Result<String, IpcError> {
+    backend::start_dsh(port, &app, &state)
+        .await
+        .map_err(IpcError::from_backend)
 }
 
-/// 隐藏主窗口（关窗进托盘流程的窗口隐藏动作）。
+/// 停止当前受控的 DSH 服务
 #[tauri::command]
-pub fn hide_to_tray(app: AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.hide();
-    }
+pub(crate) async fn stop_dsh(state: State<'_, HarnessState>) -> Result<(), IpcError> {
+    backend::stop_dsh(&state)
+        .await
+        .map_err(IpcError::from_backend)
+}
+
+/// 探测并连接远程 DSH 服务
+#[tauri::command]
+pub(crate) async fn connect_remote(
+    protocol: String,
+    host: String,
+    port: u16,
+) -> Result<String, IpcError> {
+    backend::connect_remote(protocol, host, port)
+        .await
+        .map_err(IpcError::from_backend)
+}
+
+/// 打开本次应用启动对应的日志目录
+#[tauri::command]
+pub(crate) async fn open_logs(app: AppHandle, state: State<'_, LogState>) -> Result<(), IpcError> {
+    backend::open_logs(&app, &state)
+        .await
+        .map_err(IpcError::from_backend)
+}
+
+/// 隐藏主窗口到系统托盘
+#[tauri::command]
+pub(crate) async fn hide_to_tray(app: AppHandle) -> Result<(), IpcError> {
+    backend::hide_to_tray(&app).map_err(IpcError::from_backend)
+}
+
+/// 创建或显示一个直接加载外部 URL 的 child WebView
+#[tauri::command]
+pub(crate) async fn create_webview_with_url(
+    url: String,
+    app: AppHandle,
+    state: State<'_, WebviewState>,
+) -> Result<WebviewTab, IpcError> {
+    backend::create_webview_with_url(&app, url, &state).map_err(IpcError::from_backend)
+}
+
+/// 激活一个 child WebView 标签
+#[tauri::command]
+pub(crate) async fn activate_webview_tab(
+    label: String,
+    app: AppHandle,
+    state: State<'_, WebviewState>,
+) -> Result<(), IpcError> {
+    backend::activate_webview_tab(&app, label, &state).map_err(IpcError::from_backend)
+}
+
+/// 关闭一个 child WebView 标签
+#[tauri::command]
+pub(crate) async fn close_webview_tab(
+    label: String,
+    app: AppHandle,
+    state: State<'_, WebviewState>,
+) -> Result<(), IpcError> {
+    backend::close_webview_tab(&app, label, &state).map_err(IpcError::from_backend)
+}
+
+/// 隐藏所有 DSH child WebView
+#[tauri::command]
+pub(crate) async fn hide_all_webview_tabs(
+    app: AppHandle,
+    state: State<'_, WebviewState>,
+) -> Result<(), IpcError> {
+    backend::hide_all_webview_tabs(&app, &state).map_err(IpcError::from_backend)
 }

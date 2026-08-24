@@ -1,0 +1,90 @@
+<template>
+  <section class="card card-border h-full min-h-0 bg-base-100 shadow-sm">
+    <div class="card-body gap-1">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="card-title">环境检查</h2>
+        <button
+          class="btn btn-square btn-ghost btn-md shrink-0"
+          type="button"
+          title="重新检查"
+          aria-label="重新检查"
+          :disabled="refreshing"
+          @click="refreshEnv"
+        >
+          <RefreshIcon class="size-5" :class="{ 'animate-spin': refreshing }" aria-hidden="true" />
+        </button>
+      </div>
+      <div class="grid gap-1">
+        <fieldset class="fieldset gap-1">
+          <NodeVersionRow label="本地 node (推荐v24+)" :state="env.nodeVer" :error-href="NODE_DOWNLOAD_URL" />
+          <PnpmVersionRow label="本地 pnpm" :state="env.pnpmVer" :node-state="env.nodeVer" />
+          <CommonVersionRow label="本地 DSH" :state="env.dshVer" />
+        </fieldset>
+        <fieldset v-for="group in groups" :key="group.title" class="fieldset gap-1">
+          <legend class="fieldset-legend text-base">{{ group.title }}</legend>
+          <CommonVersionRow
+            v-for="row in group.rows"
+            :key="row.label"
+            :label="row.label"
+            :state="row.state"
+            :accent="row.accent"
+          />
+        </fieldset>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from "vue";
+import RefreshIcon from "~icons/mynaui/refresh-solid";
+import { useEnvStore, type VersionState } from "../../stores/env";
+import CommonVersionRow from "./CommonVersionRow.vue";
+import NodeVersionRow from "./NodeVersionRow.vue";
+import PnpmVersionRow from "./PnpmVersionRow.vue";
+
+const env = useEnvStore();
+const refreshing = ref(false);
+
+/** node 检查失败时提供的官方下载地址 */
+const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
+
+function normalizeVersion(version: string): string {
+  return version.replace(/^v/, "");
+}
+
+function isLatestMismatch(state: VersionState): boolean {
+  return (
+    env.dshVer.kind === "ok" &&
+    state.kind === "ok" &&
+    normalizeVersion(env.dshVer.version) !== normalizeVersion(state.version)
+  );
+}
+
+const groups = computed(() => [
+  {
+    title: "最新 DSH 稳定版 (latest)",
+    rows: [
+      { label: "官方源", state: env.latestDshVer, accent: isLatestMismatch(env.latestDshVer) },
+      { label: "镜像源", state: env.latestDshVerWithMirror, accent: isLatestMismatch(env.latestDshVerWithMirror) },
+    ],
+  },
+  {
+    title: "最新 DSH 测试版 (next)",
+    rows: [
+      { label: "官方源", state: env.nextDshVer, accent: isLatestMismatch(env.nextDshVer) },
+      { label: "镜像源", state: env.nextDshVerWithMirror, accent: isLatestMismatch(env.nextDshVerWithMirror) },
+    ],
+  },
+]);
+
+async function refreshEnv(): Promise<void> {
+  if (refreshing.value) return;
+  refreshing.value = true;
+  try {
+    await env.refreshAllVersions();
+  } finally {
+    refreshing.value = false;
+  }
+}
+</script>

@@ -2,55 +2,54 @@
   "name": "deepseek-harness-gui",
   "private": true,
   "version": "0.2.0",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "prepare": "husky",
     "build:installer": "tauri build --bundles nsis",
     "build:portable": "tauri build --no-bundle && node scripts/package-portable.mjs",
-    "build:pkg": "tauri build --bundles app && node scripts/package-macos-pkg.mjs",
     "build:deb": "tauri build --bundles deb",
     "build:appimage": "tauri build --bundles appimage",
-    "prepare": "husky"
+    "build:dmg": "tauri build --bundles dmg"
   },
   "dependencies": {
-    "@iconify-json/codicon": "^1.2.69",
-    "@iconify-json/line-md": "^1.2.16",
-    "@iconify-json/mingcute": "^1.2.8",
-    "@iconify-json/streamline-plump": "^1.2.0",
-    "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-fs": "~2.5.1",
+    "@tauri-apps/plugin-log": "~2.9.0",
     "@tauri-apps/plugin-opener": "^2.5.4",
+    "@tauri-apps/plugin-shell": "~2.3.5",
     "@vueuse/core": "^14.4.0",
-    "js-yaml": "^5.2.3",
-    "tailwindcss": "^4.3.3",
+    "pinia": "^4.0.3",
     "vue": "^3.5.41"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@iconify/json": "^2.2.516",
+    "@iconify/json": "^2.2.518",
     "@iconify/types": "^2.0.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.11.4",
-    "@vitejs/plugin-vue": "^5.2.1",
-    "daisyui": "^5.7.17",
+    "@vitejs/plugin-vue": "^5.2.4",
+    "daisyui": "^5.7.19",
     "eslint": "^10.8.1",
     "eslint-plugin-vue": "^10.10.0",
     "globals": "^17.11.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.3.0",
     "prettier": "3.9.6",
-    "prettier-plugin-tailwindcss": "^0.8.1",
-    "typescript": "~5.6.2",
+    "sass-embedded": "^1.103.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~5.6.3",
     "typescript-eslint": "^8.67.0",
     "unplugin-icons": "^23.0.1",
     "vite": "^6.4.3",
-    "vue-tsc": "^2.1.10"
+    "vue-tsc": "^2.2.12"
   },
   "lint-staged": {
     "**/*": "prettier --write --ignore-unknown",
     "src/**/*.{js,mjs,cjs,ts,jsx,tsx,vue}": "npx eslint --fix"
   },
-  "packageManager": "pnpm@11.21.0+sha512.521705bce689924eac72f5a3587122f362689ef6571e55ba80076fd637c11132ecffada26fad4ea79c485bfddbfd3d5a2a5b05805a77e893de71ec8a6cca3bb1"
+  "packageManager": "pnpm@11.23.0+sha512.f00082e5b283a199b74e079da28d155c008fe232f44c8a06ea7ddfa014ecf719fc362f790ecc67b28106ddac2afb24c49a9a079159da560b2ce7d1e98efd11af"
 }

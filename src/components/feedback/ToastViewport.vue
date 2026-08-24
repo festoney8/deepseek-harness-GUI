@@ -1,0 +1,12 @@
+<template>
+  <div class="toast toast-center toast-bottom z-5000">
+    <AppToast v-for="toast in toasts" :key="toast.id" :toast="toast" @dismiss="dismiss(toast.id)" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import AppToast from "./AppToast.vue";
+import { useToast } from "../../composables/useToast";
+
+const { toasts, dismiss } = useToast();
+</script>

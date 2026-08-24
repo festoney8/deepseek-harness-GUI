@@ -1,0 +1,85 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "shell-windows",
+  "description": "Allow the main window to run fixed Node.js and DSH setup commands on Windows",
+  "windows": ["main"],
+  "platforms": ["windows"],
+  "permissions": [
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "node-version",
+          "cmd": "node.exe",
+          "args": ["-v"],
+          "sidecar": false
+        },
+        {
+          "name": "pnpm-version",
+          "cmd": "pnpm.cmd",
+          "args": ["-v"],
+          "sidecar": false
+        },
+        {
+          "name": "dsh-version",
+          "cmd": "dsh.cmd",
+          "args": ["-V"],
+          "sidecar": false
+        },
+        {
+          "name": "dsh-plugin-list",
+          "cmd": "dsh.cmd",
+          "args": ["plugin", "--profile", "web", "list", "--json"],
+          "sidecar": false
+        }
+      ]
+    },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        {
+          "name": "dsh-plugin-add",
+          "cmd": "dsh.cmd",
+          "args": ["plugin", "--profile", "web", "add", { "validator": "\\S+" }],
+          "sidecar": false
+        },
+        {
+          "name": "npx-install-pnpm",
+          "cmd": "npx.cmd",
+          "args": ["--registry=https://registry.npmmirror.com", "-y", "get-pnpm"],
+          "sidecar": false
+        },
+        {
+          "name": "npm-install-dsh-npmjs",
+          "cmd": "npm.cmd",
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@latest", "--registry=https://registry.npmjs.org"],
+          "sidecar": false
+        },
+        {
+          "name": "npm-install-dsh-npmjs-next",
+          "cmd": "npm.cmd",
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@next", "--registry=https://registry.npmjs.org"],
+          "sidecar": false
+        },
+        {
+          "name": "npm-install-dsh-npmmirror",
+          "cmd": "npm.cmd",
+          "args": [
+            "install",
+            "-g",
+            "--verbose",
+            "@deepseek-ai/dsh@latest",
+            "--registry=https://registry.npmmirror.com"
+          ],
+          "sidecar": false
+        },
+        {
+          "name": "npm-install-dsh-npmmirror-next",
+          "cmd": "npm.cmd",
+          "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@next", "--registry=https://registry.npmmirror.com"],
+          "sidecar": false
+        }
+      ]
+    }
+  ]
+}

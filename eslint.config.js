@@ -17,8 +17,4 @@ export default defineConfig([
     files: ["**/*.vue"],
     languageOptions: { parserOptions: { parser: tseslint.parser } },
   },
-  {
-    files: ["scripts/**/*.mjs"],
-    languageOptions: { globals: globals.node },
-  },
 ]);

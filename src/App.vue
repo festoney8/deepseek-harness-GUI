@@ -1,76 +1,83 @@
+<template>
+  <div id="background" class="flex h-screen min-h-0 flex-col overflow-hidden bg-base-200 text-base-content">
+    <AppNavbar />
+    <main class="min-h-0 flex-1 overflow-auto">
+      <HomeView />
+    </main>
+  </div>
+  <ToastViewport />
+</template>
+
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, watch } from "vue";
-import TitleBar from "./components/TitleBar.vue";
-import StatusView from "./components/StatusView.vue";
-import WebUiView from "./components/WebUiView.vue";
-import { closeRequested, disposeRuntime, exitApp, hideToTray, initRuntime, state } from "./composables/useRuntime";
-import { clearActionError, useActionFeedback } from "./composables/useActionFeedback";
-import { disposeTheme, initTheme } from "./composables/useTheme";
+import { onBeforeUnmount, onMounted, watch } from "vue";
+import HomeView from "./views/HomeView.vue";
+import AppNavbar from "./components/layout/AppNavbar.vue";
+import ToastViewport from "./components/feedback/ToastViewport.vue";
+import { useDshStore } from "./stores/dsh";
+import { useEnvStore } from "./stores/env";
+import { getErrorMessage, useToast } from "./composables/useToast";
+import { useTheme } from "./composables/useTheme";
+import { logger } from "./utils/log";
 
-const exitDialog = ref<HTMLDialogElement | null>(null);
-const { actionError } = useActionFeedback();
+const dsh = useDshStore();
+const env = useEnvStore();
+const toast = useToast();
+useTheme();
 
-watch(closeRequested, (requested) => {
-  const dialog = exitDialog.value;
-  if (!dialog) return;
-  if (requested && !dialog.open) {
-    dialog.showModal();
-  } else if (!requested && dialog.open) {
-    dialog.close();
+let stopUnexpectedExitWatch: (() => void) | undefined;
+
+document.addEventListener("keydown", (e) => {
+  const key = e.key.toLowerCase();
+  if (key === "f5" || ((e.ctrlKey || e.metaKey) && key === "r")) {
+    e.preventDefault();
   }
 });
+document.addEventListener(
+  "contextmenu",
+  (e) => {
+    e.preventDefault();
+  },
+  false,
+);
 
-function cancelClose() {
-  closeRequested.value = false;
-}
+onMounted(async () => {
+  stopUnexpectedExitWatch = watch(
+    () => dsh.unexpectedExit,
+    (unexpected) => {
+      if (!unexpected) return;
+      toast.error("DSH 进程已异常退出，请检查日志");
+      dsh.clearUnexpectedExit();
+    },
+  );
+  try {
+    await dsh.bindEvents();
+  } catch (error) {
+    logger.error("dsh", "注册 dsh_exited 监听失败，将无法感知 DSH 异常退出:", error);
+    toast.error(getErrorMessage(error));
+  }
+  void env.refreshAllVersions();
+  void env.getLatestAppVer();
+  void env.getAppVer();
+});
 
-function hideInTray() {
-  hideToTray();
-  closeRequested.value = false;
-}
-
-function requestExit() {
-  void exitApp();
-}
-
-onMounted(initRuntime);
-onMounted(initTheme);
-onUnmounted(disposeRuntime);
-onUnmounted(disposeTheme);
+onBeforeUnmount(() => {
+  stopUnexpectedExitWatch?.();
+  dsh.dispose();
+});
 </script>
 
-<template>
-  <div class="bg-base-100 text-base-content flex h-full flex-col">
-    <TitleBar />
-    <main class="min-h-0 flex-1">
-      <WebUiView v-if="state.phase === 'ready' && state.url" :url="state.url" />
-      <StatusView v-else :state="state" />
-    </main>
-
-    <div v-if="actionError" class="toast toast-bottom toast-center z-50 mb-5">
-      <div role="alert" class="alert alert-error rounded-xl shadow-xl">
-        <span class="max-w-[min(32rem,calc(100vw-5rem))] break-words">{{ actionError }}</span>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm rounded-xl"
-          aria-label="关闭错误通知"
-          @click="clearActionError"
-        >
-          关闭
-        </button>
-      </div>
-    </div>
-
-    <dialog ref="exitDialog" class="modal modal-middle" aria-labelledby="exit-dialog-title" @cancel.prevent>
-      <div class="modal-box rounded-2xl">
-        <h2 id="exit-dialog-title" class="text-lg font-bold">退出 DeepSeek Harness？</h2>
-        <p class="text-base-content/70 mt-3 text-sm">请选择“最小化到托盘”以保留后台进程，或确认退出应用。</p>
-        <div class="modal-action mt-8">
-          <button type="button" class="btn btn-ghost rounded-xl" @click="cancelClose">取消</button>
-          <button type="button" class="btn btn-outline btn-primary rounded-xl" @click="hideInTray">最小化到托盘</button>
-          <button type="button" class="btn btn-error rounded-xl" @click="requestExit">退出</button>
-        </div>
-      </div>
-    </dialog>
-  </div>
-</template>
+<style lang="scss" scoped>
+#background {
+  background: radial-gradient(circle at top, #e8f1ff 0, #fcfcff 42%, #faf7ff 100%);
+}
+[data-theme="night"] {
+  #background {
+    background:
+      radial-gradient(circle at 10% 15%, rgba(30, 64, 175, 0.28) 0%, rgba(30, 64, 175, 0.12) 25%, transparent 55%),
+      radial-gradient(circle at 90% 10%, rgba(79, 70, 229, 0.22) 0%, rgba(79, 70, 229, 0.08) 30%, transparent 60%),
+      radial-gradient(circle at 75% 80%, rgba(14, 116, 144, 0.18) 0%, transparent 55%),
+      radial-gradient(circle at 25% 90%, rgba(67, 56, 202, 0.14) 0%, transparent 50%),
+      linear-gradient(135deg, #020617 0%, #0b1120 30%, #111827 60%, #0f172a 100%);
+  }
+}
+</style>

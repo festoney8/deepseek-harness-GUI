@@ -1,93 +1,44 @@
-import { computed, ref, watch } from "vue";
-import { BaseDirectory, exists, readTextFile, watch as watchFile } from "@tauri-apps/plugin-fs";
-import { parseThemePreference, type ThemePreference } from "../utils/parseThemePreference";
+import { computed, watch } from "vue";
+import { useLocalStorage, usePreferredDark } from "@vueuse/core";
 
-export type ResolvedTheme = "light" | "dark";
+/** 主题偏好：亮色 / 暗色 / 跟随系统 */
+export type ThemePreference = "light" | "dark" | "system";
 
-const SETTINGS_REL = ".dsh/settings.yaml";
-const POLL_MS = 3_000;
-const preference = ref<ThemePreference>("system");
-const systemDark = ref(false);
+/** 点击切换时的循环顺序：日间 → 夜间 → 系统 */
+const PREFERENCE_CYCLE: readonly ThemePreference[] = ["light", "dark", "system"];
 
-export const theme = computed<ResolvedTheme>(() =>
-  preference.value === "system" ? (systemDark.value ? "dark" : "light") : preference.value,
+/** 当前主题偏好，localStorage 持久化，与 DSH 配置文件解耦 */
+const preference = useLocalStorage<ThemePreference>("ui-theme", "system");
+/** 系统深色模式偏好 */
+const systemPrefersDark = usePreferredDark();
+
+/** 偏好解析后的 daisyUI 主题名 */
+const daisyTheme = computed(() =>
+  preference.value === "dark" || (preference.value === "system" && systemPrefersDark.value) ? "night" : "winter",
 );
 
+// 模块级单例，导入即生效：偏好或系统主题变化时更新 <html data-theme>
 watch(
-  [preference, theme],
-  ([preferred, resolved]) => {
-    const root = document.documentElement;
-    if (preferred === "system") {
-      root.removeAttribute("data-theme");
-    } else {
-      root.dataset.theme = preferred;
-    }
-    root.style.colorScheme = resolved;
+  daisyTheme,
+  (theme) => {
+    document.documentElement.dataset.theme = theme;
   },
   { immediate: true },
 );
 
-let pollId: number | null = null;
-let unwatch: (() => void) | null = null;
-let media: MediaQueryList | null = null;
-let onMediaChange: ((event: MediaQueryListEvent) => void) | null = null;
+/** 主题访问入口：读取当前偏好，或按 日间 → 夜间 → 系统 循环切换 */
+export function useTheme() {
+  const cycleTheme = (): void => {
+    const index = PREFERENCE_CYCLE.indexOf(preference.value);
+    preference.value = PREFERENCE_CYCLE[(index + 1) % PREFERENCE_CYCLE.length] ?? "system";
+  };
 
-export function initTheme() {
-  if (pollId != null || unwatch != null) return;
-  media = window.matchMedia("(prefers-color-scheme: dark)");
-  onMediaChange = (event) => (systemDark.value = event.matches);
-  media.addEventListener("change", onMediaChange);
-  systemDark.value = media.matches;
-  startPolling();
-  void tick();
-}
-
-export function disposeTheme() {
-  stopPolling();
-  unwatch?.();
-  unwatch = null;
-  if (media && onMediaChange) {
-    media.removeEventListener("change", onMediaChange);
-    media = null;
-    onMediaChange = null;
-  }
-}
-
-function startPolling() {
-  if (pollId == null) pollId = window.setInterval(() => void tick(), POLL_MS);
-}
-
-function stopPolling() {
-  if (pollId != null) {
-    clearInterval(pollId);
-    pollId = null;
-  }
-}
-
-async function tick() {
-  if (!(await exists(SETTINGS_REL, { baseDir: BaseDirectory.Home }))) {
-    preference.value = "system";
-    return;
-  }
-  stopPolling();
-  if (unwatch == null) {
-    try {
-      unwatch = await watchFile(SETTINGS_REL, () => void applyFileTheme(), {
-        baseDir: BaseDirectory.Home,
-        delayMs: 100,
-      });
-    } catch {
-      startPolling();
-      return;
-    }
-  }
-  await applyFileTheme();
-}
-
-async function applyFileTheme() {
-  try {
-    preference.value = parseThemePreference(await readTextFile(SETTINGS_REL, { baseDir: BaseDirectory.Home }));
-  } catch {
-    // 配置文件写入过程中读取失败时，等待下一次监听事件。
-  }
+  return {
+    /** 只读当前偏好 */
+    preference: computed(() => preference.value),
+    /** 解析后的 daisyUI 主题名 */
+    daisyTheme,
+    /** 切换到下一个偏好 */
+    cycleTheme,
+  };
 }

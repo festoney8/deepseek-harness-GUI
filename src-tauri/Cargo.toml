@@ -1,7 +1,7 @@
 [package]
 name = "deepseek-harness-gui"
 version = "0.2.0"
-description = "A Tauri App"
+description = "DeepSeek Harness GUI"
 authors = ["festoney8"]
 edition = "2021"
 
@@ -18,25 +18,44 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon"] }
+tauri = { version = "2", features = [
+    "unstable",
+    "tray-icon",
+    "image-png",
+    "image-ico",
+] }
 tauri-plugin-opener = "2"
+tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-tauri-plugin-single-instance = "2"
-rfd = "0.16"
-percent-encoding = "2"
+tauri-plugin-log = "2"
+tokio = { version = "1.53.1", default-features = false, features = [
+    "process",
+    "io-util",
+    "sync",
+    "time",
+    "rt",
+    "net",
+    "macros",
+] }
+thiserror = "2.0.20"
+reqwest = "0.13"
 log = "0.4"
-chrono = { version = "0.4", features = ["clock"] }
-tauri-plugin-fs = { version = "2", features = ["watch"] }
-fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs", version = "0.0.0" }
-ureq = "2"
+fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs" }
+tauri-plugin-shell = "2"
+rfd = "0.15"
+percent-encoding = "2"
 
-[target."cfg(windows)".dependencies]
+[target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = [
-    "Win32_System_JobObjects",
     "Win32_Foundation",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_JobObjects",
     "Win32_System_Threading",
 ] }
 
 [target."cfg(unix)".dependencies]
 libc = "0.2.189"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"

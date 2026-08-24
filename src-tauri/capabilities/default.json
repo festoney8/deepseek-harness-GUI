@@ -1,8 +1,8 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window shell",
-  "windows": ["main"],
+  "description": "Capability for the main window",
+  "webviews": ["main"],
   "permissions": [
     "core:default",
     "opener:default",
@@ -10,18 +10,6 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-close",
     "core:window:allow-start-dragging",
-    "fs:default",
-    {
-      "identifier": "fs:allow-exists",
-      "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
-    },
-    {
-      "identifier": "fs:allow-read-text-file",
-      "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
-    },
-    {
-      "identifier": "fs:allow-watch",
-      "allow": [{ "path": "$HOME/.dsh/settings.yaml" }]
-    }
+    "log:default"
   ]
 }
