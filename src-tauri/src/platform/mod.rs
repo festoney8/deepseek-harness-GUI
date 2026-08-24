@@ -2,6 +2,32 @@ use std::io;
 
 #[cfg(unix)]
 mod unix;
+
+pub(crate) fn configure_linux_graphics_workarounds() {
+    #[cfg(target_os = "linux")]
+    {
+        // Workaround for WebKitGTK/NVIDIA explicit-sync and DMABUF issues.
+        // Keep user-provided values so the documented launch-time overrides remain
+        // available for testing and distribution-specific configuration.
+        set_env_if_unset("__NV_DISABLE_EXPLICIT_SYNC", "1");
+        set_env_if_unset("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn set_env_if_unset(name: &str, value: &str) {
+    if std::env::var_os(name).is_some() {
+        return;
+    }
+
+    // SAFETY: This runs during application startup, before Tauri creates the
+    // webview or starts application threads. No concurrent environment access
+    // can occur at this point.
+    unsafe {
+        std::env::set_var(name, value);
+    }
+}
+
 #[cfg(windows)]
 mod windows;
 

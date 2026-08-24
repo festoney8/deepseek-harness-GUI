@@ -9,6 +9,9 @@ use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 /// 启动 Tauri 应用并完成后端初始化
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // WebKitGTK reads these variables while creating the first webview.
+    platform::configure_linux_graphics_workarounds();
+
     // 修复 GUI 应用 PATH，必须在任何子进程启动之前
     let path_fix = fix_path_env::fix();
 
