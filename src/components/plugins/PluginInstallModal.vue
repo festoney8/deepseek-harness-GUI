@@ -10,12 +10,14 @@
       <p class="py-4 text-base-content/70">安装插件内容待实现</p>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <ToastViewport />
   </dialog>
 </template>
 
 <script setup lang="ts">
 import { ref } from "vue";
 import CloseIcon from "~icons/material-symbols/close";
+import ToastViewport from "../feedback/ToastViewport.vue";
 
 const dialogEl = ref<HTMLDialogElement | null>(null);
 

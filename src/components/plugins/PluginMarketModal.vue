@@ -35,6 +35,7 @@
       </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    <ToastViewport />
   </dialog>
 </template>
 
@@ -46,6 +47,7 @@ import PluginIcon from "~icons/streamline-freehand/plugin-jigsaw-puzzle";
 import { fetchJson } from "../../utils/http";
 import { logger } from "../../utils/log";
 import { getErrorMessage, useToast } from "../../composables/useToast";
+import ToastViewport from "../feedback/ToastViewport.vue";
 
 /**
  * 插件市场数据地址
