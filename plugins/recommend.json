@@ -32,7 +32,7 @@
     {
       "package": "dsh-whale-widget",
       "title": "dsh-whale-widget",
-      "description": "DSH 小鲸鱼余额挂件，帮你盯着DeepSeek账户余额。QQ弹弹，支持拖拽吸附、左吸附翻转、数字滚动动画，随界面自动启用，建议直接喊来你的dsh安装",
+      "description": "DSH 小鲸鱼余额挂件，帮你盯着 DeepSeek 账户余额。QQ 弹弹，支持拖拽吸附、左吸附翻转、数字滚动动画，随界面自动启用，建议直接喊来你的 dsh 安装",
       "command": "dsh plugin --profile web add dsh-whale-widget",
       "github": "https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget"
     },
@@ -51,9 +51,16 @@
       "github": "https://github.com/NanmiCoder/dsh-agent-teams"
     },
     {
+      "package": "@linxin666/dsh-client-ui-skill-explorer",
+      "title": "dsh-skill-explorer",
+      "description": "DSH Web GUI 的技能中心：按来源分级浏览已加载的全部 skill，启用/禁用模型 调用，创建新技能，删除技能（移入可恢复的回收站）。",
+      "command": "dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest",
+      "github": "https://github.com/zhu1090093659/dsh-web/tree/main/packages/dsh-skill-explorer"
+    },
+    {
       "package": "@linxin666/dsh-ssh",
       "title": "dsh-ssh",
-      "description": "为 DeepSeek Harness（DSH）定制的远程 SSH 插件：Host 进程内的持久连接池 + Web GUI 主机管理面板 + Web 终端 + Agent 工具，全部通过官方 NPM SDK 实现，不修改 DSH 源码。",
+      "description": "为 DSH 定制的远程 SSH 插件：Host 进程内的持久连接池 + Web GUI 主机管理面板 + Web 终端 + Agent 工具，全部通过官方 NPM SDK 实现，不修改 DSH 源码。",
       "command": "dsh plugin --profile web add @linxin666/dsh-ssh@latest",
       "github": "https://github.com/zhu1090093659/dsh-web/tree/main/packages/dsh-ssh"
     },
