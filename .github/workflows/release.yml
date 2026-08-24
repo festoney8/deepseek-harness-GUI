@@ -1,0 +1,150 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  APP_NAME: deepseek-harness-gui
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Build and publish Windows x64
+    runs-on: windows-2022
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Get release version
+        shell: bash
+        run: |
+          version=${{ github.ref_name }}
+          echo "RELEASE_VERSION=${version#v}" >> "$GITHUB_ENV"
+
+      - name: Build NSIS setup executable
+        run: pnpm run build:installer
+
+      - name: Build portable executable
+        run: pnpm run build:portable
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.APP_NAME }}-${{ env.RELEASE_VERSION }}-windows-x64
+          path: |
+            src-tauri/target/release/bundle/nsis/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-setup.exe
+            src-tauri/target/release/bundle/portable/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-portable.exe
+          if-no-files-found: error
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.APP_NAME }} ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          body: |
+            ## 安装包说明
+            ### Windows
+            - 便携版：${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-portable.exe
+            - 安装版：${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-setup.exe
+            ### macOS
+            - Apple Silicon（M 系列芯片）：${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_aarch64.dmg
+            - Intel：${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64.dmg
+
+            > macOS 安装包未做开发者签名与公证，首次打开被 Gatekeeper 拦截时，
+            > 在「系统设置 → 隐私与安全性」中点击「仍要打开」
+          files: |
+            src-tauri/target/release/bundle/nsis/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-setup.exe
+            src-tauri/target/release/bundle/portable/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64-portable.exe
+
+  release-macos:
+    name: Build and publish macOS (aarch64 + x64)
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          # macos-latest 为 arm64 runner：aarch64 原生编译，x86_64 交叉编译
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Get release version
+        shell: bash
+        run: |
+          version=${{ github.ref_name }}
+          echo "RELEASE_VERSION=${version#v}" >> "$GITHUB_ENV"
+
+      - name: Build DMG (Apple Silicon)
+        run: pnpm run build:dmg -- --target aarch64-apple-darwin
+
+      - name: Build DMG (Intel)
+        run: pnpm run build:dmg -- --target x86_64-apple-darwin
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.APP_NAME }}-${{ env.RELEASE_VERSION }}-macos
+          path: |
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_aarch64.dmg
+            src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64.dmg
+          if-no-files-found: error
+
+      # release 正文统一由上方 Windows 任务维护
+      # 两个任务并行发布到同一 tag 的 release，文件会各自追加，这里只上传文件。
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: |
+            src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_aarch64.dmg
+            src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/${{ env.APP_NAME }}_${{ env.RELEASE_VERSION }}_x64.dmg
