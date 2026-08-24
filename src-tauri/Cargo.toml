@@ -59,3 +59,9 @@ libc = "0.2.189"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
+
+# Pin patch commit. See https://github.com/tauri-apps/tauri/issues/10420
+[patch.crates-io]
+tauri = { git = "https://github.com/ds1/tauri", rev = "4e9d9e7" }
+tao = { git = "https://github.com/ds1/tao", rev = "03ccb7b" }
+wry = { git = "https://github.com/ds1/wry", rev = "e117e1e" }
