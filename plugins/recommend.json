@@ -9,6 +9,13 @@
       "github": "https://github.com/dsh-market/dsh-market"
     },
     {
+      "package": "@baihejiangnan/dsh-session-context-menu",
+      "title": "dsh-session-context-menu",
+      "description": "更好的右键：DeepSeek Harness 应用封装端的完整原生风格上下文菜单",
+      "command": "dsh plugin --profile web add github:baihejiangnan/dsh-session-context-menu",
+      "github": "https://github.com/baihejiangnan/dsh-session-context-menu"
+    },
+    {
       "package": "dsh-better-sidebar",
       "title": "dsh-better-sidebar",
       "description": "开放式侧边栏底座：第三方插件可注册自己的侧边栏页面，内置文件渲染编辑、终端、Git 与子代理面板，按需分块加载。",
@@ -37,16 +44,16 @@
       "github": "https://github.com/NanmiCoder/dsh-agent-teams"
     },
     {
-      "package": "@baihejiangnan/dsh-session-context-menu",
-      "title": "dsh-session-context-menu",
-      "description": "更好的右键：DeepSeek Harness 应用封装端的完整原生风格上下文菜单",
-      "command": "dsh plugin --profile web add github:baihejiangnan/dsh-session-context-menu",
-      "github": "https://github.com/baihejiangnan/dsh-session-context-menu"
+      "package": "dsh-whale-widget",
+      "title": "dsh-whale-widget",
+      "description": "DSH 小鲸鱼余额挂件",
+      "command": "dsh plugin --profile web add dsh-whale-widget",
+      "github": "https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget"
     },
     {
       "package": "dsh-web-startup-auth",
       "title": "dsh-web-startup-auth",
-      "description": "DSH（DeepSeek Harness）远程 Web 启动 + 用户名/密码认证插件。",
+      "description": "DSH 远程 Web 启动 + 用户名/密码认证插件。",
       "command": "dsh plugin --profile web add dsh-web-startup-auth@latest",
       "github": "https://github.com/GDWhisper/dsh-web-startup-auth"
     }

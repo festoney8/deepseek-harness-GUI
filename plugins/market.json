@@ -14,6 +14,10 @@
       "url": "https://dshfind.com/zh/plugins"
     },
     {
+      "title": "DSH plugin market",
+      "url": "https://dsh-plugin.market/plugins"
+    },
+    {
       "title": "DSH Plugin Market",
       "url": "https://www.dsh-plugin.shop/"
     },
@@ -28,10 +32,6 @@
     {
       "title": "DSH Market",
       "url": "https://dshplugin.io/zh#top"
-    },
-    {
-      "title": "GitHub #dsh-plugin",
-      "url": "https://github.com/topics/dsh-plugin/"
     }
   ]
 }
