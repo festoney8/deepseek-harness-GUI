@@ -44,6 +44,12 @@
           "sidecar": false
         },
         {
+          "name": "npx-install-pnpm",
+          "cmd": "npx",
+          "args": ["--registry=https://registry.npmmirror.com", "-y", "get-pnpm"],
+          "sidecar": false
+        },
+        {
           "name": "npm-install-dsh-npmjs",
           "cmd": "npm",
           "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@latest", "--registry=https://registry.npmjs.org"],
