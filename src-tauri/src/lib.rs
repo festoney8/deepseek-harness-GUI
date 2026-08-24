@@ -16,6 +16,8 @@ pub fn run() {
         exiting: AtomicBool::new(false),
     });
 
+    let setup_exit_state = Arc::clone(&exit_state);
+
     tauri::Builder::default()
         // 单例插件必须注册为第一个插件;再次启动时唤起已有实例的主窗口
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
@@ -68,7 +70,7 @@ pub fn run() {
                     lifecycle: state.lifecycle.clone(),
                 })
             };
-            let exit_state = Arc::clone(&exit_state);
+            let exit_state = Arc::clone(&setup_exit_state);
             // 主窗口必须先于托盘注册存在，托盘依赖 get_window("main")
             build_main_window(app)?;
             let webview_state = app.state::<backend::WebviewState>().inner().clone();
@@ -76,8 +78,39 @@ pub fn run() {
             backend::register_tray(app.handle(), harness_state, exit_state)?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(move |app, event| match event {
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Reopen { .. } => {
+                if let Err(error) = backend::show_main_window(app) {
+                    log::error!("dock reopen failed: {error:?}");
+                }
+            }
+
+            // https://github.com/tauri-apps/tauri/issues/9198
+            tauri::RunEvent::ExitRequested { api, .. } => {
+                if exit_state.exiting.load(std::sync::atomic::Ordering::SeqCst) {
+                    return;
+                }
+                api.prevent_exit();
+                let app = app.clone();
+                let harness_state = {
+                    let state = app.state::<backend::HarnessState>();
+                    Arc::new(backend::HarnessState {
+                        operation: state.operation.clone(),
+                        lifecycle: state.lifecycle.clone(),
+                    })
+                };
+                let exit_state = Arc::clone(&exit_state);
+                tauri::async_runtime::spawn(async move {
+                    if let Err(error) = backend::quit_app(app, harness_state, exit_state).await {
+                        log::error!("exit cleanup failed: {error:?}");
+                    }
+                });
+            }
+            _ => {}
+        });
 }
 
 /// 主窗口由 Rust 创建以挂载 on_download（config 定义的窗口无法挂载）
