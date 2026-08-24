@@ -15,15 +15,19 @@
         </button>
       </div>
       <div class="grid gap-1">
-        <fieldset v-for="(group, index) in groups" :key="group.title" class="fieldset gap-1">
-          <legend v-if="index > 0" class="fieldset-legend text-base">{{ group.title }}</legend>
-          <VersionRow
+        <fieldset class="fieldset gap-1">
+          <NodeVersionRow label="本地 node (推荐v24+)" :state="env.nodeVer" :error-href="NODE_DOWNLOAD_URL" />
+          <PnpmVersionRow label="本地 pnpm" :state="env.pnpmVer" :node-state="env.nodeVer" />
+          <CommonVersionRow label="本地 DSH" :state="env.dshVer" />
+        </fieldset>
+        <fieldset v-for="group in groups" :key="group.title" class="fieldset gap-1">
+          <legend class="fieldset-legend text-base">{{ group.title }}</legend>
+          <CommonVersionRow
             v-for="row in group.rows"
             :key="row.label"
             :label="row.label"
             :state="row.state"
             :accent="row.accent"
-            :error-href="row.errorHref"
           />
         </fieldset>
       </div>
@@ -35,12 +39,14 @@
 import { computed, ref } from "vue";
 import RefreshIcon from "~icons/mynaui/refresh-solid";
 import { useEnvStore, type VersionState } from "../../stores/env";
-import VersionRow from "./VersionRow.vue";
+import CommonVersionRow from "./CommonVersionRow.vue";
+import NodeVersionRow from "./NodeVersionRow.vue";
+import PnpmVersionRow from "./PnpmVersionRow.vue";
 
 const env = useEnvStore();
 const refreshing = ref(false);
 
-/** node/npm 检查失败时提供的官方下载地址 */
+/** node 检查失败时提供的官方下载地址 */
 const NODE_DOWNLOAD_URL = "https://nodejs.org/en/download";
 
 function normalizeVersion(version: string): string {
@@ -56,14 +62,6 @@ function isLatestMismatch(state: VersionState): boolean {
 }
 
 const groups = computed(() => [
-  {
-    title: "本地环境",
-    rows: [
-      { label: "本地 node (推荐v24+)", state: env.nodeVer, accent: false, errorHref: NODE_DOWNLOAD_URL },
-      { label: "本地 pnpm", state: env.pnpmVer, accent: false, errorHref: NODE_DOWNLOAD_URL },
-      { label: "本地 DSH", state: env.dshVer, accent: false },
-    ],
-  },
   {
     title: "最新 DSH 稳定版 (latest)",
     rows: [
