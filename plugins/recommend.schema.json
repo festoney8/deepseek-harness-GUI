@@ -13,8 +13,12 @@
       "description": "DSH plugin list",
       "items": {
         "type": "object",
-        "required": ["title", "description", "command", "github"],
+        "required": ["package", "title", "description", "command", "github"],
         "properties": {
+          "package": {
+            "type": "string",
+            "description": "plugin package name, npmjs style"
+          },
           "title": {
             "type": "string",
             "description": "plugin title"
