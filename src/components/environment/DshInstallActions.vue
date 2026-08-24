@@ -109,7 +109,7 @@ const anyInstallRunning = computed(
     mirrorNext.running.value,
 );
 const commonLocked = computed(
-  () => anyInstallRunning.value || env.nodeVer.kind !== "ok" || env.npmVer.kind !== "ok" || dsh.phase !== "stopped",
+  () => anyInstallRunning.value || env.nodeVer.kind !== "ok" || env.pnpmVer.kind !== "ok" || dsh.phase !== "stopped",
 );
 const latestOfficialLabel = computed(() => operationLabel("official", env.latestDshVer));
 const nextOfficialLabel = computed(() => operationLabel("official", env.nextDshVer));

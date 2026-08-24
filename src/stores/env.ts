@@ -46,7 +46,7 @@ export function displayVersion(state: VersionState): string {
 }
 
 /**
- * 通过 capability 逻辑命令执行版本检查（node -v / npm -v / dsh -V）
+ * 通过 capability 逻辑命令执行版本检查（node -v / pnpm -v / dsh -V）
  * 退出码 0 且输出非空 → ok；输出为空 → error；非 0 退出 → error；
  * 插件 rejection（包括命令不存在）→ error；底层错误原因仅写入日志/状态，不直接展示
  */
@@ -101,8 +101,8 @@ async function getAppVersion(): Promise<VersionState> {
 export const useEnvStore = defineStore("env", () => {
   /** 本地 node 版本 */
   const nodeVer = ref<VersionState>(idleVersionState());
-  /** 本地 npm 版本 */
-  const npmVer = ref<VersionState>(idleVersionState());
+  /** 本地 pnpm 版本 */
+  const pnpmVer = ref<VersionState>(idleVersionState());
   /** 本地 dsh 版本 */
   const dshVer = ref<VersionState>(idleVersionState());
 
@@ -138,9 +138,9 @@ export const useEnvStore = defineStore("env", () => {
     await runGet(nodeVer, () => getShellVersion("node-version", ["-v"]), "nodeVer");
   }
 
-  /** 刷新本地 npm 版本 */
-  async function getNpmVer(): Promise<void> {
-    await runGet(npmVer, () => getShellVersion("npm-version", ["-v"]), "npmVer");
+  /** 刷新本地 pnpm 版本 */
+  async function getPnpmVer(): Promise<void> {
+    await runGet(pnpmVer, () => getShellVersion("pnpm-version", ["-v"]), "pnpmVer");
   }
 
   /** 刷新本地 dsh 版本 */
@@ -186,7 +186,7 @@ export const useEnvStore = defineStore("env", () => {
   async function refreshAllVersions(): Promise<void> {
     await Promise.all([
       getNodeVer(),
-      getNpmVer(),
+      getPnpmVer(),
       getDshVer(),
       getLatestDshVer(),
       getLatestDshVerWithMirror(),
@@ -199,7 +199,7 @@ export const useEnvStore = defineStore("env", () => {
 
   return {
     nodeVer,
-    npmVer,
+    pnpmVer,
     dshVer,
     latestDshVer,
     latestDshVerWithMirror,
@@ -208,7 +208,7 @@ export const useEnvStore = defineStore("env", () => {
     latestAppVer,
     appVer,
     getNodeVer,
-    getNpmVer,
+    getPnpmVer,
     getDshVer,
     getLatestDshVer,
     getLatestDshVerWithMirror,

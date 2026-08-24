@@ -15,8 +15,8 @@
           "sidecar": false
         },
         {
-          "name": "npm-version",
-          "cmd": "npm.cmd",
+          "name": "pnpm-version",
+          "cmd": "pnpm.cmd",
           "args": ["-v"],
           "sidecar": false
         },
