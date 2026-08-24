@@ -38,6 +38,12 @@
       "identifier": "shell:allow-spawn",
       "allow": [
         {
+          "name": "dsh-plugin-add",
+          "cmd": "dsh.cmd",
+          "args": ["plugin", "--profile", "web", "add", { "validator": "\\S+" }],
+          "sidecar": false
+        },
+        {
           "name": "npm-install-dsh-npmjs",
           "cmd": "npm.cmd",
           "args": ["install", "-g", "--verbose", "@deepseek-ai/dsh@latest", "--registry=https://registry.npmjs.org"],
