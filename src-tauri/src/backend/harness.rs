@@ -160,6 +160,22 @@ pub(crate) async fn stop_dsh(state: &HarnessState) -> Result<(), BackendError> {
         .operation
         .try_lock()
         .map_err(|_| BackendError::OperationInProgress)?;
+    stop_dsh_locked(state).await
+}
+
+/// 在应用退出阶段等待生命周期操作完成后清理 DSH。
+///
+/// 与 IPC 使用的 `stop_dsh` 不同，退出清理不能因为启动操作暂时占用锁而放弃，
+/// 否则应用可能在 DSH 刚启动后直接退出并留下孤儿进程。
+pub(crate) async fn cleanup_dsh(state: &HarnessState) -> Result<(), BackendError> {
+    let _operation = state.operation.lock().await;
+    match stop_dsh_locked(state).await {
+        Ok(()) | Err(BackendError::ProcessNotRunning) => Ok(()),
+        Err(error) => Err(error),
+    }
+}
+
+async fn stop_dsh_locked(state: &HarnessState) -> Result<(), BackendError> {
     let (generation, process) = {
         let mut lifecycle = state.lifecycle.write().await;
         let process = lifecycle

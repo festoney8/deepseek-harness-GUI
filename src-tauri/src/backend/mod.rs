@@ -6,7 +6,7 @@ mod tray;
 mod webview;
 
 pub(crate) use error::BackendError;
-pub(crate) use harness::{create_harness_state, start_dsh, stop_dsh, HarnessPhase, HarnessState};
+pub(crate) use harness::{cleanup_dsh, create_harness_state, start_dsh, stop_dsh, HarnessState};
 pub(crate) use logs::{
     attach_panic_hook, cleanup_old_logs, create_logger, create_session_log_dir, open_logs, LogState,
 };

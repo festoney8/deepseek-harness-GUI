@@ -109,6 +109,31 @@ pub fn run() {
                     }
                 });
             }
+
+            // https://github.com/gptme/gptme/pull/2266
+            tauri::RunEvent::Exit => {
+                // macOS Cmd+Q and Dock > Quit can bypass ExitRequested and
+                // arrive here through tao's LoopDestroyed path.
+                if exit_state
+                    .exiting
+                    .swap(true, std::sync::atomic::Ordering::SeqCst)
+                {
+                    return;
+                }
+
+                let harness_state = {
+                    let state = app.state::<backend::HarnessState>();
+                    Arc::new(backend::HarnessState {
+                        operation: state.operation.clone(),
+                        lifecycle: state.lifecycle.clone(),
+                    })
+                };
+                if let Err(error) =
+                    tauri::async_runtime::block_on(backend::cleanup_dsh(&harness_state))
+                {
+                    log::error!("final exit cleanup failed: {error:?}");
+                }
+            }
             _ => {}
         });
 }

@@ -10,7 +10,7 @@ use tauri::{
     AppHandle, Manager, Window, WindowEvent,
 };
 
-use super::{stop_dsh, BackendError, HarnessPhase, HarnessState};
+use super::{BackendError, HarnessState};
 
 /// 防止托盘退出流程被重复触发的共享状态
 pub(crate) struct ExitState {
@@ -124,14 +124,8 @@ pub(crate) async fn quit_app(
     }
     info!("app quit requested");
 
-    let has_dsh = {
-        let lifecycle = harness_state.lifecycle.read().await;
-        lifecycle.process.is_some() || lifecycle.phase != HarnessPhase::Stopped
-    };
-    if has_dsh {
-        if let Err(error) = stop_dsh(&harness_state).await {
-            error!("quit: stop dsh failed: {error:?}");
-        }
+    if let Err(error) = super::cleanup_dsh(&harness_state).await {
+        error!("quit: stop dsh failed: {error:?}");
     }
 
     app.exit(0);
