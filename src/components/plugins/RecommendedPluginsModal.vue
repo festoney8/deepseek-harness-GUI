@@ -171,10 +171,17 @@ async function installPlugin(plugin: RecommendedPlugin): Promise<void> {
   }
 }
 
-function open(): void {
+async function open(): Promise<void> {
   dialogEl.value?.showModal();
   if (loadState.value.kind === "idle" || loadState.value.kind === "error") {
     void loadPlugins();
+  } else {
+    try {
+      installedPlugins.value = await useDshPluginList();
+    } catch (cause) {
+      logger.warn("recommendedPlugins", "刷新本地插件列表失败:", cause);
+      toast.error(getErrorMessage(cause));
+    }
   }
 }
 
