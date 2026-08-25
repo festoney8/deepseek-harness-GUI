@@ -15,20 +15,30 @@ pub(crate) async fn check_tcp(
     timeout: Duration,
 ) -> Result<bool, BackendError> {
     if timeout.is_zero() {
+        log::warn!("tcp probe rejected: host={host}, port={port}, reason=zero timeout");
         return Err(BackendError::InvalidTimeout);
     }
 
-    Ok(
-        tokio::time::timeout(timeout, tokio::net::TcpStream::connect((host, port)))
-            .await
-            .is_ok_and(|result| result.is_ok()),
-    )
+    match tokio::time::timeout(timeout, tokio::net::TcpStream::connect((host, port))).await {
+        Ok(Ok(_)) => {
+            log::debug!("tcp probe succeeded: host={host}, port={port}");
+            Ok(true)
+        }
+        Ok(Err(error)) => {
+            log::debug!("tcp probe failed: host={host}, port={port}, error={error}");
+            Ok(false)
+        }
+        Err(_) => {
+            log::debug!("tcp probe timed out: host={host}, port={port}");
+            Ok(false)
+        }
+    }
 }
 
 /// 按指定协议探测 `HOST:PORT` 的 HTTP 服务
 ///
 /// 协议只接受小写 `http` 或 `https`，其他值属于参数错误
-/// 探测失败（URL 解析失败、连接失败、超时、非 2xx 响应）统一表示为
+/// 探测失败（URL 解析失败、连接失败、超时、非 2xx 响应且非 401）统一表示为
 /// `Ok(false)`，语义由调用方决定；只有参数错误作为业务错误返回
 pub(crate) async fn check_url(
     protocol: &str,
@@ -58,11 +68,22 @@ pub(crate) async fn check_url(
             log::error!("http client build failed: {error}");
             BackendError::ServiceUnavailable
         })?;
-    let Ok(response) = client.get(parsed_url).send().await else {
-        return Ok(false);
+    let response = match client.get(parsed_url).send().await {
+        Ok(response) => response,
+        Err(error) => {
+            log::debug!("http probe request failed: url={url}, error={error}");
+            return Ok(false);
+        }
     };
 
-    Ok(response.status().is_success())
+    let status = response.status();
+    if status.is_success() || status == reqwest::StatusCode::UNAUTHORIZED {
+        log::debug!("http probe succeeded: url={url}, status={status}");
+        Ok(true)
+    } else {
+        log::debug!("http probe returned non-success status: url={url}, status={status}");
+        Ok(false)
+    }
 }
 
 /// 按用户指定协议探测远程服务并返回对应地址
@@ -71,6 +92,7 @@ pub(crate) async fn connect_remote(
     host: String,
     port: u16,
 ) -> Result<String, BackendError> {
+    log::info!("checking remote service: protocol={protocol}, host={host}, port={port}");
     if port == 0 {
         return Err(BackendError::InvalidPort);
     }
@@ -91,10 +113,18 @@ pub(crate) async fn connect_remote(
 /// 将输入主机校验并转换为连接地址使用的规范文本
 fn normalize_host(host: &str) -> Result<String, BackendError> {
     if host.eq_ignore_ascii_case("localhost") {
+        log::debug!("remote host normalized: input={host}, normalized=localhost");
         return Ok(String::from("localhost"));
     }
 
     host.parse::<Ipv4Addr>()
-        .map(|address| address.to_string())
-        .map_err(|_| BackendError::InvalidHost)
+        .map(|address| {
+            let normalized = address.to_string();
+            log::debug!("remote host normalized: input={host}, normalized={normalized}");
+            normalized
+        })
+        .map_err(|_| {
+            log::warn!("remote host rejected: host={host}, reason=invalid IPv4 address");
+            BackendError::InvalidHost
+        })
 }
