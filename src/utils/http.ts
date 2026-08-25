@@ -18,3 +18,28 @@ export async function fetchJson(url: string): Promise<unknown> {
     clearTimeout(timer);
   }
 }
+
+/** 并发请求多个 JSON 地址，返回第一个请求成功且通过解析校验的结果 */
+export async function fetchFirstValidJson<T>(urls: readonly string[], parse: (data: unknown) => T): Promise<T> {
+  if (urls.length === 0) {
+    throw new Error("没有可用的数据源");
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    let pending = urls.length;
+    let firstError: unknown;
+
+    for (const url of urls) {
+      void fetchJson(url)
+        .then(parse)
+        .then(resolve)
+        .catch((cause: unknown) => {
+          firstError ??= cause;
+          pending -= 1;
+          if (pending === 0) {
+            reject(firstError instanceof Error ? firstError : new Error("所有数据源均获取失败"));
+          }
+        });
+    }
+  });
+}

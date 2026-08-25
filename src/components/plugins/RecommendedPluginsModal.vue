@@ -71,7 +71,7 @@ import PluginIcon from "~icons/catppuccin/folder-plugins-open";
 import { useDshPluginList, type DshPlugin } from "@/composables/useDshPluginList";
 import { useInstallDshPlugin } from "@/composables/useInstallDshPlugin";
 import { getErrorMessage, useToast } from "@/composables/useToast";
-import { fetchJson } from "@/utils/http";
+import { fetchFirstValidJson } from "@/utils/http";
 import { logger } from "@/utils/log";
 import ToastViewport from "../feedback/ToastViewport.vue";
 
@@ -79,8 +79,10 @@ import ToastViewport from "../feedback/ToastViewport.vue";
  * 推荐插件数据地址
  * https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/recommend.json
  */
-const RECOMMEND_JSON_URL =
-  "https://axisnow.gh-proxy.org/https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/recommend.json";
+const RECOMMEND_JSON_URLS = [
+  "https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/recommend.json",
+  "https://axisnow.gh-proxy.org/https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/recommend.json",
+] as const;
 
 interface RecommendedPlugin {
   package: string;
@@ -119,8 +121,11 @@ function parsePlugins(data: unknown): RecommendedPlugin[] {
 async function loadPlugins(): Promise<void> {
   loadState.value = { kind: "checking" };
   try {
-    const [recommendData, localPlugins] = await Promise.all([fetchJson(RECOMMEND_JSON_URL), useDshPluginList()]);
-    plugins.value = parsePlugins(recommendData);
+    const [recommendPlugins, localPlugins] = await Promise.all([
+      fetchFirstValidJson(RECOMMEND_JSON_URLS, parsePlugins),
+      useDshPluginList(),
+    ]);
+    plugins.value = recommendPlugins;
     installedPlugins.value = localPlugins;
     loadState.value = { kind: "ok" };
   } catch (cause) {

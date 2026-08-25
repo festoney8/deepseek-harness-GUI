@@ -44,7 +44,7 @@ import { ref } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import CloseIcon from "~icons/material-symbols/close";
 import PluginIcon from "~icons/streamline-freehand/plugin-jigsaw-puzzle";
-import { fetchJson } from "@/utils/http";
+import { fetchFirstValidJson } from "@/utils/http";
 import { logger } from "@/utils/log";
 import { getErrorMessage, useToast } from "@/composables/useToast";
 import ToastViewport from "../feedback/ToastViewport.vue";
@@ -53,8 +53,10 @@ import ToastViewport from "../feedback/ToastViewport.vue";
  * 插件市场数据地址
  * https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/market.json
  */
-const MARKET_JSON_URL =
-  "https://axisnow.gh-proxy.org/https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/market.json";
+const MARKET_JSON_URLS = [
+  "https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/market.json",
+  "https://axisnow.gh-proxy.org/https://raw.githubusercontent.com/festoney8/deepseek-harness-GUI/refs/heads/data/plugins/market.json",
+] as const;
 
 /** 市场条目 */
 interface MarketPlugin {
@@ -92,7 +94,7 @@ function parsePlugins(data: unknown): MarketPlugin[] {
 async function loadPlugins(): Promise<void> {
   loadState.value = { kind: "checking" };
   try {
-    plugins.value = parsePlugins(await fetchJson(MARKET_JSON_URL));
+    plugins.value = await fetchFirstValidJson(MARKET_JSON_URLS, parsePlugins);
     loadState.value = { kind: "ok" };
   } catch (cause) {
     logger.warn("pluginMarket", "加载插件市场数据失败:", cause);
