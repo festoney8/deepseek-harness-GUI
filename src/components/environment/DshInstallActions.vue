@@ -54,11 +54,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useDshStore } from "../../stores/dsh";
-import { useEnvStore, type VersionState } from "../../stores/env";
-import { getErrorMessage, useToast } from "../../composables/useToast";
-import { useInstallDsh } from "../../composables/useInstallDsh";
-import { logger } from "../../utils/log";
+import { useDshStore } from "@/stores/dsh";
+import { useEnvStore, type VersionState } from "@/stores/env";
+import { getErrorMessage, useToast } from "@/composables/useToast";
+import { useInstallDsh } from "@/composables/useInstallDsh";
+import { logger } from "@/utils/log";
 
 const env = useEnvStore();
 const dsh = useDshStore();

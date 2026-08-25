@@ -68,11 +68,11 @@ import CloseIcon from "~icons/material-symbols/close";
 import GithubIcon from "~icons/mdi/github";
 import InstallIcon from "~icons/clarity/install-line";
 import PluginIcon from "~icons/catppuccin/folder-plugins-open";
-import { useDshPluginList, type DshPlugin } from "../../composables/useDshPluginList";
-import { useInstallDshPlugin } from "../../composables/useInstallDshPlugin";
-import { getErrorMessage, useToast } from "../../composables/useToast";
-import { fetchJson } from "../../utils/http";
-import { logger } from "../../utils/log";
+import { useDshPluginList, type DshPlugin } from "@/composables/useDshPluginList";
+import { useInstallDshPlugin } from "@/composables/useInstallDshPlugin";
+import { getErrorMessage, useToast } from "@/composables/useToast";
+import { fetchJson } from "@/utils/http";
+import { logger } from "@/utils/log";
 import ToastViewport from "../feedback/ToastViewport.vue";
 
 /**

@@ -24,10 +24,10 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useInstallPnpm } from "../../../composables/useInstallPnpm";
-import { useToast } from "../../../composables/useToast";
-import { useEnvStore, displayVersion, type VersionState } from "../../../stores/env";
-import { logger } from "../../../utils/log";
+import { useInstallPnpm } from "@/composables/useInstallPnpm";
+import { useToast } from "@/composables/useToast";
+import { useEnvStore, displayVersion, type VersionState } from "@/stores/env";
+import { logger } from "@/utils/log";
 
 const props = defineProps<{ label: string; state: VersionState; nodeState: VersionState; accent?: boolean }>();
 const displayedValue = computed(() => displayVersion(props.state));

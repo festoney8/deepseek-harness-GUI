@@ -1,6 +1,6 @@
 import { ref, toValue, type MaybeRef } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 const DSH_PLUGIN_ADD_PREFIX = "dsh plugin --profile web add ";
 

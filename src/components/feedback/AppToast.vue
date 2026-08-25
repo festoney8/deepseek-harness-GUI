@@ -14,7 +14,7 @@
 
 <script setup lang="ts">
 import CloseIcon from "~icons/material-symbols/close";
-import type { ToastItem } from "../../composables/useToast";
+import type { ToastItem } from "@/composables/useToast";
 
 const props = defineProps<{ toast: ToastItem }>();
 defineEmits<{ dismiss: [] }>();

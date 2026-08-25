@@ -2,8 +2,8 @@ import { ref, type Ref } from "vue";
 import { defineStore } from "pinia";
 import { getVersion } from "@tauri-apps/api/app";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "../utils/log";
-import { fetchJson } from "../utils/http";
+import { logger } from "@/utils/log";
+import { fetchJson } from "@/utils/http";
 
 /** App（GitHub release）最新版本查询地址 */
 const LATEST_APP_RELEASE = "https://api.github.com/repos/festoney8/deepseek-harness-GUI/releases/latest";

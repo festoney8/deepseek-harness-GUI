@@ -71,12 +71,12 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { useTabsStore } from "../../stores/tabs";
-import { useDshStore } from "../../stores/dsh";
-import { useEnvStore } from "../../stores/env";
-import { getErrorMessage, useToast } from "../../composables/useToast";
-import { useConnectionForm } from "../../composables/useConnectionForm";
-import { logger } from "../../utils/log";
+import { useTabsStore } from "@/stores/tabs";
+import { useDshStore } from "@/stores/dsh";
+import { useEnvStore } from "@/stores/env";
+import { getErrorMessage, useToast } from "@/composables/useToast";
+import { useConnectionForm } from "@/composables/useConnectionForm";
+import { logger } from "@/utils/log";
 
 const props = defineProps<{ installing?: boolean }>();
 const form = useConnectionForm();

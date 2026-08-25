@@ -13,7 +13,7 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import { displayVersion, type VersionState } from "../../../stores/env";
+import { displayVersion, type VersionState } from "@/stores/env";
 
 const props = defineProps<{ label: string; state: VersionState; accent?: boolean }>();
 const displayedValue = computed(() => displayVersion(props.state));

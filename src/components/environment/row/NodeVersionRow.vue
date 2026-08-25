@@ -23,8 +23,8 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { displayVersion, type VersionState } from "../../../stores/env";
-import { logger } from "../../../utils/log";
+import { displayVersion, type VersionState } from "@/stores/env";
+import { logger } from "@/utils/log";
 
 const props = defineProps<{ label: string; state: VersionState; accent?: boolean; errorHref: string }>();
 const displayedValue = computed(() => displayVersion(props.state));

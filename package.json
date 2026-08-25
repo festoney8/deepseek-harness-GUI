@@ -30,6 +30,7 @@
     "@iconify/types": "^2.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^26.2.0",
     "@vitejs/plugin-vue": "^5.2.4",
     "daisyui": "^5.7.20",
     "eslint": "^10.9.0",

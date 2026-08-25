@@ -1,5 +1,5 @@
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 /** 已安装的 dsh 插件条目(name 为 dependencies 对象的 key) */
 export interface DshPlugin {

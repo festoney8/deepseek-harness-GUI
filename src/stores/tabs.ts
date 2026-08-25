@@ -7,7 +7,7 @@ import {
   hideAllWebviewTabs,
   type WebviewTab,
 } from "../ipc/ipc";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 export interface BrowserTab {
   id: "home" | string;

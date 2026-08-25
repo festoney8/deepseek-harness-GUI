@@ -1,6 +1,6 @@
 import { ref } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 // 安装 pnpm 使用的 npm 镜像源
 const NPM_MIRROR_REGISTRY = "https://registry.npmmirror.com";

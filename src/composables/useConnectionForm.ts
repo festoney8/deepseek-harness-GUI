@@ -1,6 +1,6 @@
 import { useLocalStorage } from "@vueuse/core";
 import { computed, ref } from "vue";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 const REMOTE_STORAGE_KEY = "deepseek-harness.remote-connection";
 const LOCAL_STORAGE_KEY = "deepseek-harness.local-port";

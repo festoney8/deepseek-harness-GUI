@@ -1,6 +1,6 @@
 import { computed, ref, toValue, type MaybeRef } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 // 官方 npm 源
 const NPM_REGISTRY = "https://registry.npmjs.org";

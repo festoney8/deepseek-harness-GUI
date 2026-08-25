@@ -58,11 +58,11 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { connectRemote } from "../../ipc/ipc";
-import { useTabsStore } from "../../stores/tabs";
-import { getErrorMessage, useToast } from "../../composables/useToast";
-import { useConnectionForm } from "../../composables/useConnectionForm";
-import { logger } from "../../utils/log";
+import { connectRemote } from "@/ipc/ipc";
+import { useTabsStore } from "@/stores/tabs";
+import { getErrorMessage, useToast } from "@/composables/useToast";
+import { useConnectionForm } from "@/composables/useConnectionForm";
+import { logger } from "@/utils/log";
 
 const form = useConnectionForm();
 const { protocol, host, remotePort, validHost, validRemotePort, validRemote, normalizedHost, remotePortNumber } = form;

@@ -25,11 +25,11 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import logo from "../../assets/logo.png";
+import logo from "@/assets/logo.png";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { useEnvStore, displayVersion } from "../../stores/env";
-import { getErrorMessage, useToast } from "../../composables/useToast";
-import { logger } from "../../utils/log";
+import { useEnvStore, displayVersion } from "@/stores/env";
+import { getErrorMessage, useToast } from "@/composables/useToast";
+import { logger } from "@/utils/log";
 
 const PROJECT_URL = "https://github.com/festoney8/deepseek-harness-GUI/";
 const RELEASES_URL = "https://github.com/festoney8/deepseek-harness-GUI/releases";

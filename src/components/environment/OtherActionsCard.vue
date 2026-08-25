@@ -17,11 +17,11 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
-import { openLogs } from "../../ipc/ipc";
+import { openLogs } from "@/ipc/ipc";
 import PluginInstallModal from "../plugins/PluginInstallModal.vue";
 import PluginMarketModal from "../plugins/PluginMarketModal.vue";
 import RecommendedPluginsModal from "../plugins/RecommendedPluginsModal.vue";
-import { getErrorMessage, useToast } from "../../composables/useToast";
+import { getErrorMessage, useToast } from "@/composables/useToast";
 
 const toast = useToast();
 const pluginMarketModal = ref<InstanceType<typeof PluginMarketModal> | null>(null);

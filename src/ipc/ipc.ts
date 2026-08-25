@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 /** Rust 侧 IpcError 的镜像类型，字段与 ipc.rs 中 camelCase 序列化对齐 */
 export interface IpcError {

@@ -2,7 +2,7 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { startDsh, stopDsh, type DshExitedPayload, type IpcError } from "../ipc/ipc";
-import { logger } from "../utils/log";
+import { logger } from "@/utils/log";
 
 /** dsh 生命周期阶段 */
 export type DshPhase = "stopped" | "starting" | "running" | "stopping";

@@ -20,13 +20,13 @@
 </template>
 
 <script setup lang="ts">
-import AppHeader from "../components/layout/AppHeader.vue";
-import EnvironmentPanel from "../components/environment/EnvironmentPanel.vue";
-import DshInstallActions from "../components/environment/DshInstallActions.vue";
-import OtherActionsCard from "../components/environment/OtherActionsCard.vue";
-import RemoteConnectPanel from "../components/remote/RemoteConnectPanel.vue";
-import LocalDshPanel from "../components/local/LocalDshPanel.vue";
-import { isDshInstallRunning } from "../composables/useInstallDsh";
+import AppHeader from "@/components/layout/AppHeader.vue";
+import EnvironmentPanel from "@/components/environment/EnvironmentPanel.vue";
+import DshInstallActions from "@/components/environment/DshInstallActions.vue";
+import OtherActionsCard from "@/components/environment/OtherActionsCard.vue";
+import RemoteConnectPanel from "@/components/remote/RemoteConnectPanel.vue";
+import LocalDshPanel from "@/components/local/LocalDshPanel.vue";
+import { isDshInstallRunning } from "@/composables/useInstallDsh";
 
 const installing = isDshInstallRunning;
 </script>
