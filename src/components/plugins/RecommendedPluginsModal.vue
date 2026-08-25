@@ -57,6 +57,7 @@
         </div>
       </div>
     </div>
+    <ToastViewport />
   </dialog>
 </template>
 
@@ -72,6 +73,7 @@ import { useInstallDshPlugin } from "../../composables/useInstallDshPlugin";
 import { getErrorMessage, useToast } from "../../composables/useToast";
 import { fetchJson } from "../../utils/http";
 import { logger } from "../../utils/log";
+import ToastViewport from "../feedback/ToastViewport.vue";
 
 /**
  * 推荐插件数据地址

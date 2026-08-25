@@ -39,9 +39,9 @@
 import { computed, ref } from "vue";
 import RefreshIcon from "~icons/mynaui/refresh-solid";
 import { useEnvStore, type VersionState } from "../../stores/env";
-import CommonVersionRow from "./CommonVersionRow.vue";
-import NodeVersionRow from "./NodeVersionRow.vue";
-import PnpmVersionRow from "./PnpmVersionRow.vue";
+import CommonVersionRow from "./row/CommonVersionRow.vue";
+import NodeVersionRow from "./row/NodeVersionRow.vue";
+import PnpmVersionRow from "./row/PnpmVersionRow.vue";
 
 const env = useEnvStore();
 const refreshing = ref(false);
