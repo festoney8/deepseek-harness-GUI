@@ -18,7 +18,7 @@
         <fieldset class="fieldset gap-1">
           <NodeVersionRow label="本地 node (推荐v24+)" :state="env.nodeVer" :error-href="NODE_DOWNLOAD_URL" />
           <PnpmVersionRow label="本地 pnpm" :state="env.pnpmVer" :node-state="env.nodeVer" />
-          <CommonVersionRow label="本地 DSH" :state="env.dshVer" />
+          <CommonVersionRow label="本地 DSH" :state="env.dshVer" :accent="env.dshVer.kind === 'error'" />
         </fieldset>
         <fieldset v-for="group in groups" :key="group.title" class="fieldset gap-1">
           <legend class="fieldset-legend text-base">{{ group.title }}</legend>

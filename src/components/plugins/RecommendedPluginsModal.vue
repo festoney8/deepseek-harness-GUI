@@ -46,7 +46,7 @@
               <button
                 class="btn btn-outline btn-sm btn-primary"
                 type="button"
-                :disabled="isInstalling(plugin.package) || isInstalled(plugin)"
+                :disabled="isAnyInstalling || isInstalled(plugin)"
                 @click="installPlugin(plugin)"
               >
                 <InstallIcon class="size-5" aria-hidden="true" />
@@ -62,7 +62,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import CloseIcon from "~icons/material-symbols/close";
 import GithubIcon from "~icons/mdi/github";
@@ -98,6 +98,7 @@ const plugins = ref<RecommendedPlugin[]>([]);
 const installedPlugins = ref<DshPlugin[]>([]);
 const installingPackages = ref<string[]>([]);
 const installingModes = ref<Record<string, InstallMode>>({});
+const isAnyInstalling = computed(() => installingPackages.value.length > 0);
 const loadState = ref<LoadState>({ kind: "idle" });
 
 const toast = useToast();
@@ -132,10 +133,6 @@ function isInstalled(plugin: RecommendedPlugin): boolean {
   return installedPlugins.value.some((installed) => installed.name === plugin.package);
 }
 
-function isInstalling(packageName: string): boolean {
-  return installingPackages.value.includes(packageName);
-}
-
 function actionLabel(plugin: RecommendedPlugin): string {
   const installingMode = installingModes.value[plugin.package];
   if (installingMode === "install") return "安装中";
@@ -152,7 +149,7 @@ async function visitGithub(plugin: RecommendedPlugin): Promise<void> {
 }
 
 async function installPlugin(plugin: RecommendedPlugin): Promise<void> {
-  if (isInstalling(plugin.package)) return;
+  if (isAnyInstalling.value) return;
 
   const mode: InstallMode = isInstalled(plugin) ? "update" : "install";
   installingPackages.value = [...installingPackages.value, plugin.package];

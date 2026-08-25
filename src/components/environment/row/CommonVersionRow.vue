@@ -3,7 +3,7 @@
     <span class="text-base text-base-content/75">{{ label }}</span>
     <span
       class="badge max-w-48 truncate text-right text-base font-medium"
-      :class="accent ? 'badge-accent badge-soft' : 'badge-ghost'"
+      :class="accent || state.kind === 'error' ? 'badge-accent badge-soft' : 'badge-ghost'"
       :title="displayedValue"
     >
       {{ displayedValue }}
