@@ -77,13 +77,6 @@
       "description": "DSH 一键安装「极简模式 (Git Bash)」预设：把 DSH 极简模式里的 bash 调用映射到 Git for Windows 的 MSYS bash，让 Windows 上的极简模式真正可用。",
       "command": "dsh plugin --profile web add @icelily/dsh-gitbash-preset",
       "github": "https://github.com/liceses/dsh-gitbash-preset"
-    },
-    {
-      "package": "dsh-web-startup-auth",
-      "title": "dsh-web-startup-auth",
-      "description": "DSH 远程 Web 启动 + 用户名/密码认证插件。",
-      "command": "dsh plugin --profile web add dsh-web-startup-auth@latest",
-      "github": "https://github.com/GDWhisper/dsh-web-startup-auth"
     }
   ]
 }
