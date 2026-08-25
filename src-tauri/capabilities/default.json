@@ -12,7 +12,7 @@
     "core:window:allow-start-dragging",
     "log:default",
     "os:default",
-    "fs:allow-read",
+    "fs:allow-read-text-file",
     {
       "identifier": "fs:scope",
       "allow": ["$HOME/.dsh/profiles/web/node_modules/**/cordis.patch.yml"]
