@@ -76,7 +76,6 @@ import { useDshStore } from "@/stores/dsh";
 import { useEnvStore } from "@/stores/env";
 import { getErrorMessage, useToast } from "@/composables/useToast";
 import { useConnectionForm } from "@/composables/useConnectionForm";
-import { logger } from "@/utils/log";
 
 const props = defineProps<{ installing?: boolean }>();
 const form = useConnectionForm();
@@ -108,7 +107,7 @@ async function startLocal(): Promise<void> {
     toast.success("DSH 已启动");
   } catch (error) {
     if (dsh.isRunning) {
-      logger.error("dsh", "DSH 已启动，但 WebUI 标签页打开失败:", error);
+      console.error("dsh", "DSH 已启动，但 WebUI 标签页打开失败:", error);
     }
     toast.error(getErrorMessage(error));
   }

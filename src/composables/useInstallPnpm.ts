@@ -1,6 +1,5 @@
 import { ref } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "@/utils/log";
 
 // 安装 pnpm 使用的 npm 镜像源
 const NPM_MIRROR_REGISTRY = "https://registry.npmmirror.com";
@@ -32,19 +31,19 @@ export function useInstallPnpm() {
         else resolve();
       };
 
-      command.stdout.on("data", (line) => logger.info("pnpm-install:stdout", line));
-      command.stderr.on("data", (line) => logger.info("pnpm-install:stderr", line));
+      command.stdout.on("data", (line) => console.info("pnpm-install:stdout", line));
+      command.stderr.on("data", (line) => console.info("pnpm-install:stderr", line));
       command.on("close", ({ code, signal }) => {
-        logger.info("pnpm-install:close", { code, signal });
+        console.info("pnpm-install:close", { code, signal });
         if (code === 0) settle();
         else settle(new Error(`pnpm 安装失败：退出码 ${code ?? "未知"}`));
       });
       command.on("error", (cause) => {
-        logger.error("pnpm-install:error", cause);
+        console.error("pnpm-install:error", cause);
         settle(new Error(String(cause)));
       });
       void command.spawn().catch((cause) => {
-        logger.error("pnpm-install:spawn", cause);
+        console.error("pnpm-install:spawn", cause);
         settle(new Error(String(cause)));
       });
     });

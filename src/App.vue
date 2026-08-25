@@ -17,7 +17,6 @@ import { useDshStore } from "./stores/dsh";
 import { useEnvStore } from "./stores/env";
 import { getErrorMessage, useToast } from "./composables/useToast";
 import { useTheme } from "./composables/useTheme";
-import { logger } from "./utils/log";
 
 const dsh = useDshStore();
 const env = useEnvStore();
@@ -52,7 +51,7 @@ onMounted(async () => {
   try {
     await dsh.bindEvents();
   } catch (error) {
-    logger.error("dsh", "注册 dsh_exited 监听失败，将无法感知 DSH 异常退出:", error);
+    console.error("dsh", "注册 dsh_exited 监听失败，将无法感知 DSH 异常退出:", error);
     toast.error(getErrorMessage(error));
   }
   void env.refreshAllVersions();

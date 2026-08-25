@@ -72,7 +72,6 @@ import { useDshPluginList, type DshPlugin } from "@/composables/dsh/useDshPlugin
 import { useInstallDshPlugin } from "@/composables/dsh/useInstallDshPlugin";
 import { getErrorMessage, useToast } from "@/composables/useToast";
 import { fetchFirstValidJson } from "@/utils/http";
-import { logger } from "@/utils/log";
 import ToastViewport from "../feedback/ToastViewport.vue";
 
 /**
@@ -130,7 +129,7 @@ async function loadPlugins(): Promise<void> {
     installedPlugins.value = localPlugins;
     loadState.value = { kind: "ok" };
   } catch (cause) {
-    logger.warn("recommendedPlugins", "加载推荐插件失败:", cause);
+    console.warn("recommendedPlugins", "加载推荐插件失败:", cause);
     loadState.value = { kind: "error", message: getErrorMessage(cause) };
   }
 }
@@ -166,7 +165,7 @@ async function installPlugin(plugin: RecommendedPlugin): Promise<void> {
     installedPlugins.value = await useDshPluginList();
     toast.success(`${plugin.title}${mode === "install" ? "安装" : "更新"}成功`);
   } catch (cause) {
-    logger.warn("recommendedPlugins", `${plugin.title} ${mode === "install" ? "安装" : "更新"}失败:`, cause);
+    console.warn("recommendedPlugins", `${plugin.title} ${mode === "install" ? "安装" : "更新"}失败:`, cause);
     toast.error(getErrorMessage(cause));
   } finally {
     installingNames.value = installingNames.value.filter((name) => name !== plugin.name);
@@ -184,7 +183,7 @@ async function open(): Promise<void> {
     try {
       installedPlugins.value = await useDshPluginList();
     } catch (cause) {
-      logger.warn("recommendedPlugins", "刷新本地插件列表失败:", cause);
+      console.warn("recommendedPlugins", "刷新本地插件列表失败:", cause);
       toast.error(getErrorMessage(cause));
     }
   }

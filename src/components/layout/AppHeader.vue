@@ -29,7 +29,6 @@ import logo from "@/assets/logo.png";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEnvStore, displayVersion } from "@/stores/env";
 import { getErrorMessage, useToast } from "@/composables/useToast";
-import { logger } from "@/utils/log";
 
 const PROJECT_URL = "https://github.com/festoney8/deepseek-harness-GUI/";
 const RELEASES_URL = "https://github.com/festoney8/deepseek-harness-GUI/releases";
@@ -53,7 +52,7 @@ async function openExternal(url: string): Promise<void> {
   try {
     await openUrl(url);
   } catch (error) {
-    logger.warn("openUrl", "打开外部链接失败:", url, error);
+    console.warn("openUrl", "打开外部链接失败:", url, error);
     toast.error(getErrorMessage(error));
   }
 }

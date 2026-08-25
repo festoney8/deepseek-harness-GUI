@@ -1,5 +1,4 @@
 import { invoke } from "@tauri-apps/api/core";
-import { logger } from "@/utils/log";
 
 /** Rust 侧 IpcError 的镜像类型，字段与 ipc.rs 中 camelCase 序列化对齐 */
 export interface IpcError {
@@ -45,12 +44,12 @@ export async function invokeIpc<T>(cmd: string, args?: Record<string, unknown>):
   } catch (error) {
     const ipcError = toIpcError(error);
     if (EXPECTED_IPC_CODES.has(ipcError.code)) {
-      logger.warn("ipc", `${cmd} 预期内失败:`, ipcError.code, ipcError.message);
+      console.warn("ipc", `${cmd} 预期内失败:`, ipcError.code, ipcError.message);
     } else {
-      logger.error("ipc", `${cmd} 调用失败:`, ipcError.code, ipcError.message);
+      console.error("ipc", `${cmd} 调用失败:`, ipcError.code, ipcError.message);
     }
     if (ipcError.code === "internal_error") {
-      logger.error("ipc", `${cmd} 原始错误 payload:`, error);
+      console.error("ipc", `${cmd} 原始错误 payload:`, error);
     }
     throw ipcError;
   }

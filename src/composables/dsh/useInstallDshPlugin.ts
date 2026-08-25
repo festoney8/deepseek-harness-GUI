@@ -1,6 +1,5 @@
 import { ref, toValue, type MaybeRef } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "@/utils/log";
 
 const DSH_PLUGIN_ADD_PREFIX = "dsh plugin --profile web add ";
 
@@ -48,19 +47,19 @@ export function useInstallDshPlugin(installCommand: MaybeRef<string>) {
         else resolve();
       };
 
-      command.stdout.on("data", (line) => logger.info("plugin-install:stdout", line));
-      command.stderr.on("data", (line) => logger.info("plugin-install:stderr", line));
+      command.stdout.on("data", (line) => console.info("plugin-install:stdout", line));
+      command.stderr.on("data", (line) => console.info("plugin-install:stderr", line));
       command.on("close", ({ code, signal }) => {
-        logger.info("plugin-install:close", { code, signal });
+        console.info("plugin-install:close", { code, signal });
         if (code === 0) settle();
         else settle(new Error(`DSH 插件安装失败：退出码 ${code ?? "未知"}`));
       });
       command.on("error", (cause) => {
-        logger.error("plugin-install:error", cause);
+        console.error("plugin-install:error", cause);
         settle(new Error(String(cause)));
       });
       void command.spawn().catch((cause) => {
-        logger.error("plugin-install:spawn", cause);
+        console.error("plugin-install:spawn", cause);
         settle(new Error(String(cause)));
       });
     });

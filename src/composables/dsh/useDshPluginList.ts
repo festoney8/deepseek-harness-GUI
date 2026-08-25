@@ -1,7 +1,6 @@
 import { BaseDirectory, readTextFile } from "@tauri-apps/plugin-fs";
 import { load, CORE_SCHEMA, defineScalarTag } from "js-yaml";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "@/utils/log";
 
 /** 已安装的 dsh 插件条目(name 为 dependencies 对象的 key) */
 export interface DshPlugin {
@@ -59,11 +58,11 @@ async function readCordisPluginId(name: string): Promise<string> {
     const yaml = await readTextFile(path, { baseDir: BaseDirectory.Home });
     const id = parseCordisPluginId(yaml);
     if (!id) {
-      logger.warn("useDshPluginList", `插件 ${name} 的 Cordis 配置缺少合法 insert.id`);
+      console.warn("useDshPluginList", `插件 ${name} 的 Cordis 配置缺少合法 insert.id`);
     }
     return id;
   } catch (cause) {
-    logger.warn("useDshPluginList", `读取插件 ${name} 的 Cordis 配置失败:`, cause);
+    console.warn("useDshPluginList", `读取插件 ${name} 的 Cordis 配置失败:`, cause);
     return "";
   }
 }
@@ -89,17 +88,17 @@ export async function useDshPluginList(): Promise<DshPlugin[]> {
     const result = await Command.create("dsh-plugin-list", ["plugin", "--profile", "web", "list", "--json"]).execute();
     if (result.code !== 0) {
       const detail = result.stderr.trim() || `退出码 ${result.code}`;
-      logger.warn("useDshPluginList", "列出插件失败:", detail);
+      console.warn("useDshPluginList", "列出插件失败:", detail);
       return [];
     }
     try {
       return await enrichDshPluginIds(parseDshPlugins(result.stdout));
     } catch (cause) {
-      logger.warn("useDshPluginList", "解析插件列表失败:", cause);
+      console.warn("useDshPluginList", "解析插件列表失败:", cause);
       return [];
     }
   } catch (cause) {
-    logger.warn("useDshPluginList", "执行 dsh plugin list 失败:", cause);
+    console.warn("useDshPluginList", "执行 dsh plugin list 失败:", cause);
     return [];
   }
 }

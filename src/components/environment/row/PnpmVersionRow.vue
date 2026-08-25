@@ -27,7 +27,6 @@ import { computed } from "vue";
 import { useInstallPnpm } from "@/composables/useInstallPnpm";
 import { useToast } from "@/composables/useToast";
 import { useEnvStore, displayVersion, type VersionState } from "@/stores/env";
-import { logger } from "@/utils/log";
 
 const props = defineProps<{ label: string; state: VersionState; nodeState: VersionState; accent?: boolean }>();
 const displayedValue = computed(() => displayVersion(props.state));
@@ -47,7 +46,7 @@ async function installPnpm(): Promise<void> {
     await env.getPnpmVer();
     toast.success("pnpm 安装成功");
   } catch (cause) {
-    logger.warn("pnpm-install", "pnpm 安装失败，请查看日志:", cause);
+    console.warn("pnpm-install", "pnpm 安装失败，请查看日志:", cause);
     toast.error("pnpm 安装失败，请查看日志");
   }
 }

@@ -3,7 +3,6 @@ mod ipc;
 mod platform;
 
 use std::sync::{atomic::AtomicBool, Arc};
-
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 
 /// 启动 Tauri 应用并完成后端初始化

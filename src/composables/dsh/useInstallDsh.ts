@@ -1,6 +1,5 @@
 import { computed, ref, toValue, type MaybeRef } from "vue";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "@/utils/log";
 
 // 官方 npm 源
 const NPM_REGISTRY = "https://registry.npmjs.org";
@@ -61,19 +60,19 @@ export function useInstallDsh(mirror: MaybeRef<boolean>, installTag: MaybeRef<Ds
         else resolve();
       };
 
-      command.stdout.on("data", (line) => logger.info("install:stdout", line));
-      command.stderr.on("data", (line) => logger.info("install:stderr", line));
+      command.stdout.on("data", (line) => console.info("install:stdout", line));
+      command.stderr.on("data", (line) => console.info("install:stderr", line));
       command.on("close", ({ code, signal }) => {
-        logger.info("install:close", { code, signal });
+        console.info("install:close", { code, signal });
         if (code === 0) settle();
         else settle(new Error(`DSH 安装失败：退出码 ${code ?? "未知"}`));
       });
       command.on("error", (cause) => {
-        logger.error("install:error", cause);
+        console.error("install:error", cause);
         settle(new Error(String(cause)));
       });
       void command.spawn().catch((cause) => {
-        logger.error("install:spawn", cause);
+        console.error("install:spawn", cause);
         settle(new Error(String(cause)));
       });
     });

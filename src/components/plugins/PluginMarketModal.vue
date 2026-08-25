@@ -45,7 +45,6 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import CloseIcon from "~icons/material-symbols/close";
 import PluginIcon from "~icons/streamline-freehand/plugin-jigsaw-puzzle";
 import { fetchFirstValidJson } from "@/utils/http";
-import { logger } from "@/utils/log";
 import { getErrorMessage, useToast } from "@/composables/useToast";
 import ToastViewport from "../feedback/ToastViewport.vue";
 
@@ -97,7 +96,7 @@ async function loadPlugins(): Promise<void> {
     plugins.value = await fetchFirstValidJson(MARKET_JSON_URLS, parsePlugins);
     loadState.value = { kind: "ok" };
   } catch (cause) {
-    logger.warn("pluginMarket", "加载插件市场数据失败:", cause);
+    console.warn("pluginMarket", "加载插件市场数据失败:", cause);
     loadState.value = { kind: "error", message: getErrorMessage(cause) };
   }
 }

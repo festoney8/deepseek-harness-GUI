@@ -7,7 +7,6 @@ import {
   hideAllWebviewTabs,
   type WebviewTab,
 } from "../ipc/ipc";
-import { logger } from "@/utils/log";
 
 export interface BrowserTab {
   id: "home" | string;
@@ -58,7 +57,7 @@ export const useTabsStore = defineStore("tabs", () => {
       tabs.value[index] = nextTab;
     }
     activeTabId.value = nextTab.id;
-    logger.info("tabs", `打开标签页: ${nextTab.label} ${nextTab.url}`);
+    console.info("tabs", `打开标签页: ${nextTab.label} ${nextTab.url}`);
   }
 
   async function openDshUrl(url: string): Promise<void> {
@@ -70,7 +69,7 @@ export const useTabsStore = defineStore("tabs", () => {
     const index = tabs.value.findIndex((item) => item.id === tab.id);
     if (index === -1) return;
     await closeWebviewTab(tab.label);
-    logger.info("tabs", `关闭标签页: ${tab.label}`);
+    console.info("tabs", `关闭标签页: ${tab.label}`);
     tabs.value.splice(index, 1);
     if (activeTabId.value === tab.id) {
       const nextTab = tabs.value[index] ?? tabs.value[index - 1] ?? HOME_TAB;

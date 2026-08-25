@@ -24,14 +24,13 @@
 import { computed } from "vue";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { displayVersion, type VersionState } from "@/stores/env";
-import { logger } from "@/utils/log";
 
 const props = defineProps<{ label: string; state: VersionState; accent?: boolean; errorHref: string }>();
 const displayedValue = computed(() => displayVersion(props.state));
 
 function openDownload(): void {
   void openUrl(props.errorHref).catch((error) => {
-    logger.warn("openUrl", "打开下载链接失败:", props.errorHref, error);
+    console.warn("openUrl", "打开下载链接失败:", props.errorHref, error);
   });
 }
 </script>

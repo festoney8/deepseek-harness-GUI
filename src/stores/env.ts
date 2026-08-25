@@ -2,7 +2,6 @@ import { ref, type Ref } from "vue";
 import { defineStore } from "pinia";
 import { getVersion } from "@tauri-apps/api/app";
 import { Command } from "@tauri-apps/plugin-shell";
-import { logger } from "@/utils/log";
 import { fetchJson } from "@/utils/http";
 
 /** App（GitHub release）最新版本查询地址 */
@@ -61,7 +60,7 @@ async function getShellVersion(commandName: string, args: string[]): Promise<Ver
     return version ? { kind: "ok", version } : { kind: "error", message: "版本输出为空" };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    logger.warn(commandName, "版本检查失败:", cause);
+    console.warn(commandName, "版本检查失败:", cause);
     return { kind: "error", message };
   }
 }
@@ -77,7 +76,7 @@ async function fetchLatestVersion(url: string, field: string): Promise<VersionSt
     return { kind: "error", message: `响应缺少 ${field} 字段` };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    logger.warn("fetchLatestVersion", "查询最新版本失败:", cause);
+    console.warn("fetchLatestVersion", "查询最新版本失败:", cause);
     return { kind: "error", message };
   }
 }
@@ -88,7 +87,7 @@ async function getAppVersion(): Promise<VersionState> {
     return { kind: "ok", version: await getVersion() };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
-    logger.warn("getAppVersion", "获取版本失败:", cause);
+    console.warn("getAppVersion", "获取版本失败:", cause);
     return { kind: "error", message };
   }
 }
@@ -127,7 +126,7 @@ export const useEnvStore = defineStore("env", () => {
     try {
       slot.value = await action();
     } catch (error) {
-      logger.error("env", `${name} 版本检查流程异常:`, error);
+      console.error("env", `${name} 版本检查流程异常:`, error);
       const message = error instanceof Error ? error.message : String(error);
       slot.value = { kind: "error", message };
     }

@@ -11,13 +11,16 @@ use super::BackendError;
 
 /// 创建写往终端和本次启动日志目录的 Tauri 日志插件
 pub(crate) fn create_logger(session_dir: &Path) -> tauri_plugin_log::Builder {
-    tauri_plugin_log::Builder::new().targets([
-        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
-        tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
-            path: session_dir.to_path_buf(),
-            file_name: Some(String::from("app")),
-        }),
-    ])
+    tauri_plugin_log::Builder::new()
+        // console.log is forwarded as a trace-level record by the frontend.
+        .level(log::LevelFilter::Trace)
+        .targets([
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Stdout),
+            tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::Folder {
+                path: session_dir.to_path_buf(),
+                file_name: Some(String::from("app")),
+            }),
+        ])
 }
 
 /// 将 panic 以 error 级写入会话日志，并保留默认 hook 的原有行为
