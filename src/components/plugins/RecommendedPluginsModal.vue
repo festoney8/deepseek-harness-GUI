@@ -23,7 +23,7 @@
         <div class="grid grid-cols-2 gap-3">
           <article
             v-for="plugin in plugins"
-            :key="plugin.package"
+            :key="plugin.name"
             class="grid grid-cols-[3rem_minmax(0,1fr)_6rem] items-center gap-4 rounded-box border border-base-300 p-4"
           >
             <PluginIcon class="plugin-icon size-12 shrink-0" aria-hidden="true" />
@@ -85,7 +85,8 @@ const RECOMMEND_JSON_URLS = [
 ] as const;
 
 interface RecommendedPlugin {
-  package: string;
+  id: string;
+  name: string;
   title: string;
   description: string;
   command: string;
@@ -98,9 +99,9 @@ type InstallMode = "install" | "update";
 const dialogEl = ref<HTMLDialogElement | null>(null);
 const plugins = ref<RecommendedPlugin[]>([]);
 const installedPlugins = ref<DshPlugin[]>([]);
-const installingPackages = ref<string[]>([]);
+const installingNames = ref<string[]>([]);
 const installingModes = ref<Record<string, InstallMode>>({});
-const isAnyInstalling = computed(() => installingPackages.value.length > 0);
+const isAnyInstalling = computed(() => installingNames.value.length > 0);
 const loadState = ref<LoadState>({ kind: "idle" });
 
 const toast = useToast();
@@ -112,7 +113,7 @@ function parsePlugins(data: unknown): RecommendedPlugin[] {
   }
   return list.filter((item): item is RecommendedPlugin => {
     const plugin = item as Record<string, unknown>;
-    return ["package", "title", "description", "command", "github"].every(
+    return ["name", "title", "description", "command", "github"].every(
       (field) => typeof plugin[field] === "string" && plugin[field] !== "",
     );
   });
@@ -135,11 +136,11 @@ async function loadPlugins(): Promise<void> {
 }
 
 function isInstalled(plugin: RecommendedPlugin): boolean {
-  return installedPlugins.value.some((installed) => installed.name === plugin.package);
+  return installedPlugins.value.some((installed) => installed.name === plugin.name);
 }
 
 function actionLabel(plugin: RecommendedPlugin): string {
-  const installingMode = installingModes.value[plugin.package];
+  const installingMode = installingModes.value[plugin.name];
   if (installingMode === "install") return "安装中";
   if (installingMode === "update") return "更新中";
   return "安装";
@@ -157,8 +158,8 @@ async function installPlugin(plugin: RecommendedPlugin): Promise<void> {
   if (isAnyInstalling.value) return;
 
   const mode: InstallMode = isInstalled(plugin) ? "update" : "install";
-  installingPackages.value = [...installingPackages.value, plugin.package];
-  installingModes.value = { ...installingModes.value, [plugin.package]: mode };
+  installingNames.value = [...installingNames.value, plugin.name];
+  installingModes.value = { ...installingModes.value, [plugin.name]: mode };
 
   try {
     await useInstallDshPlugin(plugin.command).start();
@@ -168,9 +169,9 @@ async function installPlugin(plugin: RecommendedPlugin): Promise<void> {
     logger.warn("recommendedPlugins", `${plugin.title} ${mode === "install" ? "安装" : "更新"}失败:`, cause);
     toast.error(getErrorMessage(cause));
   } finally {
-    installingPackages.value = installingPackages.value.filter((packageName) => packageName !== plugin.package);
+    installingNames.value = installingNames.value.filter((name) => name !== plugin.name);
     const nextModes = { ...installingModes.value };
-    delete nextModes[plugin.package];
+    delete nextModes[plugin.name];
     installingModes.value = nextModes;
   }
 }
