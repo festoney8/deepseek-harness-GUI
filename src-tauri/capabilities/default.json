@@ -11,6 +11,11 @@
     "core:window:allow-close",
     "core:window:allow-start-dragging",
     "log:default",
-    "os:default"
+    "os:default",
+    "fs:allow-read",
+    {
+      "identifier": "fs:scope",
+      "allow": ["$HOME/.dsh/profiles/web/node_modules/**/cordis.patch.yml"]
+    }
   ]
 }
