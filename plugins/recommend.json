@@ -2,77 +2,88 @@
   "$schema": "./recommend.schema.json",
   "plugins": [
     {
-      "package": "dshmarket",
+      "id": "dsh-market",
+      "name": "dshmarket",
       "title": "dsh-market",
       "description": "开在 DeepSeek Harness 里的插件市场：设置 → 插件市场，浏览、搜索、一键安装 300+ 社区插件目录，带分类筛选、星数、排序和跟随界面语言的双语描述，还有专门的主题标签页可即时换肤。",
       "command": "dsh plugin --profile web add dshmarket",
       "github": "https://github.com/dsh-market/dsh-market"
     },
     {
-      "package": "@baihejiangnan/dsh-session-context-menu",
+      "id": "session-context-menu",
+      "name": "@baihejiangnan/dsh-session-context-menu",
       "title": "dsh-session-context-menu",
       "description": "更好的右键：DeepSeek Harness 应用封装端的完整原生风格上下文菜单",
       "command": "dsh plugin --profile web add github:baihejiangnan/dsh-session-context-menu",
       "github": "https://github.com/baihejiangnan/dsh-session-context-menu"
     },
     {
-      "package": "dsh-better-sidebar",
+      "id": "better-sidebar",
+      "name": "dsh-better-sidebar",
       "title": "dsh-better-sidebar",
       "description": "开放式侧边栏底座：第三方插件可注册自己的侧边栏页面，内置文件渲染编辑、终端、Git 与子代理面板，按需分块加载。",
       "command": "dsh plugin --profile web add dsh-better-sidebar",
       "github": "https://github.com/omdsh-dev/DSH-better-sidebar"
     },
     {
-      "package": "dsh-context",
+      "id": "dsh-context",
+      "name": "dsh-context",
       "title": "dsh-context",
       "description": "看清模型上下文窗口的组成与演化：Context 面板 + /context 命令，系统提示、工具 schema、注入与压缩一目了然。",
       "command": "dsh plugin --profile web add dsh-context",
       "github": "https://github.com/bowenliang123/dsh-context"
     },
     {
-      "package": "dsh-whale-widget",
+      "id": "dsh-whale-widget",
+      "name": "dsh-whale-widget",
       "title": "dsh-whale-widget",
       "description": "DSH 小鲸鱼余额挂件，帮你盯着 DeepSeek 账户余额。QQ 弹弹，支持拖拽吸附、左吸附翻转、数字滚动动画，随界面自动启用，建议直接喊来你的 dsh 安装",
       "command": "dsh plugin --profile web add dsh-whale-widget",
       "github": "https://github.com/MeteorNOX/DeepSeek-Balance-Whale-Widget"
     },
     {
-      "package": "dsh-find-plugin",
+      "id": "find-dsh-plugin",
+      "name": "dsh-find-plugin",
       "title": "dsh-find-plugin",
       "description": "在会话内直接搜索发现 DSH 插件：实时检索 GitHub dsh-plugin 主题并按 star 排序。",
       "command": "dsh plugin --profile web add dsh-find-plugin",
       "github": "https://github.com/awesome-dsh-plugin/dsh-find-plugin"
     },
     {
-      "package": "@nanmicoder/dsh-agent-teams",
+      "id": "agent-teams",
+      "name": "@nanmicoder/dsh-agent-teams",
       "title": "dsh-agent-teams",
       "description": "把 Claude Code 的 AgentTeams 搬进 DSH：一句自然语言拉起一个多智能体团队，队长拆任务、成员之间直接收发消息，Web GUI 右上角实时看团队活动。",
       "command": "dsh plugin --profile web add @nanmicoder/dsh-agent-teams",
       "github": "https://github.com/NanmiCoder/dsh-agent-teams"
     },
     {
-      "package": "@linxin666/dsh-client-ui-skill-explorer",
+      "id": "ui-skill-explorer",
+      "name": "@linxin666/dsh-client-ui-skill-explorer",
       "title": "dsh-skill-explorer",
       "description": "DSH Web GUI 的技能中心：按来源分级浏览已加载的全部 skill，启用/禁用模型 调用，创建新技能，删除技能（移入可恢复的回收站）。",
       "command": "dsh plugin --profile web add @linxin666/dsh-client-ui-skill-explorer@latest",
       "github": "https://github.com/zhu1090093659/dsh-web/tree/main/packages/dsh-skill-explorer"
     },
     {
-      "package": "@linxin666/dsh-ssh",
+      "id": "ssh",
+      "name": "@linxin666/dsh-ssh",
       "title": "dsh-ssh",
       "description": "为 DSH 定制的远程 SSH 插件：Host 进程内的持久连接池 + Web GUI 主机管理面板 + Web 终端 + Agent 工具，全部通过官方 NPM SDK 实现，不修改 DSH 源码。",
       "command": "dsh plugin --profile web add @linxin666/dsh-ssh@latest",
       "github": "https://github.com/zhu1090093659/dsh-web/tree/main/packages/dsh-ssh"
     },
     {
-      "package": "@linxin666/dsh-client-ui-git-graph",
+      "id": "ui-git-graph",
+      "name": "@linxin666/dsh-client-ui-git-graph",
       "title": "dsh-git-graph",
       "description": "Git 分支选择器与 Git 图谱面板。",
       "command": "dsh plugin --profile web add @linxin666/dsh-client-ui-git-graph",
       "github": "https://github.com/zhu1090093659/dsh-web/tree/main/packages/dsh-git-graph"
     },
     {
-      "package": "@icelily/dsh-gitbash-preset",
+      "id": "dsh-gitbash-preset",
+      "name": "@icelily/dsh-gitbash-preset",
       "title": "dsh-gitbash-preset",
       "description": "DSH 一键安装「极简模式 (Git Bash)」预设：把 DSH 极简模式里的 bash 调用映射到 Git for Windows 的 MSYS bash，让 Windows 上的极简模式真正可用。",
       "command": "dsh plugin --profile web add @icelily/dsh-gitbash-preset",

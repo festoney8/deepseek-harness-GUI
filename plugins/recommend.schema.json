@@ -13,11 +13,15 @@
       "description": "DSH plugin list",
       "items": {
         "type": "object",
-        "required": ["package", "title", "description", "command", "github"],
+        "required": ["id", "name", "title", "description", "command", "github"],
         "properties": {
-          "package": {
+          "id": {
             "type": "string",
-            "description": "plugin package name, npmjs style"
+            "description": "plugin id, defined in cordis.patch.yml"
+          },
+          "name": {
+            "type": "string",
+            "description": "plugin name, defined in cordis.patch.yml"
           },
           "title": {
             "type": "string",
