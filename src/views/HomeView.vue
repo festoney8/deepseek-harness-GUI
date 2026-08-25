@@ -26,7 +26,7 @@ import DshInstallActions from "@/components/environment/DshInstallActions.vue";
 import OtherActionsCard from "@/components/environment/OtherActionsCard.vue";
 import RemoteConnectPanel from "@/components/remote/RemoteConnectPanel.vue";
 import LocalDshPanel from "@/components/local/LocalDshPanel.vue";
-import { isDshInstallRunning } from "@/composables/useInstallDsh";
+import { isDshInstallRunning } from "@/composables/dsh/useInstallDsh";
 
 const installing = isDshInstallRunning;
 </script>

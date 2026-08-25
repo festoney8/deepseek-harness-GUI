@@ -57,7 +57,7 @@ import { computed } from "vue";
 import { useDshStore } from "@/stores/dsh";
 import { useEnvStore, type VersionState } from "@/stores/env";
 import { getErrorMessage, useToast } from "@/composables/useToast";
-import { useInstallDsh } from "@/composables/useInstallDsh";
+import { useInstallDsh } from "@/composables/dsh/useInstallDsh";
 import { logger } from "@/utils/log";
 
 const env = useEnvStore();
