@@ -3,7 +3,7 @@
     <div class="modal-box relative">
       <h3 class="mb-4 text-lg font-bold">安装插件</h3>
       <form method="dialog" class="absolute right-2 top-2">
-        <button class="btn btn-sm btn-circle btn-ghost" type="submit" aria-label="关闭">
+        <button class="btn btn-circle btn-ghost" type="submit" aria-label="关闭">
           <CloseIcon class="size-4" aria-hidden="true" />
         </button>
       </form>

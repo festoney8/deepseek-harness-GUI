@@ -77,6 +77,13 @@ pub fn run() {
             let webview_state = app.state::<backend::WebviewState>().inner().clone();
             backend::register_resize_handler(app.handle(), webview_state)?;
             backend::register_tray(app.handle(), harness_state, exit_state)?;
+
+            #[cfg(debug_assertions)]
+            {
+                if let Some(window) = app.get_webview_window("main") {
+                    window.open_devtools();
+                }
+            }
             Ok(())
         })
         .build(tauri::generate_context!())
