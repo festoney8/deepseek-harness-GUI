@@ -58,3 +58,9 @@ windows-sys = { version = "0.61.2", features = [
 
 [target."cfg(unix)".dependencies]
 libc = "0.2.189"
+
+# 频繁 Alt+Tab 切换app有概率触发应用白屏 Ghost Window 问题
+# WinDbg 调试发现 tao 死锁，在 tao PR#1215 被修复，在 tauri#15307 被合并进 tauri
+# tauri 发布 v2.11.5 的下一版本后可移除这一 patch
+[patch.crates-io]
+tauri = { git = "https://github.com/tauri-apps/tauri", rev = "7cc68e7" }
